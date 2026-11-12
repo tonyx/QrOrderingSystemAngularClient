@@ -4,11 +4,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { RestaurantService } from '../../../core/services/restaurant.service';
 import { StripePaymentService } from '../../../core/services/stripe-payment.service';
 import { RestaurantItem, StripeAccountStatus } from '../../../core/models/restaurant.models';
+import { MainLayoutComponent } from '../../../shared/components/main-layout/main-layout.component';
 
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MainLayoutComponent],
   templateUrl: './onboarding.component.html',
   styleUrl: './onboarding.component.css',
 })

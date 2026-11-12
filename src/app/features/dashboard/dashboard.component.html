@@ -1,66 +1,16 @@
-<div class="page-layout">
-  <!-- Sidebar matching Blazor NavMenu -->
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <span>Qr Ordering System</span>
-    </div>
-
-    <nav class="sidebar-nav">
-      <a class="nav-link-item active" href="javascript:void(0)">
-        <i class="bi bi-list-nested"></i>
-        <span>Restaurant Admin</span>
-      </a>
-      <a class="nav-link-item" href="javascript:void(0)">
-        <i class="bi bi-house-door-fill"></i>
-        <span>Home</span>
-      </a>
-      <a class="nav-link-item" href="javascript:void(0)">
-        <i class="bi bi-info-circle"></i>
-        <span>Info & Support</span>
-      </a>
-
-      @if (authService.currentUser()?.email) {
-        <a class="nav-link-item" href="javascript:void(0)">
-          <i class="bi bi-person-fill"></i>
-          <span>{{ authService.currentUser()?.email }}</span>
-        </a>
-      }
-
-      <button type="button" class="nav-link-item" (click)="onLogout()">
-        <i class="bi bi-arrow-bar-left"></i>
-        <span>Logout</span>
+<app-main-layout pageTitle="Restaurants Admin">
+  <div class="content-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3 class="mb-0 fw-bold">Your Restaurants</h3>
+      <button class="btn btn-sm btn-outline-secondary" (click)="loadRestaurants()" [disabled]="isLoading()">
+        @if (isLoading()) {
+          <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+        } @else {
+          <i class="bi bi-arrow-clockwise me-1"></i>
+        }
+        Reload
       </button>
-    </nav>
-  </aside>
-
-  <!-- Main View Area matching Blazor MainLayout + RestaurantsAdmin.razor -->
-  <div class="main-content">
-    <!-- Top-row Header -->
-    <header class="top-bar">
-      <div class="breadcrumbs">
-        <i class="bi bi-house me-1"></i>
-        <span>/ Restaurants Admin</span>
-      </div>
-      <div class="d-flex align-items-center gap-3">
-        <span class="badge bg-light text-dark border">
-          <i class="bi bi-person-circle me-1"></i>
-          {{ authService.currentUser()?.email || 'Authenticated' }}
-        </span>
-      </div>
-    </header>
-
-    <div class="content-body">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0 fw-bold">Your Restaurants</h3>
-        <button class="btn btn-sm btn-outline-secondary" (click)="loadRestaurants()" [disabled]="isLoading()">
-          @if (isLoading()) {
-            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-          } @else {
-            <i class="bi bi-arrow-clockwise me-1"></i>
-          }
-          Refresh
-        </button>
-      </div>
+    </div>
 
       <!-- Error message -->
       @if (errorMessage()) {
@@ -360,7 +310,7 @@
                         </div>
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <a href="javascript:void(0)" class="btn btn-sm btn-outline-secondary w-100">
+                          <a [routerLink]="['/restaurantsAdmin', restaurant.restaurantId, 'tables']" class="btn btn-sm btn-outline-secondary w-100">
                             Manage Tables ({{ restaurant.tablesCount || 0 }})
                           </a>
                           <div class="custom-tooltip-box">
@@ -375,7 +325,7 @@
                         </div>
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <a href="javascript:void(0)" class="btn btn-sm btn-outline-primary w-100">
+                          <a [routerLink]="['/restaurantsAdmin', restaurant.restaurantId, 'qrs']" class="btn btn-sm btn-outline-primary w-100">
                             <i class="bi bi-qr-code-scan me-1"></i> Print Table QRs
                           </a>
                           <div class="custom-tooltip-box">
@@ -595,20 +545,8 @@
           </small>
         </div>
       </div>
-    </div>
-
-    <!-- Legal Footer matching Blazor MainLayout -->
-    <footer class="legal-footer">
-      <span>Antonio Lucca</span>
-      <span class="legal-separator">•</span>
-      <span>P. IVA 0908007211</span>
-      <span class="legal-separator">•</span>
-      <span>80071 Anacapri (Na) Italy</span>
-      <span class="legal-separator">•</span>
-      <span>contact: <a href="mailto:info@restaurantsystem.cloud" class="text-decoration-none">info@restaurantsystem.cloud</a></span>
-    </footer>
   </div>
-</div>
+</app-main-layout>
 
 <!-- Modal simulation for QrAssistant / action buttons -->
 @if (assistantTopic()) {

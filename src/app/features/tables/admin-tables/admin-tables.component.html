@@ -1,0 +1,402 @@
+<app-main-layout pageTitle="Manage Tables">
+  <div class="premium-container">
+    <a routerLink="/restaurantsAdmin" class="back-btn">
+      <i class="bi bi-arrow-left me-1"></i> Back to Restaurants
+    </a>
+
+    @if (errorMessage()) {
+      <div class="alert alert-danger shadow-sm mb-4">
+        <i class="bi bi-exclamation-octagon-fill me-2"></i>{{ errorMessage() }}
+      </div>
+    }
+
+    @if (loading()) {
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="text-muted mt-3">Loading restaurant details...</p>
+      </div>
+    } @else if (restaurant(); as rest) {
+      <div class="row g-4">
+        <!-- Create Table Form & Danger Zone -->
+        <div class="col-12 col-lg-4">
+          <div class="premium-card mb-4" style="padding: 1.5rem;">
+            <h4 class="table-title" style="font-size: 1.25rem;">
+              <i class="bi bi-plus-circle me-1 text-primary"></i> Add a New Table
+            </h4>
+            <p class="text-muted small mb-3">Specify details to add a table to this restaurant.</p>
+
+            @if (createErrorMessage()) {
+              <div class="alert alert-danger py-2 small shadow-sm mb-3">
+                {{ createErrorMessage() }}
+              </div>
+            }
+            @if (createSuccessMessage()) {
+              <div class="alert alert-success py-2 small shadow-sm mb-3">
+                {{ createSuccessMessage() }}
+              </div>
+            }
+
+            <div class="mb-3">
+              <label class="form-label text-muted small fw-bold">Additional Info (Optional)</label>
+              <input
+                type="text"
+                class="form-control"
+                placeholder="e.g. Garden, Table by window"
+                [(ngModel)]="newTableInfo"
+                [disabled]="isSubmitting()"
+              />
+            </div>
+            <div class="mb-4">
+              <label class="form-label text-muted small fw-bold">Seats / Max Sessions</label>
+              <input
+                type="number"
+                class="form-control"
+                min="1"
+                max="50"
+                [(ngModel)]="newTableMaxSessions"
+                [disabled]="isSubmitting()"
+              />
+            </div>
+            <button
+              class="action-btn w-100 justify-content-center"
+              style="padding: 0.75rem;"
+              (click)="addTable()"
+              [disabled]="isSubmitting()"
+            >
+              @if (isSubmitting()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              } @else {
+                <i class="bi bi-plus-lg me-1"></i>
+              }
+              Add Table
+            </button>
+          </div>
+
+          @if (rest.parsedTables && rest.parsedTables.length > 0) {
+            <div class="premium-card p-3">
+              <h4 class="table-title" style="font-size: 1.1rem; color: #dc2626;">
+                <i class="bi bi-shield-exclamation me-1"></i> Danger Zone
+              </h4>
+              <p class="text-muted small mb-3">This action will delete the highest numbered table.</p>
+              @if (deleteErrorMessage()) {
+                <div class="alert alert-danger py-2 small shadow-sm mb-2">
+                  {{ deleteErrorMessage() }}
+                </div>
+              }
+              <button
+                class="action-btn action-btn-danger w-100 justify-content-center"
+                style="padding: 0.6rem;"
+                (click)="removeTopTable()"
+                [disabled]="isSubmitting()"
+              >
+                @if (isSubmitting()) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                } @else {
+                  <i class="bi bi-trash3 me-1"></i>
+                }
+                Remove Top Table
+              </button>
+            </div>
+          }
+        </div>
+
+        <!-- Tables List -->
+        <div class="col-12 col-lg-8">
+          <div class="premium-card">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div>
+                <h4 class="table-title mb-0">Tables List</h4>
+                <p class="text-muted small mb-0">
+                  Generate QR codes for tables in <strong>{{ rest.restaurantName }}</strong>
+                </p>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <a
+                  [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'qrs']"
+                  class="btn btn-outline-primary btn-sm fw-bold"
+                >
+                  <i class="bi bi-printer me-1"></i> Print All QRs Sheet
+                </a>
+              </div>
+            </div>
+
+            @if (!rest.parsedTables || rest.parsedTables.length === 0) {
+              <div class="alert alert-light border text-center py-4 text-muted">
+                <i class="bi bi-table fs-3 d-block mb-2 text-secondary"></i>
+                No tables registered for this restaurant yet.
+              </div>
+            } @else {
+              <div class="table-responsive">
+                <table class="premium-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 15%;">Table Number</th>
+                      <th style="width: 12%;">Status</th>
+                      <th style="width: 20%;">Additional Information</th>
+                      <th style="width: 12%;">Max Sessions</th>
+                      <th style="width: 10%;" class="text-center">Skip Seat Fee</th>
+                      <th style="width: 18%;">Self-Ordering Override</th>
+                      <th style="width: 13%;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (table of rest.parsedTables; track table.tableNumber) {
+                      <tr>
+                        <td>
+                          <div class="d-flex align-items-center">
+                            <span class="badge-info fw-bold">Table #{{ table.tableNumber }}</span>
+                          </div>
+                        </td>
+                        <td>
+                          @if (table.hasActiveOrders) {
+                            <div class="d-flex align-items-center gap-1">
+                              <span class="badge-active">
+                                <span class="status-dot-active"></span>
+                                Active
+                              </span>
+                              <a
+                                [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'table', table.tableNumber]"
+                                class="btn btn-link btn-sm ms-1"
+                                style="font-size: 0.8rem; font-weight: 600; text-decoration: none; color: #4f46e5; padding: 0;"
+                              >
+                                View →
+                              </a>
+                            </div>
+                          } @else {
+                            <span class="badge-idle">
+                              <span class="status-dot-idle"></span>
+                              Idle
+                            </span>
+                          }
+                        </td>
+                        <td>
+                          <span class="text-secondary small">{{ table.additionalInfo || '—' }}</span>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            class="form-control form-control-sm text-center"
+                            style="width: 70px; display: inline-block;"
+                            min="1"
+                            max="100"
+                            [value]="table.maxSessions"
+                            (change)="updateMaxSessions(table.tableNumber, $any($event.target).value)"
+                          />
+                        </td>
+                        <td class="text-center">
+                          <input
+                            type="checkbox"
+                            class="form-check-input"
+                            [checked]="table.skipSeatFee"
+                            (change)="updateSkipSeatFee(table.tableNumber, $event)"
+                          />
+                        </td>
+                        <td>
+                          <div class="d-flex flex-column gap-1">
+                            <!-- Reset / Not Override -->
+                            <div class="form-check m-0">
+                              <input
+                                class="form-check-input"
+                                type="radio"
+                                [name]="'tableSelfOrdering_' + table.tableNumber"
+                                [id]="'radioReset_' + table.tableNumber"
+                                [checked]="!table.overwriteSelfOrderingConfig"
+                                [disabled]="updatingTableSelfOrdering().has(table.tableNumber)"
+                                (change)="updateTableSelfOrdering(table.tableNumber, 'reset')"
+                              />
+                              <label class="form-check-label small text-nowrap" [for]="'radioReset_' + table.tableNumber">
+                                Not Override (Default)
+                              </label>
+                            </div>
+
+                            <!-- No Self-Ordering -->
+                            <div class="form-check m-0">
+                              <input
+                                class="form-check-input"
+                                type="radio"
+                                [name]="'tableSelfOrdering_' + table.tableNumber"
+                                [id]="'radioNo_' + table.tableNumber"
+                                [checked]="table.overwriteSelfOrderingConfig?.isNoSelfOrdering"
+                                [disabled]="updatingTableSelfOrdering().has(table.tableNumber)"
+                                (change)="updateTableSelfOrdering(table.tableNumber, 'no')"
+                              />
+                              <label class="form-check-label small text-nowrap" [for]="'radioNo_' + table.tableNumber">
+                                Menu Only
+                              </label>
+                            </div>
+
+                            <!-- Cash Only -->
+                            <div class="form-check m-0">
+                              <input
+                                class="form-check-input"
+                                type="radio"
+                                [name]="'tableSelfOrdering_' + table.tableNumber"
+                                [id]="'radioCashOnly_' + table.tableNumber"
+                                [checked]="table.overwriteSelfOrderingConfig?.isCashOnlySelfOrdering"
+                                [disabled]="updatingTableSelfOrdering().has(table.tableNumber)"
+                                (change)="updateTableSelfOrdering(table.tableNumber, 'cash-only')"
+                              />
+                              <label class="form-check-label small text-nowrap" [for]="'radioCashOnly_' + table.tableNumber">
+                                Pay at Register
+                              </label>
+                            </div>
+
+                            <!-- Cash & Stripe -->
+                            <div class="form-check m-0" [class.opacity-50]="rest.paymentConfig?.isCashOnly">
+                              <input
+                                class="form-check-input"
+                                type="radio"
+                                [name]="'tableSelfOrdering_' + table.tableNumber"
+                                [id]="'radioCacheAndStripe_' + table.tableNumber"
+                                [checked]="table.overwriteSelfOrderingConfig?.isCacheAndStripeSelfOrdering"
+                                [disabled]="updatingTableSelfOrdering().has(table.tableNumber) || !!rest.paymentConfig?.isCashOnly"
+                                (change)="updateTableSelfOrdering(table.tableNumber, 'cache-and-stripe')"
+                              />
+                              <label class="form-check-label small text-nowrap" [for]="'radioCacheAndStripe_' + table.tableNumber">
+                                Hybrid (Cash & Online)
+                              </label>
+                            </div>
+
+                            <!-- Only Stripe -->
+                            <div class="form-check m-0" [class.opacity-50]="rest.paymentConfig?.isCashOnly">
+                              <input
+                                class="form-check-input"
+                                type="radio"
+                                [name]="'tableSelfOrdering_' + table.tableNumber"
+                                [id]="'radioOnlyStripe_' + table.tableNumber"
+                                [checked]="table.overwriteSelfOrderingConfig?.isOnlyStripeSelfOrdering"
+                                [disabled]="updatingTableSelfOrdering().has(table.tableNumber) || !!rest.paymentConfig?.isCashOnly"
+                                (change)="updateTableSelfOrdering(table.tableNumber, 'only-stripe')"
+                              />
+                              <label class="form-check-label small text-nowrap" [for]="'radioOnlyStripe_' + table.tableNumber">
+                                Online Only
+                              </label>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="d-flex flex-column gap-1">
+                            <!-- QR Code button -->
+                            <div class="custom-tooltip-wrapper">
+                              <button
+                                class="action-btn btn-sm w-100 justify-content-center"
+                                style="font-size: 0.8rem; padding: 0.25rem 0.5rem;"
+                                (click)="showQrCode(table.tableNumber, table.tableId)"
+                              >
+                                <i class="bi bi-qr-code me-1"></i> QR
+                              </button>
+                              <div class="custom-tooltip-box">
+                                <span>Show and download the unique QR code for this table.</span>
+                              </div>
+                              <div class="custom-tooltip-arrow"></div>
+                            </div>
+
+                            <!-- Test Order link -->
+                            <div class="custom-tooltip-wrapper">
+                              <a
+                                [href]="getTableTestOrderUrl(table.tableNumber, table.tableId)"
+                                target="_blank"
+                                class="btn btn-outline-secondary btn-sm w-100 justify-content-center"
+                                style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 0.5rem; display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 500;"
+                              >
+                                <i class="bi bi-box-arrow-up-right me-1"></i> Test
+                              </a>
+                              <div class="custom-tooltip-box">
+                                <span>Open table customer view in a new tab for testing or placing an order.</span>
+                              </div>
+                              <div class="custom-tooltip-arrow"></div>
+                            </div>
+
+                            <!-- Waiter View link -->
+                            <div class="custom-tooltip-wrapper">
+                              <a
+                                [href]="getTableWaiterOrderUrl(table.tableNumber, table.tableId)"
+                                class="btn btn-outline-primary btn-sm w-100 justify-content-center"
+                                style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 0.5rem; display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 600;"
+                              >
+                                <i class="bi bi-person-badge me-1"></i> Waiter
+                              </a>
+                              <div class="custom-tooltip-box">
+                                <span>Open waiter view to take over, manage customer sessions, or place orders directly.</span>
+                              </div>
+                              <div class="custom-tooltip-arrow"></div>
+                            </div>
+
+                            <!-- Regenerate ID button -->
+                            <div class="custom-tooltip-wrapper">
+                              <button
+                                class="btn btn-outline-warning btn-sm w-100 justify-content-center"
+                                style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 0.5rem; display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 500;"
+                                (click)="requestRegenerateId(table.tableNumber)"
+                              >
+                                <i class="bi bi-arrow-repeat me-1"></i> Regenerate ID
+                              </button>
+                              <div class="custom-tooltip-box">
+                                <span>Generate a new table ID, permanently invalidating any previously printed or saved QR code.</span>
+                              </div>
+                              <div class="custom-tooltip-arrow"></div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</app-main-layout>
+
+<!-- QR Modal -->
+@if (showModal()) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h5 class="mb-0 fw-bold">{{ modalTitle() }}</h5>
+        <button class="close-btn" (click)="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="qr-container">
+          <img [src]="modalQrUrl()" class="qr-image" alt="QR Code" />
+        </div>
+        <p class="text-muted small">
+          Scan this QR code to navigate directly to the digital menu for this table.
+        </p>
+        <button class="download-btn" (click)="downloadQr()">
+          <i class="bi bi-download me-1"></i> Download Image
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Regenerate Confirmation Modal -->
+@if (tableNumberToRegenerate() !== null) {
+  <div class="modal-overlay" (click)="cancelRegenerateId()">
+    <div class="modal-card" (click)="$event.stopPropagation()" style="max-width: 420px;">
+      <div class="modal-header">
+        <h5 class="mb-0 fw-bold">Confirm Regeneration</h5>
+        <button class="close-btn" (click)="cancelRegenerateId()">&times;</button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="text-dark">
+          Are you sure you want to regenerate the unique ID for <strong>Table #{{ tableNumberToRegenerate() }}</strong>?
+        </p>
+        <div class="alert alert-warning text-start small">
+          <strong>Warning:</strong> This will invalidate the current QR code and active sessions for this table. Customers will need to scan the new QR code to access the menu or place orders.
+        </div>
+        <div class="d-flex gap-2 justify-content-center mt-3">
+          <button class="btn btn-secondary btn-sm px-3" (click)="cancelRegenerateId()">Cancel</button>
+          <button class="btn btn-warning btn-sm px-3 fw-bold" (click)="confirmRegenerateId()">
+            <i class="bi bi-arrow-repeat me-1"></i> Regenerate
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+

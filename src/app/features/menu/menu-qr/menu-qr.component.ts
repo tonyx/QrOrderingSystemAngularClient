@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { RestaurantService } from '../../../core/services/restaurant.service';
 import { RestaurantItem } from '../../../core/models/restaurant.models';
+import { MainLayoutComponent } from '../../../shared/components/main-layout/main-layout.component';
 
 @Component({
   selector: 'app-menu-qr',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, MainLayoutComponent],
   templateUrl: './menu-qr.component.html',
   styleUrl: './menu-qr.component.css',
 })

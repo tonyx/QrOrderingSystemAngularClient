@@ -1,0 +1,869 @@
+<!-- Session Consent Modal -->
+@if (showSessionConsentModal()) {
+  <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 1060;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg" style="border-radius: 1rem; border: none; overflow: hidden;">
+        <div class="modal-header text-white" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);">
+          <h5 class="modal-title font-weight-bold d-flex align-items-center gap-2">
+            <svg style="width: 1.5rem; height: 1.5rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Benvenuto al Tavolo!
+          </h5>
+        </div>
+        <div class="modal-body p-4" style="color: #334155; line-height: 1.6; font-size: 0.95rem;">
+          <p class="mb-3">
+            Per consentirti di ordinare direttamente dal tuo smartphone e gestire il conto con i tuoi commensali, salviamo un identificatore anonimo di sessione sul tuo dispositivo. Nessun dato personale o di profilazione viene tracciato.
+          </p>
+          <p class="mb-0 text-muted fst-italic" style="font-size: 0.85rem;">
+            To allow you to order directly from your mobile device and share the bill with your table mates, an anonymous session token is saved on your device. No personal data is tracked.
+          </p>
+        </div>
+        <div class="modal-footer border-0 bg-light justify-content-end p-3">
+          <button type="button" class="btn text-white px-4 fw-bold" (click)="agreeToSessionConsent()" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 0.5rem; border: none;">
+            Inizia ad Ordinare
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Loading State -->
+@if (isLoading()) {
+  <div class="text-center py-5 my-5">
+    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+    <p class="text-muted mt-3 fw-bold">Caricamento menu del tavolo in corso...</p>
+  </div>
+} @else {
+  <div class="customer-container">
+    <!-- Error Alert -->
+    @if (errorMessage()) {
+      <div class="alert alert-danger shadow-sm text-center py-4 my-5" style="border-radius: 1rem;">
+        <svg style="width: 3rem; height: 3rem; color: #ef4444; margin-bottom: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <h4 class="fw-bold">Attenzione</h4>
+        <p class="mb-0">{{ errorMessage() }}</p>
+      </div>
+    } @else if (restaurant()) {
+      <!-- Restaurant Header -->
+      <div class="restaurant-header">
+        <div class="restaurant-name">{{ restaurant()!.restaurantName }}</div>
+        <div class="table-badge">
+          <svg style="width: 1.25rem; height: 1.25rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+          Tavolo {{ tableNumber }}
+        </div>
+        @if (additionalInfo()) {
+          <div class="info-tag fst-italic">{{ additionalInfo() }}</div>
+        }
+        <div class="mt-3">
+          <button class="btn btn-danger btn-sm" (click)="detachSession()"
+                  style="border-radius: 0.5rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem; background-color: #ef4444; border: none; color: white; padding: 0.5rem 1rem;">
+            <svg style="width: 1rem; height: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Lascia il Tavolo
+          </button>
+        </div>
+      </div>
+
+      <!-- AI Notice -->
+      @if (!restaurant()!.humanReviewed) {
+        <div class="alert alert-warning shadow-sm mb-4 d-flex align-items-start gap-3" style="border-radius: 1rem; border-left: 4px solid #f59e0b; background-color: #fffbeb; color: #92400e;">
+          <i class="bi bi-exclamation-triangle-fill fs-4 text-warning flex-shrink-0 mt-1"></i>
+          <div>
+            <div class="fw-bold mb-1">Nota sugli allergeni e traduzioni</div>
+            <div class="small opacity-90">I piatti, gli allergeni e le descrizioni potrebbero essere stati generati o tradotti automaticamente. Chiedi al personale in caso di dubbi o allergie alimentari.</div>
+          </div>
+        </div>
+      }
+
+      <!-- Language selector bar -->
+      <div class="card mb-4 shadow-sm border-0" style="border-radius: 1rem; background: #f8fafc;">
+        <div class="card-body d-flex flex-column flex-sm-row justify-content-between align-items-center gap-3 py-3">
+          <div class="d-flex align-items-center gap-2">
+            <svg style="width: 1.5rem; height: 1.5rem; color: #4f46e5;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 11.37 7.37 16.5 3 19" />
+            </svg>
+            <div class="text-start">
+              <div class="fw-bold" style="font-size: 0.95rem; color: #1e293b;">Lingua del Menu</div>
+              <div class="text-muted small">Language selector</div>
+            </div>
+          </div>
+          <select class="form-select form-select-sm" style="border-radius: 0.5rem; width: 180px; border-color: #cbd5e1;" [(ngModel)]="selectedLang">
+            <option value="default">Originale (Default)</option>
+            <option value="it">Italiano</option>
+            <option value="en">English</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- My Order Panel -->
+      <div id="order-panel-root" class="order-panel">
+        <div class="order-panel-title">
+          <svg style="width:1.25rem;height:1.25rem;color:#4f46e5;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          Il Mio Ordine
+        </div>
+
+        @if (actionError()) {
+          <div class="action-error mb-3">{{ actionError() }}</div>
+        }
+
+        <!-- Fiscal metadata (Italian Scontrino) -->
+        @if (isSelfOrderingEnabled()) {
+          <div class="card mb-3 border-0 bg-light p-3" style="border-radius: 0.75rem;">
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <span class="fw-bold small text-secondary">Dati Scontrino / Fiscal:</span>
+                @if (currentFiscalMetadata()) {
+                  @if (currentFiscalMetadata()!.isCodiceFiscale) {
+                    <span class="badge bg-primary text-white font-monospace fs-7">
+                      CF: {{ currentFiscalMetadata()!.value }}
+                    </span>
+                  } @else {
+                    <span class="badge bg-warning text-dark font-monospace fs-7">
+                      Lotteria: {{ currentFiscalMetadata()!.value }}
+                    </span>
+                  }
+                } @else {
+                  <span class="badge bg-secondary text-white fs-7">Nessuno (Default)</span>
+                }
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fs-7" (click)="isFiscalEditOpen.set(!isFiscalEditOpen())" [disabled]="isBusy()">
+                {{ isFiscalEditOpen() ? 'Chiudi' : (currentFiscalMetadata() ? 'Modifica' : 'Aggiungi') }}
+              </button>
+            </div>
+
+            @if (isFiscalEditOpen()) {
+              <div class="mt-2 pt-2 border-top">
+                <div class="form-check form-check-inline me-3">
+                  <input class="form-check-input" type="radio" name="fiscalOpt_order" id="fiscalOpt_none" value="none"
+                         [checked]="selectedFiscalOption === 'none'"
+                         (change)="selectedFiscalOption = 'none'; fiscalInputText = ''; fiscalErrorMessage.set(null);" />
+                  <label class="form-check-label small" for="fiscalOpt_none">Nessuno (Default)</label>
+                </div>
+                <div class="form-check form-check-inline me-3">
+                  <input class="form-check-input" type="radio" name="fiscalOpt_order" id="fiscalOpt_cf" value="cf"
+                         [checked]="selectedFiscalOption === 'cf'"
+                         (change)="selectedFiscalOption = 'cf'; fiscalErrorMessage.set(null);" />
+                  <label class="form-check-label small fw-bold" for="fiscalOpt_cf">Codice Fiscale</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="fiscalOpt_order" id="fiscalOpt_lotteria" value="lotteria"
+                         [checked]="selectedFiscalOption === 'lotteria'"
+                         (change)="selectedFiscalOption = 'lotteria'; fiscalErrorMessage.set(null);" />
+                  <label class="form-check-label small fw-bold" for="fiscalOpt_lotteria">Codice Lotteria</label>
+                </div>
+
+                @if (selectedFiscalOption !== 'none') {
+                  <div class="mt-2">
+                    <input type="text" class="form-control form-control-sm text-uppercase font-monospace"
+                           [placeholder]="selectedFiscalOption === 'cf' ? 'Codice Fiscale (16 caratteri)' : 'Codice Lotteria (8 caratteri)'"
+                           [maxLength]="selectedFiscalOption === 'cf' ? 16 : 8"
+                           [(ngModel)]="fiscalInputText" />
+                  </div>
+                }
+
+                @if (fiscalErrorMessage()) {
+                  <div class="text-danger small mt-1">{{ fiscalErrorMessage() }}</div>
+                }
+
+                <div class="mt-2 d-flex justify-content-end gap-2">
+                  <button type="button" class="btn btn-sm btn-primary px-3" (click)="saveFiscalMetadata()" [disabled]="isBusy()">
+                    Conferma
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Active and Pending Orders List -->
+        @if (aggregatedSessionItems().length === 0) {
+          <div class="order-panel-empty">Il tuo vassoio è vuoto. Seleziona i piatti dal menu in basso!</div>
+        } @else {
+          @for (order of aggregatedSessionItems(); track order.dishName + '_' + order.status + '_' + (order.paymentMethod?.label || 'none')) {
+            <div class="order-row flex-column align-items-stretch">
+              <div class="d-flex align-items-center justify-content-between">
+                <div class="order-row-info">
+                  <span class="order-qty">{{ order.quantity }}</span>
+                  <span class="order-name">{{ order.dishName }}</span>
+                  <span class="ms-2">
+                    @if (order.isConfirmed) {
+                      <span class="badge" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background-color: #10b981; color: white; display: inline-flex; align-items: center; gap: 0.25rem;">
+                        <span>Confermato</span>
+                        @if (order.paymentMethod) {
+                          <span class="payment-method-info" [title]="order.paymentMethod.title || order.paymentMethod.label">
+                            {{ order.paymentMethod.icon }} {{ order.paymentMethod.label }}
+                          </span>
+                        }
+                      </span>
+                    } @else if (order.isPending) {
+                      <span class="badge" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background-color: #f59e0b; color: white;">
+                        In attesa
+                      </span>
+                    } @else if (order.isDone) {
+                      <span class="badge" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background-color: #6b7280; color: white; display: inline-flex; align-items: center; gap: 0.25rem;">
+                        <span>Servito</span>
+                        @if (order.paymentMethod) {
+                          <span class="payment-method-info" [title]="order.paymentMethod.title || order.paymentMethod.label">
+                            {{ order.paymentMethod.icon }} {{ order.paymentMethod.label }}
+                          </span>
+                        }
+                      </span>
+                    } @else if (order.isRejected) {
+                      <span class="badge" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background-color: #ef4444; color: white; display: inline-flex; align-items: center; gap: 0.35rem;" [title]="order.rejectionReason ? 'Rifiutato: ' + order.rejectionReason : 'Rifiutato'">
+                        <span>❌ Rifiutato</span>
+                        @if (order.rejectionReason) {
+                          <span style="opacity: 0.85; font-size: 0.7rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">({{ order.rejectionReason }})</span>
+                        }
+                        @if (order.paymentMethod?.isPrepaidWithStripe || order.paymentMethod?.isPaidWithStripe) {
+                          <span class="payment-method-info" title="Rimborsato / Da rimborsare">💰 Rimborso</span>
+                        }
+                      </span>
+                    } @else {
+                      <span class="badge bg-secondary" style="font-size: 0.75rem;">{{ order.status }}</span>
+                    }
+                  </span>
+                </div>
+                @if (order.isPending) {
+                  <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn-remove" (click)="removeItem(order.dishName)" [disabled]="isBusy()">−</button>
+                    <button type="button" class="btn-increase" (click)="addItem(order.dishName)" [disabled]="isBusy()">+</button>
+                  </div>
+                }
+              </div>
+
+              <!-- Voting stars for served/done dishes -->
+              @if (order.isDone) {
+                <div class="mt-2 d-flex align-items-center gap-2">
+                  <span class="text-muted small">Ti è piaciuto? Vota:</span>
+                  <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-warning text-dark fw-bold" (click)="voteItem(order.dishName, 5)" [disabled]="isBusy()">5 ★</button>
+                    <button type="button" class="btn btn-outline-warning text-dark fw-bold" (click)="voteItem(order.dishName, 4)" [disabled]="isBusy()">4 ★</button>
+                    <button type="button" class="btn btn-outline-warning text-dark fw-bold" (click)="voteItem(order.dishName, 3)" [disabled]="isBusy()">3 ★</button>
+                    <button type="button" class="btn btn-outline-warning text-dark fw-bold" (click)="voteItem(order.dishName, 2)" [disabled]="isBusy()">2 ★</button>
+                    <button type="button" class="btn btn-outline-warning text-dark fw-bold" (click)="voteItem(order.dishName, 1)" [disabled]="isBusy()">1 ★</button>
+                  </div>
+                </div>
+                @if (getItemRatingDisplay(order.dishName); as ratingText) {
+                  <div class="mt-1 text-muted small">{{ ratingText }}</div>
+                }
+              }
+            </div>
+          }
+
+          <!-- Confirmation & Payment Controls in Order Panel -->
+          @if (totalPendingCount() > 0) {
+            <div class="mt-4 pt-3 border-top text-center">
+              @if (confirmCountdown() > 0) {
+                <div class="d-flex align-items-center justify-content-center gap-3">
+                  <span class="text-muted fw-bold">Invio ordine in corso ({{ confirmCountdown() }}s)...</span>
+                  <button type="button" class="btn btn-warning btn-sm" (click)="undoConfirm()" style="border-radius: 0.5rem; font-weight: 600; background-color: #f59e0b; border: none; color: white; padding: 0.3rem 0.8rem;">
+                    Annulla
+                  </button>
+                </div>
+              } @else {
+                <div class="d-flex flex-column gap-2">
+                  <!-- Toggle Online Card Payment switch if both Cash & Stripe allowed -->
+                  @if (isStripeSelfOrderingAllowed() && isCashSelfOrderingAllowed() && isStripeConfigEnabled()) {
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded mb-2" style="background-color: #f1f5f9; border: 1px solid #e2e8f0;">
+                      <div class="d-flex align-items-center gap-2">
+                        <span style="font-size: 1.1rem;">💳</span>
+                        <span class="fw-semibold text-dark" style="font-size: 0.95rem;">Paga Online con Carta / Apple Pay / Google Pay</span>
+                      </div>
+                      <div class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" id="toggleOnlinePaymentSwitch"
+                               role="switch" [checked]="showOnlinePaymentBlock()" (change)="toggleOnlinePaymentBlock()"
+                               style="cursor: pointer; width: 2.5em; height: 1.25em;" />
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Case 1: Cash / Pay-at-Counter Self Ordering -->
+                  @if (isCashSelfOrderingAllowed() && (!isStripeSelfOrderingAllowed() || !showOnlinePaymentBlock())) {
+                    <div class="p-3 my-2 border rounded text-start bg-white shadow-sm" style="border-color: #cbd5e1 !important;">
+                      <div class="fw-bold text-dark mb-2 border-bottom pb-2" style="font-size: 0.95rem;">
+                        Riepilogo Piatti da Confermare (Pagamento alla cassa)
+                      </div>
+                      <div class="mb-2">
+                        @for (item of getPaymentItemsBreakdown(); track item.itemName) {
+                          <div class="d-flex justify-content-between align-items-center py-1 text-secondary" style="font-size: 0.875rem;">
+                            <span>{{ item.itemName }} (x{{ item.qty }})</span>
+                            <span>€{{ item.lineTotal.toFixed(2) }}</span>
+                          </div>
+                        }
+                      </div>
+                      <div class="d-flex justify-content-between align-items-center pt-2 mt-1 border-top fw-bold text-primary" style="font-size: 0.95rem;">
+                        <span>Subtotale Piatti</span>
+                        <span>€{{ pendingSubtotal().toFixed(2) }}</span>
+                      </div>
+                      @if (getEffectiveSeatingFee() > 0) {
+                        <div class="d-flex justify-content-between align-items-center pt-1 text-muted" style="font-size: 0.875rem;">
+                          <span>Coperto / Seating Fee</span>
+                          <span>€{{ getEffectiveSeatingFee().toFixed(2) }}</span>
+                        </div>
+                      }
+                    </div>
+
+                    <button type="button" class="btn btn-success w-100 py-3 fw-bold shadow-sm" (click)="startConfirmTimer()" [disabled]="isBusy()"
+                            style="border-radius: 0.75rem; background-color: #10b981; border: none; font-size: 1.05rem;">
+                      Conferma Ordine e Paga alla Cassa
+                    </button>
+                  }
+
+                  <!-- Case 2: Online Stripe Card Pre-authorization Payment -->
+                  @if (isStripeConfigEnabled() && isStripeSelfOrderingAllowed() && (!isCashSelfOrderingAllowed() || showOnlinePaymentBlock())) {
+                    <!-- Tip selection section -->
+                    <div class="p-3 my-2 border rounded text-start" style="background-color: #f8fafc; border-color: #e2e8f0;">
+                      <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+                          <span>Lascia una Mancia al Personale</span>
+                        </div>
+                        @if (!showExplicitTipForm() && (!restaurant()?.showTips || !(restaurant()?.tipsHints && restaurant()!.tipsHints!.length > 0))) {
+                          <button type="button" class="btn btn-sm btn-outline-primary" (click)="toggleExplicitTipForm()">
+                            Aggiungi Mancia
+                          </button>
+                        } @else if (showExplicitTipForm() && (!restaurant()?.showTips || !(restaurant()?.tipsHints && restaurant()!.tipsHints!.length > 0))) {
+                          <button type="button" class="btn btn-sm btn-link text-secondary p-0 ms-auto" (click)="toggleExplicitTipForm()">
+                            Nascondi
+                          </button>
+                        }
+                      </div>
+
+                      @if (showExplicitTipForm() || (restaurant()?.showTips && restaurant()?.tipsHints && restaurant()!.tipsHints!.length > 0)) {
+                        <div class="mt-2">
+                          <div class="d-flex flex-wrap gap-2 mb-2">
+                            <button type="button" class="btn btn-sm"
+                                    [class.btn-primary]="selectedTipMode === 'none'"
+                                    [class.btn-outline-secondary]="selectedTipMode !== 'none'"
+                                    (click)="selectTipMode('none')">
+                              Nessuna
+                            </button>
+
+                            @if (restaurant()?.tipsHints && restaurant()!.tipsHints!.length > 0) {
+                              @for (item of restaurant()!.tipsHints!; track item.percentage) {
+                                <button type="button" class="btn btn-sm"
+                                        [class.btn-primary]="selectedTipMode === 'percentage' && selectedTipPercentage === item.percentage"
+                                        [class.btn-outline-primary]="!(selectedTipMode === 'percentage' && selectedTipPercentage === item.percentage)"
+                                        (click)="selectTipPercentage(item.percentage)">
+                                  {{ item.percentage }}%{{ item.isDefault ? ' ★' : '' }}
+                                </button>
+                              }
+                            }
+
+                            <button type="button" class="btn btn-sm"
+                                    [class.btn-primary]="selectedTipMode === 'custom_percentage'"
+                                    [class.btn-outline-secondary]="selectedTipMode !== 'custom_percentage'"
+                                    (click)="selectTipMode('custom_percentage')">
+                              Altra %
+                            </button>
+
+                            <button type="button" class="btn btn-sm"
+                                    [class.btn-primary]="selectedTipMode === 'fixed'"
+                                    [class.btn-outline-secondary]="selectedTipMode !== 'fixed'"
+                                    (click)="selectTipMode('fixed')">
+                              Importo Fisso
+                            </button>
+                          </div>
+
+                          @if (selectedTipMode === 'custom_percentage') {
+                            <div class="input-group input-group-sm mb-2" style="max-width: 220px;">
+                              <input type="number" class="form-control" placeholder="Percentuale" min="1" max="500"
+                                     [(ngModel)]="customTipPercentageInput" />
+                              <span class="input-group-text">%</span>
+                            </div>
+                          } @else if (selectedTipMode === 'fixed') {
+                            <div class="input-group input-group-sm mb-2" style="max-width: 220px;">
+                              <span class="input-group-text">€</span>
+                              <input type="number" step="0.50" class="form-control" placeholder="Importo" min="0.50" max="500"
+                                     [(ngModel)]="customTipFixedInput" />
+                            </div>
+                          }
+
+                          @if (isTipOver50Percent()) {
+                            <div class="alert alert-warning p-2 small mt-2 mb-0 d-flex flex-column gap-2" style="border-radius: 0.5rem;">
+                              <div class="fw-bold text-dark">Attenzione: Mancia elevata (>50%)</div>
+                              <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="confirmHighTipCheck"
+                                       [(ngModel)]="isHighTipConfirmed" />
+                                <label class="form-check-label text-dark fw-semibold" for="confirmHighTipCheck">
+                                  Confermo l'importo della mancia
+                                </label>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Payment summary breakdown -->
+                    <div class="p-3 my-3 border rounded text-start bg-white shadow-sm" style="border-color: #cbd5e1 !important;">
+                      <div class="fw-bold text-dark mb-2 border-bottom pb-2" style="font-size: 0.95rem;">
+                        Riepilogo Pagamento Online con Carta
+                      </div>
+                      <div class="mb-2">
+                        @for (item of getPaymentItemsBreakdown(); track item.itemName) {
+                          <div class="d-flex justify-content-between align-items-center py-1 text-secondary" style="font-size: 0.875rem;">
+                            <span>{{ item.itemName }} (x{{ item.qty }})</span>
+                            <span>€{{ item.lineTotal.toFixed(2) }}</span>
+                          </div>
+                        }
+                      </div>
+                      <div class="d-flex justify-content-between align-items-center py-1 fw-semibold text-dark" style="font-size: 0.875rem; border-top: 1px dashed #e2e8f0;">
+                        <span>Subtotale Piatti</span>
+                        <span>€{{ pendingSubtotal().toFixed(2) }}</span>
+                      </div>
+                      @if (getEffectiveSeatingFee() > 0) {
+                        <div class="d-flex justify-content-between align-items-center py-1 text-dark" style="font-size: 0.875rem;">
+                          <span>Coperto / Seating Fee</span>
+                          <span>€{{ getEffectiveSeatingFee().toFixed(2) }}</span>
+                        </div>
+                      }
+                      @if (getSelectedTipAmount() > 0) {
+                        <div class="d-flex justify-content-between align-items-center py-1 text-success fw-semibold" style="font-size: 0.875rem;">
+                          <span>Mancia</span>
+                          <span>€{{ getSelectedTipAmount().toFixed(2) }}</span>
+                        </div>
+                      }
+                      <div class="d-flex justify-content-between align-items-center pt-2 mt-1 border-top fw-bold text-primary" style="font-size: 1.05rem;">
+                        <span>Totale da Pagare</span>
+                        <span>€{{ grandTotal().toFixed(2) }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Pay Online Button -->
+                    <button type="button" class="btn btn-primary w-100 d-inline-flex align-items-center justify-content-center gap-2 py-3 fw-bold shadow-sm"
+                            (click)="handleCreatePaymentIntent()"
+                            [disabled]="isBusy() || (isTipOver50Percent() && !isHighTipConfirmed)"
+                            style="border-radius: 0.75rem; background: linear-gradient(135deg, #6366f1, #4f46e5); border: none; font-size: 1.05rem;">
+                      <svg style="width: 1.25rem; height: 1.25rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      <span>Paga Online €{{ grandTotal().toFixed(2) }}</span>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Payment Intent & Stripe Card Element Container -->
+          @if (paymentIntentStatus()) {
+            <div class="mt-3 p-3 border rounded text-start bg-white shadow-sm">
+              <div class="fw-bold mb-2" [style.color]="paymentIntentStatus() === 'Pagamento Autorizzato' || paymentIntentStatus() === 'In attesa di autorizzazione' ? '#10b981' : '#ef4444'">
+                Stato: {{ paymentIntentStatus() }}
+              </div>
+
+              @if (showStripeElement()) {
+                <div id="stripe-payment-element-container" class="my-3"></div>
+
+                <button type="button" class="btn btn-success w-100 fw-bold py-2 mt-2" (click)="handleConfirmStripePayment()" [disabled]="isBusy()">
+                  @if (isBusy()) {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <span>Elaborazione pagamento in corso...</span>
+                  } @else {
+                    <span>Autorizza Pagamento con Carta</span>
+                  }
+                </button>
+              }
+
+              @if (paymentIntentDetail()) {
+                <div class="mt-2 text-muted small">
+                  {{ paymentIntentDetail() }}
+                </div>
+              }
+
+              @if (webhookListenerWarning()) {
+                <div class="mt-2 alert alert-warning small p-2 mb-0 border-warning text-dark fw-bold">
+                  {{ webhookListenerWarning() }}
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Menu Categories & Listing -->
+      @if (groupedCategories().length === 0) {
+        <div class="empty-state">
+          <svg style="width: 4rem; height: 4rem; color: #94a3b8; margin-bottom: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          <h4>Nessun piatto disponibile</h4>
+          <p class="mb-0">Al momento questo menu non contiene piatti attivi.</p>
+        </div>
+      } @else {
+        @for (grp of groupedCategories(); track grp.category) {
+          <div class="category-section">
+            <h3 class="category-title">
+              <span class="text-primary me-2">🍽️</span>
+              {{ grp.category }}
+            </h3>
+            <div class="menu-grid">
+              @for (item of grp.items; track item.name) {
+                <div class="menu-item-card">
+                  <div>
+                    <div class="item-header">
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="item-name">{{ getItemName(item) }}</div>
+                        @if (hasAllergens(item)) {
+                          <button type="button" class="btn btn-sm btn-outline-warning p-0 px-1 border-0"
+                                  style="font-size: 1.1rem; line-height: 1; cursor: pointer;"
+                                  title="Mostra allergeni"
+                                  (click)="openAllergensModal(getItemName(item), item.allergens)">
+                            ⚠️
+                          </button>
+                        }
+                      </div>
+                      <div class="item-price">
+                        @if (item.price !== null) {
+                          <span>€{{ item.price.toFixed(2) }}</span>
+                        } @else {
+                          <span class="badge bg-info-subtle text-info border px-2 py-1" style="font-size: 0.8rem; font-weight: 600;">
+                            Prezzo al banco
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    @if (getItemDescription(item)) {
+                      <p class="item-description">{{ getItemDescription(item) }}</p>
+                    }
+
+                    @if (item.imageUrl) {
+                      <div class="my-2">
+                        <img [src]="item.imageUrl" [alt]="item.name" style="width: 100%; height: 160px; object-fit: cover; border-radius: 0.75rem;" />
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Item Add / Stepper Controls -->
+                  <div>
+                    @if (getPendingQuantity(item.name) > 0) {
+                      <div class="item-stepper">
+                        <button type="button" class="btn-stepper btn-stepper-minus" (click)="removeItem(item.name)" [disabled]="isBusy()">−</button>
+                        <span class="stepper-qty">
+                          <span class="stepper-qty-badge">{{ getPendingQuantity(item.name) }}</span>
+                          <span class="small text-muted ms-1">nel vassoio</span>
+                        </span>
+                        <button type="button" class="btn-stepper btn-stepper-plus" (click)="addItem(item.name)" [disabled]="isBusy()">+</button>
+                      </div>
+                    } @else {
+                      <button type="button" class="btn-add" (click)="addItem(item.name)" [disabled]="isBusy()">
+                        + Aggiungi all'ordine
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      }
+
+      <!-- Extra Catalogue Search & Category Browsing Card -->
+      @if (restaurant()?.extraCatalogueSetting?.isEnabled && extraCatalogue()) {
+        <div class="card my-4 shadow-sm border-0" style="border-radius: 1.25rem; background: #f8fafc; border: 1px solid #e2e8f0;">
+          <div class="card-body p-4">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <span style="font-size: 1.4rem;">🔍</span>
+                <div>
+                  <h4 class="mb-0 fw-bold" style="color: #1e293b; font-size: 1.15rem;">Cerca nel Catalogo Extra</h4>
+                  <div class="small text-muted">Esplora e ordina piatti o bevande aggiuntive del locale</div>
+                </div>
+              </div>
+              <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" id="extraSearchSwitch" role="switch"
+                       [checked]="isExtraSearchEnabled()"
+                       (change)="toggleExtraSearch($any($event.target).checked)"
+                       style="cursor: pointer; width: 2.75em; height: 1.4em;" />
+              </div>
+            </div>
+
+            @if (isExtraSearchEnabled()) {
+              <div class="mt-4 pt-3 border-top">
+                <!-- Text search with autocompletion -->
+                <div class="mb-3">
+                  <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0" style="border-radius: 0.6rem 0 0 0.6rem; color: #64748b;">
+                      <svg style="width: 1.1rem; height: 1.1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </span>
+                    <input type="text" class="form-control border-start-0 ps-0"
+                           style="border-radius: 0 0.6rem 0.6rem 0; box-shadow: none;"
+                           placeholder="Digita per cercare nel catalogo extra..."
+                           list="extraSearchSuggestions"
+                           [ngModel]="extraSearchTerm()"
+                           (ngModelChange)="extraSearchTerm.set($event)" />
+                    @if (extraSearchTerm()) {
+                      <button class="btn btn-outline-secondary border-start-0" type="button"
+                              style="border-radius: 0 0.6rem 0.6rem 0;"
+                              (click)="clearExtraSearch()">
+                        ✕
+                      </button>
+                    }
+                  </div>
+                  <datalist id="extraSearchSuggestions">
+                    @for (suggestion of extraAutocompleteSuggestions(); track suggestion) {
+                      <option [value]="suggestion"></option>
+                    }
+                  </datalist>
+                </div>
+
+                <!-- Category checkboxes / pills -->
+                @if (extraAvailableCategories().length > 0) {
+                  <div class="mb-3">
+                    <div class="small fw-bold text-secondary mb-2 d-flex align-items-center gap-1">
+                      <span>📁 Categorie Extra Disponibili:</span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                      @for (cat of extraAvailableCategories(); track cat) {
+                        <label class="btn btn-sm d-flex align-items-center gap-2"
+                               [class.btn-primary]="isCategorySelected(cat)"
+                               [class.text-white]="isCategorySelected(cat)"
+                               [class.btn-outline-secondary]="!isCategorySelected(cat)"
+                               [class.bg-white]="!isCategorySelected(cat)"
+                               [class.text-dark]="!isCategorySelected(cat)"
+                               style="border-radius: 0.5rem; cursor: pointer; transition: all 0.15s ease;"
+                               [style.border-color]="isCategorySelected(cat) ? '#4f46e5' : '#cbd5e1'">
+                          <input type="checkbox" class="form-check-input m-0"
+                                 [checked]="isCategorySelected(cat)"
+                                 (change)="toggleExtraCategory(cat, $any($event.target).checked)"
+                                 style="cursor: pointer;" />
+                          <span>{{ cat }}</span>
+                        </label>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Filtered Extra Items Results -->
+                <div class="mt-4">
+                  @if (selectedExtraCategories().size === 0 && !extraSearchTerm()) {
+                    <div class="text-center py-4 px-3 text-muted" style="background: white; border-radius: 1rem; border: 1px dashed #cbd5e1;">
+                      <span style="font-size: 1.5rem;" class="d-block mb-1">👆</span>
+                      <div class="small">Seleziona una o più categorie oppure digita un termine per esplorare il catalogo extra.</div>
+                    </div>
+                  } @else if (filteredExtraMenuItems().length === 0) {
+                    <div class="text-center py-4 px-3 text-muted" style="background: white; border-radius: 1rem; border: 1px dashed #cbd5e1;">
+                      <span style="font-size: 1.5rem;" class="d-block mb-1">🔍</span>
+                      <div class="small fw-bold">Nessun elemento trovato nel catalogo extra per i criteri selezionati.</div>
+                    </div>
+                  } @else {
+                    <div class="menu-grid">
+                      @for (item of filteredExtraMenuItems(); track item.name) {
+                        <div class="menu-item-card">
+                          <div>
+                            <div class="item-header">
+                              <div class="d-flex align-items-center gap-2">
+                                <div class="item-name">{{ getItemName(item) }}</div>
+                                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1" style="font-size: 0.75rem; border-radius: 0.375rem;">
+                                  Extra
+                                </span>
+                                @if (hasAllergens(item)) {
+                                  <button type="button" class="btn btn-sm btn-outline-warning p-0 px-1 border-0"
+                                          style="font-size: 1.1rem; line-height: 1; cursor: pointer;"
+                                          title="Mostra allergeni"
+                                          (click)="openAllergensModal(getItemName(item), item.allergens)">
+                                    ⚠️
+                                  </button>
+                                }
+                              </div>
+                              <div class="item-price">
+                                @if (item.price !== null) {
+                                  <span>€{{ item.price.toFixed(2) }}</span>
+                                } @else {
+                                  <span class="badge bg-info-subtle text-info border px-2 py-1" style="font-size: 0.8rem; font-weight: 600;">
+                                    Prezzo al banco
+                                  </span>
+                                }
+                              </div>
+                            </div>
+                            @if (getItemDescription(item)) {
+                              <p class="item-description">{{ getItemDescription(item) }}</p>
+                            }
+                          </div>
+                          @if (isSelfOrderingEnabled()) {
+                            <div>
+                              @if (getPendingQuantity(item.name) > 0) {
+                                <div class="item-stepper">
+                                  <button type="button" class="btn-stepper btn-stepper-minus" (click)="removeItem(item.name)" [disabled]="isBusy()">−</button>
+                                  <span class="stepper-qty">
+                                    <span class="stepper-qty-badge">{{ getPendingQuantity(item.name) }}</span>
+                                    <span class="small text-muted ms-1">nel vassoio</span>
+                                  </span>
+                                  <button type="button" class="btn-stepper btn-stepper-plus" (click)="addItem(item.name)" [disabled]="isBusy()">+</button>
+                                </div>
+                              } @else {
+                                <button type="button" class="btn-add" (click)="addItem(item.name)" [disabled]="isBusy()">
+                                  + Aggiungi all'ordine
+                                </button>
+                              }
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- Floating Order Bar (Cart summary) -->
+  @if (totalPendingCount() > 0) {
+    <div class="floating-order-bar-container">
+      <div class="floating-order-bar" (click)="isOrderDrawerOpen.set(true)">
+        <div class="floating-bar-info">
+          <span class="floating-bar-badge">
+            <svg style="width: 1.1rem; height: 1.1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+            </svg>
+            {{ totalPendingCount() }}
+          </span>
+          <span class="floating-bar-total">€{{ pendingSubtotal().toFixed(2) }}</span>
+        </div>
+        <button type="button" class="floating-bar-btn">
+          Vedi Ordine →
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Order Drawer Backdrop & Modal Sheet -->
+  @if (isOrderDrawerOpen()) {
+    <div class="order-drawer-backdrop" (click)="isOrderDrawerOpen.set(false)">
+      <div class="order-drawer" (click)="$event.stopPropagation()">
+        <div class="order-drawer-handle"></div>
+        <div class="order-drawer-header">
+          <h4 class="order-drawer-title">
+            <span>🛒</span> Il tuo Vassoio
+          </h4>
+          <button type="button" class="btn-close" (click)="isOrderDrawerOpen.set(false)"></button>
+        </div>
+        <div class="order-drawer-body">
+          @for (item of aggregatedSessionItems(); track item.dishName + '_' + item.status) {
+            @if (item.isPending) {
+              <div class="drawer-order-item">
+                <div class="drawer-order-item-left">
+                  <div class="fw-bold text-dark">{{ item.dishName }}</div>
+                  <div class="small text-muted">
+                    €{{ getItemUnitPrice(item.dishName).toFixed(2) }} cad. •
+                    <span class="fw-semibold text-primary">€{{ (getItemUnitPrice(item.dishName) * item.quantity).toFixed(2) }}</span>
+                  </div>
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                  <button type="button" class="btn-remove" (click)="removeItem(item.dishName)" [disabled]="isBusy()">−</button>
+                  <span class="px-2 fw-bold">{{ item.quantity }}</span>
+                  <button type="button" class="btn-increase" (click)="addItem(item.dishName)" [disabled]="isBusy()">+</button>
+                </div>
+              </div>
+            }
+          }
+
+          <!-- Totals Breakdown -->
+          <div class="p-3 my-3 bg-light rounded" style="border: 1px solid #e2e8f0;">
+            <div class="d-flex justify-content-between align-items-center py-1">
+              <span class="text-secondary">Subtotale Piatti:</span>
+              <span class="fw-semibold">€{{ pendingSubtotal().toFixed(2) }}</span>
+            </div>
+            @if (getEffectiveSeatingFee() > 0) {
+              <div class="d-flex justify-content-between align-items-center py-1">
+                <span class="text-secondary">Coperto / Seating Fee:</span>
+                <span class="fw-semibold">€{{ getEffectiveSeatingFee().toFixed(2) }}</span>
+              </div>
+            }
+            <div class="d-flex justify-content-between align-items-center pt-2 mt-2 border-top fw-bold text-primary fs-5">
+              <span>Totale:</span>
+              <span>€{{ grandTotal().toFixed(2) }}</span>
+            </div>
+          </div>
+
+          <!-- Drawer Action Button -->
+          @if (confirmCountdown() > 0) {
+            <div class="d-flex align-items-center justify-content-center gap-3 py-2">
+              <span class="text-muted fw-bold">Invio ordine tra {{ confirmCountdown() }}s...</span>
+              <button type="button" class="btn btn-warning btn-sm" (click)="undoConfirm()" style="border-radius: 0.5rem; font-weight: 600; background-color: #f59e0b; border: none; color: white;">
+                Annulla
+              </button>
+            </div>
+          } @else if (isCashSelfOrderingAllowed() && (!isStripeSelfOrderingAllowed() || !showOnlinePaymentBlock())) {
+            <button type="button" class="btn btn-success w-100 py-3 fw-bold shadow-sm" (click)="startConfirmTimer()" [disabled]="isBusy()"
+                    style="border-radius: 0.75rem; background-color: #10b981; border: none; font-size: 1.05rem;">
+              Conferma e Paga alla Cassa
+            </button>
+          } @else if (isStripeConfigEnabled() && isStripeSelfOrderingAllowed() && (!isCashSelfOrderingAllowed() || showOnlinePaymentBlock())) {
+            <button type="button" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" (click)="goToPaymentSection()"
+                    style="border-radius: 0.75rem; background: linear-gradient(135deg, #4f46e5, #7c3aed); border: none; font-size: 1.05rem;">
+              💳 Vai al Pagamento Online (€{{ grandTotal().toFixed(2) }})
+            </button>
+          } @else {
+            <button type="button" class="btn btn-success w-100 py-3 fw-bold shadow-sm" (click)="startConfirmTimer()" [disabled]="isBusy()"
+                    style="border-radius: 0.75rem; background-color: #10b981; border: none; font-size: 1.05rem;">
+              Conferma e Invia alla Cucina
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Toast Notification -->
+  @if (toastMessage()) {
+    <div class="toast-notification">
+      <svg style="width: 1.25rem; height: 1.25rem; color: #10b981;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+      </svg>
+      <span>{{ toastMessage() }}</span>
+    </div>
+  }
+
+  <!-- Allergens Modal -->
+  @if (showAllergensModal()) {
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);" (click)="closeAllergensModal()">
+      <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+        <div class="modal-content" style="border-radius: 1rem; border: none; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+          <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title fw-bold" style="color: #0f172a;">
+              Allergeni: {{ selectedItemForAllergens() }}
+            </h5>
+            <button type="button" class="btn-close" (click)="closeAllergensModal()"></button>
+          </div>
+          <div class="modal-body py-3">
+            <p class="text-muted small mb-3">Questo piatto contiene o potrebbe contenere i seguenti allergeni:</p>
+            <div class="d-flex flex-wrap gap-2">
+              @if (selectedItemAllergens().length === 0) {
+                <span class="text-muted small">Nessun allergene specificato.</span>
+              } @else {
+                @for (allergen of selectedItemAllergens(); track allergen) {
+                  <span class="badge bg-warning text-dark px-3 py-2" style="font-size: 0.9rem; border-radius: 0.5rem; font-weight: 600;">
+                    {{ allergen }}
+                  </span>
+                }
+              }
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-secondary btn-sm px-4" style="border-radius: 0.5rem;" (click)="closeAllergensModal()">Chiudi</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+}
+

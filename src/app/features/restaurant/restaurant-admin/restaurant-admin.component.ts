@@ -4,11 +4,12 @@ import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { RestaurantService } from '../../../core/services/restaurant.service';
 import { RestaurantItem, SelfOrderingMode } from '../../../core/models/restaurant.models';
+import { MainLayoutComponent } from '../../../shared/components/main-layout/main-layout.component';
 
 @Component({
   selector: 'app-restaurant-admin',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, MainLayoutComponent],
   templateUrl: './restaurant-admin.component.html',
   styleUrls: ['./restaurant-admin.component.css'],
 })
@@ -39,6 +40,45 @@ export class RestaurantAdminComponent implements OnInit {
   newVatCodeInput = '';
   newVatRateInput: number | null = null;
 
+  // Assistant & Menu QR Modals
+  assistantTopic = signal<string | null>(null);
+  showMenuQrModal = signal<boolean>(false);
+
+  askAssistant(topic: string, restaurantId?: string): void {
+    this.assistantTopic.set(restaurantId ? `${topic} (${restaurantId})` : topic);
+  }
+
+  closeAssistant(): void {
+    this.assistantTopic.set(null);
+  }
+
+  openMenuQrModal(): void {
+    this.showMenuQrModal.set(true);
+  }
+
+  closeMenuQrModal(): void {
+    this.showMenuQrModal.set(false);
+  }
+
+  printMenuQr(): void {
+    window.print();
+  }
+
+  getMenuQrUrl(restaurantId: string): string {
+    return `${window.location.origin}/m/${restaurantId}`;
+  }
+
+  getMenuQrImageUrl(restaurantId: string): string {
+    const targetUrl = encodeURIComponent(this.getMenuQrUrl(restaurantId));
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${targetUrl}`;
+  }
+
+  noopAction(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+    }
+  }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('restaurantId');
     if (id) {
@@ -50,14 +90,18 @@ export class RestaurantAdminComponent implements OnInit {
     }
   }
 
-  loadRestaurant(id: string): void {
-    this.loading.set(true);
+  loadRestaurant(id: string, isSilent = false): void {
+    if (!isSilent) {
+      this.loading.set(true);
+    }
     this.errorMessage.set(null);
     this.restaurantService.getRestaurant(id).subscribe({
       next: (data) => {
         this.restaurant.set(data);
-        this.newSeatingFeeInput = data.seatingFee ?? 0;
-        this.loading.set(false);
+        if (!isSilent) {
+          this.newSeatingFeeInput = data.seatingFee ?? 0;
+          this.loading.set(false);
+        }
       },
       error: (err) => {
         this.errorMessage.set(err?.error?.message || err?.message || 'Failed to load restaurant.');
@@ -78,7 +122,7 @@ export class RestaurantAdminComponent implements OnInit {
     this.restaurantService.setSelfOrderingMode(rest.restaurantId, mode).subscribe({
       next: () => {
         this.isUpdatingSelfOrdering.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingSelfOrdering.set(false);
@@ -98,7 +142,7 @@ export class RestaurantAdminComponent implements OnInit {
     this.restaurantService.initializeExtraCatalogue(rest.restaurantId).subscribe({
       next: () => {
         this.isUpdatingExtraCatalogue.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingExtraCatalogue.set(false);
@@ -122,7 +166,7 @@ export class RestaurantAdminComponent implements OnInit {
     action$.subscribe({
       next: () => {
         this.isUpdatingExtraCatalogue.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingExtraCatalogue.set(false);
@@ -144,7 +188,7 @@ export class RestaurantAdminComponent implements OnInit {
     this.restaurantService.setShowTips(rest.restaurantId, showTips).subscribe({
       next: () => {
         this.isUpdatingTips.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingTips.set(false);
@@ -170,7 +214,7 @@ export class RestaurantAdminComponent implements OnInit {
       next: () => {
         this.newTipHintInput = null;
         this.isUpdatingTips.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingTips.set(false);
@@ -189,7 +233,7 @@ export class RestaurantAdminComponent implements OnInit {
     this.restaurantService.removeTipHint(rest.restaurantId, tipHint).subscribe({
       next: () => {
         this.isUpdatingTips.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingTips.set(false);
@@ -208,7 +252,7 @@ export class RestaurantAdminComponent implements OnInit {
     this.restaurantService.setDefaultTipHint(rest.restaurantId, tipHint).subscribe({
       next: () => {
         this.isUpdatingTips.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingTips.set(false);
@@ -227,7 +271,7 @@ export class RestaurantAdminComponent implements OnInit {
     this.restaurantService.setNoDefaultTipHint(rest.restaurantId).subscribe({
       next: () => {
         this.isUpdatingTips.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingTips.set(false);
@@ -246,7 +290,7 @@ export class RestaurantAdminComponent implements OnInit {
     this.restaurantService.resetTipsHints(rest.restaurantId).subscribe({
       next: () => {
         this.isUpdatingTips.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingTips.set(false);
@@ -272,7 +316,7 @@ export class RestaurantAdminComponent implements OnInit {
     this.restaurantService.setSeatingFee(rest.restaurantId, fee).subscribe({
       next: () => {
         this.isUpdatingSeatingFee.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingSeatingFee.set(false);
@@ -302,7 +346,7 @@ export class RestaurantAdminComponent implements OnInit {
         this.newVatCodeInput = '';
         this.newVatRateInput = null;
         this.isUpdatingVat.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingVat.set(false);
@@ -321,7 +365,7 @@ export class RestaurantAdminComponent implements OnInit {
     this.restaurantService.removeExtraVatDepartment(rest.restaurantId, code).subscribe({
       next: () => {
         this.isUpdatingVat.set(false);
-        this.loadRestaurant(rest.restaurantId);
+        this.loadRestaurant(rest.restaurantId, true);
       },
       error: (err) => {
         this.isUpdatingVat.set(false);

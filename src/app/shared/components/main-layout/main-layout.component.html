@@ -1,0 +1,133 @@
+<div class="page-layout">
+  <!-- Mobile Backdrop -->
+  @if (isMobileSidebarOpen()) {
+    <div class="sidebar-backdrop" (click)="closeSidebar()"></div>
+  }
+
+  <!-- Sidebar Component -->
+  <aside class="sidebar" [class.show]="isMobileSidebarOpen()">
+    <div class="sidebar-header">
+      <a routerLink="/restaurantsAdmin" class="sidebar-brand" (click)="closeSidebar()">
+        <span>Qr Ordering System</span>
+      </a>
+      <button
+        type="button"
+        class="sidebar-close-btn"
+        (click)="closeSidebar()"
+        aria-label="Close sidebar"
+      >
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a
+        routerLink="/restaurantsAdmin"
+        routerLinkActive="active"
+        class="nav-link-item"
+        (click)="closeSidebar()"
+      >
+        <i class="bi bi-list-nested"></i>
+        <span>Restaurant Admin</span>
+      </a>
+
+      <a
+        routerLink="/restaurantsAdmin"
+        class="nav-link-item"
+        (click)="closeSidebar()"
+      >
+        <i class="bi bi-house-door-fill"></i>
+        <span>Home</span>
+      </a>
+
+      <a
+        href="https://restaurantsystem.cloud"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="nav-link-item"
+      >
+        <i class="bi bi-info-circle"></i>
+        <span>Info & Support</span>
+      </a>
+
+      @if (authService.currentUser()?.email) {
+        <div class="nav-link-item text-truncate" style="cursor: default; opacity: 0.85;">
+          <i class="bi bi-person-fill"></i>
+          <span class="text-truncate">{{ authService.currentUser()?.email }}</span>
+        </div>
+      }
+
+      <button type="button" class="nav-link-item" (click)="logout()">
+        <i class="bi bi-arrow-bar-left"></i>
+        <span>Logout</span>
+      </button>
+    </nav>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="main-wrapper">
+    <!-- Top-bar with Breadcrumb & Mobile Hamburger button on upper right -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-0 align-items-center">
+            <li class="breadcrumb-item">
+              <a routerLink="/restaurantsAdmin" class="text-decoration-none text-secondary">
+                <i class="bi bi-house me-1"></i> Admin
+              </a>
+            </li>
+            @if (pageTitle()) {
+              <li class="breadcrumb-item active text-dark fw-semibold" aria-current="page">
+                {{ pageTitle() }}
+              </li>
+            }
+          </ol>
+        </nav>
+      </div>
+
+      <div class="top-bar-right">
+        @if (authService.currentUser()?.email) {
+          <span class="badge bg-light text-dark border d-none d-sm-inline-flex align-items-center">
+            <i class="bi bi-person-circle me-1 text-primary"></i>
+            {{ authService.currentUser()?.email }}
+          </span>
+        }
+
+        <!-- Toggle Button for Restricted / Mobile Displays (Upper Right) -->
+        <button
+          type="button"
+          class="mobile-menu-btn"
+          (click)="toggleSidebar()"
+          aria-label="Toggle navigation menu"
+          title="Toggle Navigation Menu"
+        >
+          <i class="bi bi-list"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Page Body -->
+    <div class="content-body">
+      <ng-content></ng-content>
+    </div>
+
+    <!-- Legal Footer matching Blazor layout -->
+    <footer class="legal-footer">
+      <div class="legal-info">
+        <span>Antonio Lucca</span>
+        <span class="legal-separator">•</span>
+        <span>P. IVA 0908007211</span>
+        <span class="legal-separator">•</span>
+        <span>80071 Anacapri (Na) Italy</span>
+        <span class="legal-separator">•</span>
+        <span>
+          contact:
+          <a href="mailto:info@restaurantsystem.cloud" class="legal-contact-link">
+            info@restaurantsystem.cloud
+          </a>
+        </span>
+      </div>
+    </footer>
+  </div>
+</div>
+

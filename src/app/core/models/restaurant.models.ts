@@ -70,6 +70,7 @@ export interface RestaurantItem {
   members?: string[];
   tablesCount?: number;
   tables?: Record<string, unknown> | unknown[];
+  parsedTables?: TableModel[];
   hasActiveOrders?: boolean;
   seatingFee?: number;
   showTips?: boolean;
@@ -87,4 +88,63 @@ export interface RestaurantItem {
   subscription?: RestaurantSubscription;
   stockInventorySettings?: StockInventorySettings;
   raw?: unknown;
+}
+
+export interface PaymentMethodBadgeInfo {
+  isPayAtCounter: boolean;
+  isPaidAtCounter: boolean;
+  isPrepaidWithStripe: boolean;
+  isPaidWithStripe: boolean;
+  isCompedAsOmaggio: boolean;
+  label: string;
+  icon?: string;
+  title?: string;
+}
+
+export interface OrderItemModel {
+  id?: string;
+  dishName: string;
+  comment?: string | null;
+  status: string;
+  isConfirmed: boolean;
+  isPending: boolean;
+  isDone: boolean;
+  isRejected: boolean;
+  rejectionReason?: string | null;
+  paymentMethod?: PaymentMethodBadgeInfo | null;
+}
+
+export interface AggregatedOrderItem {
+  quantity: number;
+  dishName: string;
+  status: string;
+  isConfirmed: boolean;
+  isPending: boolean;
+  isDone: boolean;
+  isRejected: boolean;
+  rejectionReason?: string | null;
+  paymentMethod?: PaymentMethodBadgeInfo | null;
+}
+
+export interface TableSessionModel {
+  sessionId: string;
+  items: OrderItemModel[];
+  aggregatedItems: AggregatedOrderItem[];
+  total: number;
+  fiscalMetadata?: {
+    isCodiceFiscale: boolean;
+    isCodiceLotteria: boolean;
+    value: string;
+  } | null;
+}
+
+export interface TableModel {
+  tableNumber: number;
+  tableId: string;
+  additionalInfo?: string | null;
+  maxSessions: number;
+  skipSeatFee: boolean;
+  overwriteSelfOrderingConfig?: SelfOrderingConfig | null;
+  hasActiveOrders: boolean;
+  sessions: TableSessionModel[];
 }

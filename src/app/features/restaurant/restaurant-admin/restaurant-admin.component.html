@@ -1,4 +1,5 @@
-<div class="container py-4">
+<app-main-layout pageTitle="Manage Menu">
+  <div class="container-fluid px-3 px-md-4 py-4">
   @if (errorMessage()) {
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
       <i class="bi bi-exclamation-octagon-fill me-2"></i>
@@ -24,6 +25,29 @@
             <span class="badge bg-info text-dark fs-6 font-monospace ms-md-2" title="Active Menu">
               <i class="bi bi-book me-1"></i>Current Menu: {{ rest.currentMenuName }}
             </span>
+            @if (rest.otherAvailableMenus && rest.otherAvailableMenus.length > 0) {
+              @for (menu of rest.otherAvailableMenus; track menu[0]) {
+                <div class="btn-group btn-group-sm" role="group">
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary font-monospace d-inline-flex align-items-center gap-1"
+                    title="Switch to Menu #{{ menu[0] }}: {{ menu[1] }}"
+                    (click)="noopAction($event)"
+                  >
+                    <i class="bi bi-journal-text me-1"></i>Menu #{{ menu[0] }}: {{ menu[1] }}
+                    <i class="bi bi-arrow-right-short"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger"
+                    title="Remove Menu #{{ menu[0] }}"
+                    (click)="noopAction($event)"
+                  >
+                    <i class="bi bi-x-lg"></i>
+                  </button>
+                </div>
+              }
+            }
           </div>
           <div>
             <a routerLink="/restaurantsAdmin" class="btn btn-outline-secondary btn-sm">
@@ -216,21 +240,151 @@
 
         <!-- Header Action Buttons -->
         <div class="row g-2 mt-2">
+          <!-- View Menu -->
           <div class="col-6 col-md-auto">
-            <a [routerLink]="['/m', rest.restaurantId]" class="btn btn-outline-secondary btn-sm fw-semibold w-100" target="_blank">
-              <i class="bi bi-book me-1"></i> View Menu
-            </a>
+            <div class="custom-tooltip-wrapper w-100">
+              <a [routerLink]="['/m', rest.restaurantId]" class="btn btn-outline-secondary btn-sm fw-semibold w-100" target="_blank">
+                <i class="bi bi-book me-1"></i> View Menu
+              </a>
+              <div class="custom-tooltip-box">
+                <span>Preview the customer-facing digital menu in a new browser window.</span>
+                <div>
+                  <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Digital Menu Setup & Customer View', rest.restaurantId)">
+                    <i class="bi bi-robot"></i> Ask Assistant
+                  </button>
+                </div>
+              </div>
+              <div class="custom-tooltip-arrow"></div>
+            </div>
           </div>
+
+          <!-- QR Menu -->
           <div class="col-6 col-md-auto">
-            <a [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'menu-qr']" class="btn btn-outline-primary btn-sm fw-semibold w-100">
-              <i class="bi bi-qr-code me-1"></i> QR Menu
-            </a>
+            <div class="custom-tooltip-wrapper w-100">
+              <button type="button" class="btn btn-outline-primary btn-sm fw-semibold w-100" (click)="openMenuQrModal()">
+                <i class="bi bi-qr-code me-1"></i> QR Menu
+              </button>
+              <div class="custom-tooltip-box">
+                <span>Generate and view a printable QR code leading directly to the digital menu.</span>
+                <div>
+                  <button type="button" class="tooltip-ask-btn" (click)="askAssistant('QR Code Menu Generation', rest.restaurantId)">
+                    <i class="bi bi-robot"></i> Ask Assistant
+                  </button>
+                </div>
+              </div>
+              <div class="custom-tooltip-arrow"></div>
+            </div>
           </div>
+
+          <!-- Manage Tables -->
           <div class="col-6 col-md-auto">
-            <a [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'onboarding']" class="btn btn-outline-success btn-sm fw-semibold w-100">
-              <i class="bi bi-credit-card me-1"></i> Stripe Connect
-            </a>
+            <div class="custom-tooltip-wrapper w-100">
+              <a [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'tables']" class="btn btn-outline-primary btn-sm fw-semibold w-100">
+                <i class="bi bi-table me-1"></i> Manage Tables
+              </a>
+              <div class="custom-tooltip-box">
+                <span>Define dining area layout, table numbers, and generate table-specific QR codes.</span>
+                <div>
+                  <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Table Service & Table-specific QR Codes', rest.restaurantId)">
+                    <i class="bi bi-robot"></i> Ask Assistant
+                  </button>
+                </div>
+              </div>
+              <div class="custom-tooltip-arrow"></div>
+            </div>
           </div>
+
+          <!-- Create / Clone Menu -->
+          <div class="col-6 col-md-auto">
+            <div class="custom-tooltip-wrapper w-100">
+              <button type="button" class="btn btn-outline-success btn-sm fw-semibold w-100" (click)="noopAction($event)">
+                <i class="bi bi-plus-circle me-1"></i> Create / Clone Menu
+              </button>
+              <div class="custom-tooltip-box">
+                <span>Create a new menu catalog or clone the current menu for another seasonal or service schedule.</span>
+                <div>
+                  <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Creating and Cloning Menus', rest.restaurantId)">
+                    <i class="bi bi-robot"></i> Ask Assistant
+                  </button>
+                </div>
+              </div>
+              <div class="custom-tooltip-arrow"></div>
+            </div>
+          </div>
+
+          <!-- Download Menu JSON -->
+          <div class="col-6 col-md-auto">
+            <div class="custom-tooltip-wrapper w-100">
+              <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold w-100" (click)="noopAction($event)">
+                <i class="bi bi-download me-1"></i> Download
+              </button>
+              <div class="custom-tooltip-box">
+                <span>Export and download the current menu catalog as a JSON backup.</span>
+                <div>
+                  <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Download Menu JSON', rest.restaurantId)">
+                    <i class="bi bi-robot"></i> Ask Assistant
+                  </button>
+                </div>
+              </div>
+              <div class="custom-tooltip-arrow"></div>
+            </div>
+          </div>
+
+          <!-- Import Menu JSON -->
+          <div class="col-6 col-md-auto">
+            <div class="custom-tooltip-wrapper w-100">
+              <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold w-100" (click)="noopAction($event)">
+                <i class="bi bi-upload me-1"></i> Import
+              </button>
+              <div class="custom-tooltip-box">
+                <span>Import and restore a menu catalog from an exported JSON file.</span>
+                <div>
+                  <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Import Menu JSON', rest.restaurantId)">
+                    <i class="bi bi-robot"></i> Ask Assistant
+                  </button>
+                </div>
+              </div>
+              <div class="custom-tooltip-arrow"></div>
+            </div>
+          </div>
+
+          <!-- Subscription / Stripe Connect -->
+          <div class="col-6 col-md-auto">
+            <div class="custom-tooltip-wrapper w-100">
+              <a [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'onboarding']" class="btn btn-outline-success btn-sm fw-semibold w-100">
+                <i class="bi bi-credit-card me-1"></i> Subscription
+              </a>
+              <div class="custom-tooltip-box">
+                <span>Manage subscription status, renewal date, upgrade plans, or payment methods.</span>
+                <div>
+                  <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Subscription Management', rest.restaurantId)">
+                    <i class="bi bi-robot"></i> Ask Assistant
+                  </button>
+                </div>
+              </div>
+              <div class="custom-tooltip-arrow"></div>
+            </div>
+          </div>
+
+          <!-- Extra Catalogue (when initialized/available) -->
+          @if (rest.extraCatalogueSetting && !rest.extraCatalogueSetting.isUnavailable) {
+            <div class="col-6 col-md-auto">
+              <div class="custom-tooltip-wrapper w-100">
+                <a href="javascript:void(0)" class="btn btn-outline-info btn-sm fw-semibold w-100" (click)="noopAction($event)">
+                  <i class="bi bi-card-checklist me-1"></i> Extra Catalogue
+                </a>
+                <div class="custom-tooltip-box">
+                  <span>Configure extra catalogue add-ons, modifiers, and upsell items.</span>
+                  <div>
+                    <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Extra Catalogue & Upsells', rest.restaurantId)">
+                      <i class="bi bi-robot"></i> Ask Assistant
+                    </button>
+                  </div>
+                </div>
+                <div class="custom-tooltip-arrow"></div>
+              </div>
+            </div>
+          }
         </div>
       </div>
     </div>
@@ -484,5 +638,91 @@
       </div>
     </div>
   }
-</div>
+  </div>
+</app-main-layout>
+
+<!-- Modal simulation for QrAssistant / action buttons -->
+@if (assistantTopic()) {
+  <div class="modal fade show" style="display: block; background: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+        <div class="modal-header bg-primary text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+          <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+            <i class="bi bi-robot"></i> QR Assistant
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="closeAssistant()" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="fw-semibold text-dark">Context: {{ assistantTopic() }}</p>
+          <p class="text-muted small mb-0">
+            This option replicates the interactive assistant and action flow from the original Blazor portal. The underlying feature endpoint is ready to be connected in subsequent migration steps.
+          </p>
+        </div>
+        <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+          <button type="button" class="btn btn-secondary px-4" (click)="closeAssistant()">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Menu QR Code Modal (matching Blazor ShowMenuQrModal) -->
+@if (showMenuQrModal() && restaurant(); as rest) {
+  <div
+    class="modal fade show d-block"
+    tabindex="-1"
+    style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1055;"
+    (click)="closeMenuQrModal()"
+  >
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+        <div class="modal-header bg-dark text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+          <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0">
+            <i class="bi bi-qr-code"></i> Digital Menu QR Code
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="closeMenuQrModal()"></button>
+        </div>
+        <div class="modal-body p-4 text-center">
+          <h5 class="fw-bold text-dark mb-1">{{ rest.restaurantName }}</h5>
+          <p class="text-muted small mb-3">
+            Customers can scan this QR code with their mobile phone cameras to view your digital menu.
+          </p>
+
+          <div class="p-3 bg-light border rounded-3 d-inline-block mb-3">
+            <img
+              [src]="getMenuQrImageUrl(rest.restaurantId)"
+              alt="Menu QR Code"
+              style="width: 220px; height: 220px; border-radius: 0.5rem; display: block;"
+            />
+          </div>
+
+          <div class="text-muted small mb-3 text-break">
+            <a
+              [href]="getMenuQrUrl(rest.restaurantId)"
+              target="_blank"
+              class="text-decoration-none font-monospace text-primary"
+            >
+              {{ getMenuQrUrl(rest.restaurantId) }}
+            </a>
+          </div>
+        </div>
+        <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+          <a
+            [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'menu-qr']"
+            class="btn btn-outline-secondary px-3"
+            (click)="closeMenuQrModal()"
+          >
+            <i class="bi bi-arrows-fullscreen me-1"></i> Dedicated Stand Page
+          </a>
+          <button type="button" class="btn btn-secondary px-3 ms-auto" (click)="closeMenuQrModal()">
+            Close
+          </button>
+          <button type="button" class="btn btn-primary px-4 fw-bold" (click)="printMenuQr()">
+            <i class="bi bi-printer-fill me-1"></i> Print QR
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
 

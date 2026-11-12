@@ -6,11 +6,12 @@ import { AuthService } from '../../core/services/auth.service';
 import { RestaurantService } from '../../core/services/restaurant.service';
 import { StripePaymentService } from '../../core/services/stripe-payment.service';
 import { RestaurantItem, SelfOrderingMode } from '../../core/models/restaurant.models';
+import { MainLayoutComponent } from '../../shared/components/main-layout/main-layout.component';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, MainLayoutComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
