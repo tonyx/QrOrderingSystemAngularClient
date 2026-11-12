@@ -12,6 +12,30 @@ export interface RestaurantSubscription {
     optConnectAccountId?: string | null;
     priceId?: string;
   } | null;
+  optPendingPaymentIntent?: {
+    paymentIntentId?: string;
+    duration?: unknown;
+  } | null;
+}
+
+export interface SubscriptionSettingsConfig {
+  monthlyFeeCents: number;
+  monthlyFeeCurrency: string;
+  discount3MonthsPercent: number;
+  discount6MonthsPercent: number;
+  discount12MonthsPercent: number;
+}
+
+export interface CreateSubscriptionIntentRequest {
+  durationDays: number;
+  successUrl: string;
+  cancelUrl: string;
+  userId?: string | null;
+}
+
+export interface CreateSubscriptionIntentResponse {
+  checkoutUrl?: string;
+  isRealStripe?: boolean;
 }
 
 export interface PaymentConfiguration {
@@ -117,6 +141,7 @@ export interface OrderItemModel {
 export interface AggregatedOrderItem {
   quantity: number;
   dishName: string;
+  comment?: string | null;
   status: string;
   isConfirmed: boolean;
   isPending: boolean;
@@ -124,6 +149,7 @@ export interface AggregatedOrderItem {
   isRejected: boolean;
   rejectionReason?: string | null;
   paymentMethod?: PaymentMethodBadgeInfo | null;
+  itemIds: string[];
 }
 
 export interface TableSessionModel {

@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LocPipe } from '../../../core/pipes/loc.pipe';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { RestaurantService } from '../../../core/services/restaurant.service';
 import { RestaurantItem } from '../../../core/models/restaurant.models';
@@ -8,7 +9,7 @@ import { MainLayoutComponent } from '../../../shared/components/main-layout/main
 @Component({
   selector: 'app-show-qrs',
   standalone: true,
-  imports: [CommonModule, RouterModule, MainLayoutComponent],
+  imports: [CommonModule, RouterModule, MainLayoutComponent, LocPipe],
   templateUrl: './show-qrs.component.html',
   styleUrls: ['./show-qrs.component.css'],
 })

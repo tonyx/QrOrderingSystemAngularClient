@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LocPipe } from '../../../core/pipes/loc.pipe';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RestaurantService } from '../../../core/services/restaurant.service';
 import { StripePaymentService } from '../../../core/services/stripe-payment.service';
@@ -9,7 +10,7 @@ import { MainLayoutComponent } from '../../../shared/components/main-layout/main
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [CommonModule, MainLayoutComponent],
+  imports: [CommonModule, MainLayoutComponent, LocPipe],
   templateUrl: './onboarding.component.html',
   styleUrl: './onboarding.component.css',
 })

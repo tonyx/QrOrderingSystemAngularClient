@@ -1,7 +1,7 @@
 <app-main-layout pageTitle="Restaurants Admin">
   <div class="content-body">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h3 class="mb-0 fw-bold">Your Restaurants</h3>
+      <h3 class="mb-0 fw-bold">{{ 'RestsAdmin_HeaderTitle' | loc }}</h3>
       <button class="btn btn-sm btn-outline-secondary" (click)="loadRestaurants()" [disabled]="isLoading()">
         @if (isLoading()) {
           <span class="spinner-border spinner-border-sm me-1" role="status"></span>
@@ -24,7 +24,7 @@
       @if (isLoading() && restaurants().length === 0) {
         <div class="d-flex align-items-center gap-2 text-muted py-4">
           <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-          <span><em>Loading...</em></span>
+          <span><em>{{ 'RestsAdmin_Loading' | loc }}</em></span>
         </div>
       } @else if (restaurants().length > 0) {
         <!-- Restaurant Cards Grid -->
@@ -41,8 +41,17 @@
                   </div>
                   <div class="d-flex align-items-center gap-2 flex-wrap ms-auto">
                     <!-- Subscription Badge -->
-                    <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1 rounded">
-                      <i class="bi bi-infinity me-1"></i> Endless
+                    @let subInfo = getSubscriptionBadgeInfo(restaurant.subscription);
+                    <span
+                      class="badge px-2 py-1 rounded"
+                      [ngClass]="subInfo.badgeClass"
+                      [attr.title]="subInfo.expiresTitle"
+                    >
+                      <i class="bi me-1" [ngClass]="subInfo.iconClass"></i>
+                      {{ subInfo.labelKey | loc }}
+                      @if (subInfo.isExpired && (subInfo.labelKey === 'RestsAdmin_SubTrial' || subInfo.labelKey === 'RestsAdmin_SubOrdinary')) {
+                        {{ 'RestsAdmin_SubExpiredTag' | loc }}
+                      }
                     </span>
                   </div>
                 </div>
@@ -165,7 +174,7 @@
                       <span class="small fw-semibold me-1">Stripe Status:</span>
                       @if (restaurant.paymentConfig?.isStripeEnabled) {
                         <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded">
-                          <i class="bi bi-check-circle-fill me-1"></i> Connected
+                          <i class="bi bi-check-circle-fill me-1"></i> {{ 'RestsAdmin_StripeConnected' | loc }}
                         </span>
                         <a
                           [routerLink]="['/restaurantsAdmin', restaurant.restaurantId, 'onboarding']"
@@ -185,7 +194,7 @@
                         </button>
                       } @else {
                         <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded">
-                          <i class="bi bi-exclamation-triangle-fill me-1"></i> Not Connected
+                          <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ 'RestsAdmin_StripeNotConnected' | loc }}
                         </span>
                         <a
                           [routerLink]="['/restaurantsAdmin', restaurant.restaurantId, 'onboarding']"
@@ -202,16 +211,16 @@
                     <!-- 1. Menu & Catalog Group -->
                     <div class="border rounded p-2 bg-light-subtle">
                       <div class="small fw-bold text-uppercase text-secondary mb-2 d-flex align-items-center gap-1">
-                        <i class="bi bi-book me-1"></i> Menu & Catalog
+                        <i class="bi bi-book me-1"></i> {{ 'RestsAdmin_GroupMenu' | loc }}
                       </div>
                       <div class="d-flex flex-wrap gap-2">
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <a [routerLink]="['/restaurantsAdmin', restaurant.restaurantId]" class="btn btn-sm btn-outline-primary w-100">Manage Menu</a>
+                          <a [routerLink]="['/restaurantsAdmin', restaurant.restaurantId]" class="btn btn-sm btn-outline-primary w-100">{{ 'RestsAdmin_BtnManageMenu' | loc }}</a>
                           <div class="custom-tooltip-box">
                             <span>Manage dishes, categories, prices, and allergens.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Menu Digitization & Allergens', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -224,13 +233,13 @@
                             target="_blank"
                             class="btn btn-sm btn-outline-secondary w-100"
                           >
-                            <i class="bi bi-book me-1"></i> View Menu
+                            <i class="bi bi-book me-1"></i> {{ 'RestsAdmin_BtnViewMenu' | loc }}
                           </a>
                           <div class="custom-tooltip-box">
                             <span>Open customer-facing public digital menu.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Digital Menu Setup', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -249,7 +258,7 @@
                             <span>Generate & preview public menu QR codes.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('QR Code Menu Generation', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -264,7 +273,7 @@
                             <span>Export menu configuration as JSON backup.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Download Menu JSON', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -279,7 +288,7 @@
                             <span>Import dishes and categories from JSON.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Import Menu JSON', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -291,18 +300,18 @@
                     <!-- 2. Tables & Orders Group -->
                     <div class="border rounded p-2 bg-light-subtle">
                       <div class="small fw-bold text-uppercase text-secondary mb-2 d-flex align-items-center gap-1">
-                        <i class="bi bi-layout-three-columns me-1"></i> Tables & Orders
+                        <i class="bi bi-layout-three-columns me-1"></i> {{ 'RestsAdmin_GroupTables' | loc }}
                       </div>
                       <div class="d-flex flex-wrap gap-2">
                         <div class="custom-tooltip-wrapper flex-grow-1">
                           <a href="javascript:void(0)" class="btn btn-sm btn-outline-info w-100">
-                            Active Orders
+                            {{ 'RestsAdmin_BtnActiveOrders' | loc }}
                           </a>
                           <div class="custom-tooltip-box">
                             <span>Real-time waiter & kitchen monitor.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Active Orders & Waiter View', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -317,7 +326,7 @@
                             <span>Configure tables, seats, and session capacities.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Table Service & Ordering', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -332,7 +341,7 @@
                             <span>Generate print-ready QR codes for table tops.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Printing QR Code Stickers', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -341,13 +350,13 @@
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
                           <a href="javascript:void(0)" class="btn btn-sm btn-outline-warning w-100">
-                            <i class="bi bi-journal-bookmark-fill me-1"></i> Manual Ledger
+                            <i class="bi bi-journal-bookmark-fill me-1"></i> {{ 'RestsAdmin_BtnManualLedger' | loc }}
                           </a>
                           <div class="custom-tooltip-box">
                             <span>Record offline cash orders and register receipts.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Manual Ledger & Cash Register', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -362,7 +371,7 @@
                             <span>Unified turnover reports and fiscal VAT aggregates.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Unified Business Analytics & VAT Department Reports', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -374,18 +383,18 @@
                     <!-- 3. Billing & Payments Group -->
                     <div class="border rounded p-2 bg-light-subtle">
                       <div class="small fw-bold text-uppercase text-secondary mb-2 d-flex align-items-center gap-1">
-                        <i class="bi bi-credit-card me-1"></i> Billing & Payments
+                        <i class="bi bi-credit-card me-1"></i> {{ 'RestsAdmin_GroupBilling' | loc }}
                       </div>
                       <div class="d-flex flex-wrap gap-2">
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <a href="javascript:void(0)" class="btn btn-sm btn-outline-success w-100">
-                            <i class="bi bi-calendar-check me-1"></i> Subscription
+                          <a [routerLink]="['/restaurantsAdmin', restaurant.restaurantId, 'subscription']" class="btn btn-sm btn-outline-success w-100">
+                            <i class="bi bi-calendar-check me-1"></i> {{ 'RestsAdmin_ThSubscription' | loc }}
                           </a>
                           <div class="custom-tooltip-box">
-                            <span>Manage platform subscription tier and renewal.</span>
+                            <span>{{ 'RestsAdmin_TooltipSubscription' | loc }}</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Subscription Management', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -394,13 +403,13 @@
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
                           <a href="javascript:void(0)" class="btn btn-sm btn-outline-info w-100">
-                            <i class="bi bi-credit-card me-1"></i> E-Payments
+                            <i class="bi bi-credit-card me-1"></i> {{ 'RestsAdmin_BtnEPayments' | loc }}
                           </a>
                           <div class="custom-tooltip-box">
                             <span>Inspect Stripe transactions, refunds, and payouts.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('E-Payments & Stripe Audit', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -412,16 +421,16 @@
                     <!-- 4. Admin & Security Group -->
                     <div class="border rounded p-2 bg-light-subtle">
                       <div class="small fw-bold text-uppercase text-secondary mb-2 d-flex align-items-center gap-1">
-                        <i class="bi bi-shield-lock me-1"></i> Admin & Security
+                        <i class="bi bi-shield-lock me-1"></i> {{ 'RestsAdmin_GroupAdmin' | loc }}
                       </div>
                       <div class="d-flex flex-wrap gap-2">
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <a href="javascript:void(0)" class="btn btn-sm btn-outline-dark w-100">Manage Members</a>
+                          <a href="javascript:void(0)" class="btn btn-sm btn-outline-dark w-100">{{ 'RestsAdmin_BtnManageMembers' | loc }}</a>
                           <div class="custom-tooltip-box">
                             <span>Assign waiters, cooks, and managers.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Collaborators & Team Access', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -434,7 +443,7 @@
                             <span>Restrict ordering exclusively to restaurant Wi-Fi.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('CIDR IP Filtering Security', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -443,13 +452,13 @@
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
                           <a href="javascript:void(0)" class="btn btn-sm btn-outline-secondary w-100">
-                            History <i class="bi bi-download"></i>
+                            {{ 'RestsAdmin_BtnHistory' | loc }} <i class="bi bi-download"></i>
                           </a>
                           <div class="custom-tooltip-box">
                             <span>Download raw immutable event store history.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Event History Export', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -458,13 +467,13 @@
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
                           <button type="button" class="btn btn-sm btn-outline-danger w-100" (click)="noopAction($event)">
-                            Deep Reset
+                            {{ 'RestsAdmin_BtnDeepReset' | loc }}
                           </button>
                           <div class="custom-tooltip-box">
                             <span>Clear all live tables, carts, and order states.</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Deep Reset and Data Security', restaurant.restaurantId)">
-                                <i class="bi bi-robot"></i> Ask Assistant
+                                <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
                               </button>
                             </div>
                           </div>
@@ -479,12 +488,12 @@
                             <i class="bi bi-geo-alt me-1"></i> Geolocation:
                           </span>
                           <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1 rounded small">
-                            <i class="bi bi-slash-circle me-1"></i> Disabled
+                            <i class="bi bi-slash-circle me-1"></i> {{ 'RestsAdmin_SelfOrderingDisabled' | loc }}
                           </span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
                           <a href="javascript:void(0)" class="btn btn-sm btn-outline-success py-0 px-2">
-                            <i class="bi bi-geo-alt me-1"></i> Set Coordinates
+                            <i class="bi bi-geo-alt me-1"></i> {{ 'RestsAdmin_BtnSetCoordinates' | loc }}
                           </a>
                         </div>
                       </div>
@@ -501,7 +510,7 @@
                         </div>
                         <div class="d-flex align-items-center gap-2">
                           <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" (click)="noopAction($event)">
-                            <i class="bi bi-plus-circle me-1"></i> Initialize Inventory
+                            <i class="bi bi-plus-circle me-1"></i> {{ 'RestsAdmin_BtnInitializeInventory' | loc }}
                           </button>
                         </div>
                       </div>
@@ -519,7 +528,7 @@
       <!-- Create Restaurant Card (matching Blazor) -->
       <div class="card mt-4 border shadow-sm">
         <div class="card-header bg-light">
-          <h5 class="mb-0 fw-bold">Create a New Restaurant</h5>
+          <h5 class="mb-0 fw-bold">{{ 'RestsAdmin_CreateHeader' | loc }}</h5>
         </div>
         <div class="card-body">
           @if (createErrorMessage()) {
@@ -566,7 +575,7 @@
           </p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="closeAssistant()">Close</button>
+          <button type="button" class="btn btn-secondary" (click)="closeAssistant()">{{ 'RestsAdmin_BtnClose' | loc }}</button>
         </div>
       </div>
     </div>
@@ -585,7 +594,7 @@
       <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
         <div class="modal-header bg-dark text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
           <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0">
-            <i class="bi bi-qr-code"></i> Digital Menu QR Code
+            <i class="bi bi-qr-code"></i> {{ 'RestsAdmin_DigitalQrModalTitle' | loc }}
           </h5>
           <button type="button" class="btn-close btn-close-white" (click)="closeMenuQrModal()"></button>
         </div>
@@ -622,10 +631,10 @@
             <i class="bi bi-arrows-fullscreen me-1"></i> Dedicated Stand Page
           </a>
           <button type="button" class="btn btn-secondary px-3 ms-auto" (click)="closeMenuQrModal()">
-            Close
+            {{ 'RestsAdmin_BtnClose' | loc }}
           </button>
           <button type="button" class="btn btn-primary px-4 fw-bold" (click)="printMenuQr()">
-            <i class="bi bi-printer-fill me-1"></i> Print QR
+            <i class="bi bi-printer-fill me-1"></i> {{ 'RestsAdmin_BtnPrintQr' | loc }}
           </button>
         </div>
       </div>

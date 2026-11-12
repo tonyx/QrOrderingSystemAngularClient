@@ -8,20 +8,20 @@
             <svg style="width: 1.5rem; height: 1.5rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Benvenuto al Tavolo!
+            {{ 'Order_SessionConsentTitle' | loc }}
           </h5>
         </div>
         <div class="modal-body p-4" style="color: #334155; line-height: 1.6; font-size: 0.95rem;">
           <p class="mb-3">
-            Per consentirti di ordinare direttamente dal tuo smartphone e gestire il conto con i tuoi commensali, salviamo un identificatore anonimo di sessione sul tuo dispositivo. Nessun dato personale o di profilazione viene tracciato.
+            {{ 'Order_SessionConsentBodyIt' | loc }}
           </p>
           <p class="mb-0 text-muted fst-italic" style="font-size: 0.85rem;">
-            To allow you to order directly from your mobile device and share the bill with your table mates, an anonymous session token is saved on your device. No personal data is tracked.
+            {{ 'Order_SessionConsentBodyEn' | loc }}
           </p>
         </div>
         <div class="modal-footer border-0 bg-light justify-content-end p-3">
           <button type="button" class="btn text-white px-4 fw-bold" (click)="agreeToSessionConsent()" style="background: linear-gradient(135deg, #4f46e5, #7c3aed); border-radius: 0.5rem; border: none;">
-            Inizia ad Ordinare
+            {{ 'Order_BtnAgreeConsent' | loc }}
           </button>
         </div>
       </div>
@@ -33,7 +33,7 @@
 @if (isLoading()) {
   <div class="text-center py-5 my-5">
     <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-    <p class="text-muted mt-3 fw-bold">Caricamento menu del tavolo in corso...</p>
+    <p class="text-muted mt-3 fw-bold">{{ 'Order_LoadingMenu' | loc }}</p>
   </div>
 } @else {
   <div class="customer-container">
@@ -43,10 +43,17 @@
         <svg style="width: 3rem; height: 3rem; color: #ef4444; margin-bottom: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
-        <h4 class="fw-bold">Attenzione</h4>
+        <h4 class="fw-bold">{{ 'AdminTables_DangerZone' | loc }}</h4>
         <p class="mb-0">{{ errorMessage() }}</p>
       </div>
     } @else if (restaurant()) {
+      <!-- Top Controls Bar with App Language Selector (Upper Right) -->
+      <div class="d-flex justify-content-end align-items-center mb-3">
+        <div class="d-inline-flex align-items-center px-3 py-1 bg-white border rounded-pill shadow-sm">
+          <app-culture-selector></app-culture-selector>
+        </div>
+      </div>
+
       <!-- Restaurant Header -->
       <div class="restaurant-header">
         <div class="restaurant-name">{{ restaurant()!.restaurantName }}</div>
@@ -54,7 +61,7 @@
           <svg style="width: 1.25rem; height: 1.25rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
-          Tavolo {{ tableNumber }}
+          {{ 'Order_TableBadge' | loc:(tableNumber || 0) }}
         </div>
         @if (additionalInfo()) {
           <div class="info-tag fst-italic">{{ additionalInfo() }}</div>
@@ -65,7 +72,7 @@
             <svg style="width: 1rem; height: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            Lascia il Tavolo
+            {{ 'Order_BtnLeaveTable' | loc }}
           </button>
         </div>
       </div>
@@ -75,8 +82,8 @@
         <div class="alert alert-warning shadow-sm mb-4 d-flex align-items-start gap-3" style="border-radius: 1rem; border-left: 4px solid #f59e0b; background-color: #fffbeb; color: #92400e;">
           <i class="bi bi-exclamation-triangle-fill fs-4 text-warning flex-shrink-0 mt-1"></i>
           <div>
-            <div class="fw-bold mb-1">Nota sugli allergeni e traduzioni</div>
-            <div class="small opacity-90">I piatti, gli allergeni e le descrizioni potrebbero essere stati generati o tradotti automaticamente. Chiedi al personale in caso di dubbi o allergie alimentari.</div>
+            <div class="fw-bold mb-1">{{ 'Order_AiAllergensNoticeTitle' | loc }}</div>
+            <div class="small opacity-90">{{ 'Order_AiAllergensNoticeBody' | loc }}</div>
           </div>
         </div>
       }
@@ -89,17 +96,19 @@
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 11.37 7.37 16.5 3 19" />
             </svg>
             <div class="text-start">
-              <div class="fw-bold" style="font-size: 0.95rem; color: #1e293b;">Lingua del Menu</div>
-              <div class="text-muted small">Language selector</div>
+              <div class="fw-bold" style="font-size: 0.95rem; color: #1e293b;">{{ 'Order_LanguageSelectorTitle' | loc }}</div>
+              <div class="text-muted small">{{ 'Order_LanguageSelectorSubtitle' | loc }}</div>
             </div>
           </div>
-          <select class="form-select form-select-sm" style="border-radius: 0.5rem; width: 180px; border-color: #cbd5e1;" [(ngModel)]="selectedLang">
-            <option value="default">Originale (Default)</option>
-            <option value="it">Italiano</option>
-            <option value="en">English</option>
-            <option value="es">Español</option>
-            <option value="fr">Français</option>
-            <option value="de">Deutsch</option>
+          <select class="form-select form-select-sm" style="border-radius: 0.5rem; width: 180px; border-color: #cbd5e1;" [ngModel]="selectedLang()" (ngModelChange)="onMenuLanguageChange($event)">
+            <option value="default">{{ 'Order_OptOriginalLanguage' | loc }}</option>
+            <option value="it">{{ 'Order_OptItalian' | loc }}</option>
+            <option value="en">{{ 'Order_OptEnglish' | loc }}</option>
+            <option value="es">{{ 'Order_OptSpanish' | loc }}</option>
+            <option value="fr">{{ 'Order_OptFrench' | loc }}</option>
+            <option value="de">{{ 'Order_OptGerman' | loc }}</option>
+            <option value="ru">{{ 'Order_OptRussian' | loc }}</option>
+            <option value="ja">{{ 'Order_OptJapanese' | loc }}</option>
           </select>
         </div>
       </div>
@@ -110,7 +119,7 @@
           <svg style="width:1.25rem;height:1.25rem;color:#4f46e5;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
-          Il Mio Ordine
+          {{ 'Order_OrderPanelTitle' | loc }}
         </div>
 
         @if (actionError()) {
@@ -122,7 +131,7 @@
           <div class="card mb-3 border-0 bg-light p-3" style="border-radius: 0.75rem;">
             <div class="d-flex align-items-center justify-content-between">
               <div class="d-flex align-items-center gap-2">
-                <span class="fw-bold small text-secondary">Dati Scontrino / Fiscal:</span>
+                <span class="fw-bold small text-secondary">{{ 'Order_FiscalSectionTitle' | loc }}</span>
                 @if (currentFiscalMetadata()) {
                   @if (currentFiscalMetadata()!.isCodiceFiscale) {
                     <span class="badge bg-primary text-white font-monospace fs-7">
@@ -134,11 +143,17 @@
                     </span>
                   }
                 } @else {
-                  <span class="badge bg-secondary text-white fs-7">Nessuno (Default)</span>
+                  <span class="badge bg-secondary text-white fs-7">{{ 'Order_FiscalNone' | loc }}</span>
                 }
               </div>
               <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fs-7" (click)="isFiscalEditOpen.set(!isFiscalEditOpen())" [disabled]="isBusy()">
-                {{ isFiscalEditOpen() ? 'Chiudi' : (currentFiscalMetadata() ? 'Modifica' : 'Aggiungi') }}
+                @if (isFiscalEditOpen()) {
+                  {{ 'Order_BtnClose' | loc }}
+                } @else if (currentFiscalMetadata()) {
+                  {{ 'Order_BtnEditFiscal' | loc }}
+                } @else {
+                  {{ 'Order_BtnAddFiscal' | loc }}
+                }
               </button>
             </div>
 
@@ -148,25 +163,25 @@
                   <input class="form-check-input" type="radio" name="fiscalOpt_order" id="fiscalOpt_none" value="none"
                          [checked]="selectedFiscalOption === 'none'"
                          (change)="selectedFiscalOption = 'none'; fiscalInputText = ''; fiscalErrorMessage.set(null);" />
-                  <label class="form-check-label small" for="fiscalOpt_none">Nessuno (Default)</label>
+                  <label class="form-check-label small" for="fiscalOpt_none">{{ 'Order_FiscalNone' | loc }}</label>
                 </div>
                 <div class="form-check form-check-inline me-3">
                   <input class="form-check-input" type="radio" name="fiscalOpt_order" id="fiscalOpt_cf" value="cf"
                          [checked]="selectedFiscalOption === 'cf'"
                          (change)="selectedFiscalOption = 'cf'; fiscalErrorMessage.set(null);" />
-                  <label class="form-check-label small fw-bold" for="fiscalOpt_cf">Codice Fiscale</label>
+                  <label class="form-check-label small fw-bold" for="fiscalOpt_cf">{{ 'Order_FiscalCf' | loc }}</label>
                 </div>
                 <div class="form-check form-check-inline">
                   <input class="form-check-input" type="radio" name="fiscalOpt_order" id="fiscalOpt_lotteria" value="lotteria"
                          [checked]="selectedFiscalOption === 'lotteria'"
                          (change)="selectedFiscalOption = 'lotteria'; fiscalErrorMessage.set(null);" />
-                  <label class="form-check-label small fw-bold" for="fiscalOpt_lotteria">Codice Lotteria</label>
+                  <label class="form-check-label small fw-bold" for="fiscalOpt_lotteria">{{ 'Order_FiscalLottery' | loc }}</label>
                 </div>
 
                 @if (selectedFiscalOption !== 'none') {
                   <div class="mt-2">
                     <input type="text" class="form-control form-control-sm text-uppercase font-monospace"
-                           [placeholder]="selectedFiscalOption === 'cf' ? 'Codice Fiscale (16 caratteri)' : 'Codice Lotteria (8 caratteri)'"
+                           [placeholder]="selectedFiscalOption === 'cf' ? ('Order_FiscalCf' | loc) : ('Order_FiscalLottery' | loc)"
                            [maxLength]="selectedFiscalOption === 'cf' ? 16 : 8"
                            [(ngModel)]="fiscalInputText" />
                   </div>
@@ -188,7 +203,7 @@
 
         <!-- Active and Pending Orders List -->
         @if (aggregatedSessionItems().length === 0) {
-          <div class="order-panel-empty">Il tuo vassoio è vuoto. Seleziona i piatti dal menu in basso!</div>
+          <div class="order-panel-empty">{{ 'Order_OrderPanelEmpty' | loc }}</div>
         } @else {
           @for (order of aggregatedSessionItems(); track order.dishName + '_' + order.status + '_' + (order.paymentMethod?.label || 'none')) {
             <div class="order-row flex-column align-items-stretch">
@@ -199,7 +214,7 @@
                   <span class="ms-2">
                     @if (order.isConfirmed) {
                       <span class="badge" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background-color: #10b981; color: white; display: inline-flex; align-items: center; gap: 0.25rem;">
-                        <span>Confermato</span>
+                        <span>{{ 'Order_StatusConfirmed' | loc }}</span>
                         @if (order.paymentMethod) {
                           <span class="payment-method-info" [title]="order.paymentMethod.title || order.paymentMethod.label">
                             {{ order.paymentMethod.icon }} {{ order.paymentMethod.label }}
@@ -208,11 +223,11 @@
                       </span>
                     } @else if (order.isPending) {
                       <span class="badge" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background-color: #f59e0b; color: white;">
-                        In attesa
+                        {{ 'Order_StatusPending' | loc }}
                       </span>
                     } @else if (order.isDone) {
                       <span class="badge" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background-color: #6b7280; color: white; display: inline-flex; align-items: center; gap: 0.25rem;">
-                        <span>Servito</span>
+                        <span>{{ 'Order_StatusDone' | loc }}</span>
                         @if (order.paymentMethod) {
                           <span class="payment-method-info" [title]="order.paymentMethod.title || order.paymentMethod.label">
                             {{ order.paymentMethod.icon }} {{ order.paymentMethod.label }}
@@ -220,13 +235,13 @@
                         }
                       </span>
                     } @else if (order.isRejected) {
-                      <span class="badge" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background-color: #ef4444; color: white; display: inline-flex; align-items: center; gap: 0.35rem;" [title]="order.rejectionReason ? 'Rifiutato: ' + order.rejectionReason : 'Rifiutato'">
-                        <span>❌ Rifiutato</span>
+                      <span class="badge" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 0.25rem; background-color: #ef4444; color: white; display: inline-flex; align-items: center; gap: 0.35rem;" [title]="order.rejectionReason ? ('Order_StatusRejected' | loc) + ': ' + order.rejectionReason : ('Order_StatusRejected' | loc)">
+                        <span>❌ {{ 'Order_StatusRejected' | loc }}</span>
                         @if (order.rejectionReason) {
                           <span style="opacity: 0.85; font-size: 0.7rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">({{ order.rejectionReason }})</span>
                         }
                         @if (order.paymentMethod?.isPrepaidWithStripe || order.paymentMethod?.isPaidWithStripe) {
-                          <span class="payment-method-info" title="Rimborsato / Da rimborsare">💰 Rimborso</span>
+                          <span class="payment-method-info" title="Rimborsato / Da rimborsare">💰 {{ 'Order_RefundBadge' | loc }}</span>
                         }
                       </span>
                     } @else {
@@ -245,7 +260,7 @@
               <!-- Voting stars for served/done dishes -->
               @if (order.isDone) {
                 <div class="mt-2 d-flex align-items-center gap-2">
-                  <span class="text-muted small">Ti è piaciuto? Vota:</span>
+                  <span class="text-muted small">{{ 'Order_VoteLabel' | loc }}</span>
                   <div class="btn-group btn-group-sm" role="group">
                     <button type="button" class="btn btn-outline-warning text-dark fw-bold" (click)="voteItem(order.dishName, 5)" [disabled]="isBusy()">5 ★</button>
                     <button type="button" class="btn btn-outline-warning text-dark fw-bold" (click)="voteItem(order.dishName, 4)" [disabled]="isBusy()">4 ★</button>
@@ -266,9 +281,9 @@
             <div class="mt-4 pt-3 border-top text-center">
               @if (confirmCountdown() > 0) {
                 <div class="d-flex align-items-center justify-content-center gap-3">
-                  <span class="text-muted fw-bold">Invio ordine in corso ({{ confirmCountdown() }}s)...</span>
+                  <span class="text-muted fw-bold">{{ 'Order_ConfirmingCountdown' | loc:confirmCountdown() }}</span>
                   <button type="button" class="btn btn-warning btn-sm" (click)="undoConfirm()" style="border-radius: 0.5rem; font-weight: 600; background-color: #f59e0b; border: none; color: white; padding: 0.3rem 0.8rem;">
-                    Annulla
+                    {{ 'Order_BtnUndo' | loc }}
                   </button>
                 </div>
               } @else {
@@ -278,7 +293,7 @@
                     <div class="d-flex align-items-center justify-content-between p-2 rounded mb-2" style="background-color: #f1f5f9; border: 1px solid #e2e8f0;">
                       <div class="d-flex align-items-center gap-2">
                         <span style="font-size: 1.1rem;">💳</span>
-                        <span class="fw-semibold text-dark" style="font-size: 0.95rem;">Paga Online con Carta / Apple Pay / Google Pay</span>
+                        <span class="fw-semibold text-dark" style="font-size: 0.95rem;">{{ 'Order_PayOnlineCardToggle' | loc }}</span>
                       </div>
                       <div class="form-check form-switch m-0">
                         <input class="form-check-input" type="checkbox" id="toggleOnlinePaymentSwitch"
@@ -292,7 +307,7 @@
                   @if (isCashSelfOrderingAllowed() && (!isStripeSelfOrderingAllowed() || !showOnlinePaymentBlock())) {
                     <div class="p-3 my-2 border rounded text-start bg-white shadow-sm" style="border-color: #cbd5e1 !important;">
                       <div class="fw-bold text-dark mb-2 border-bottom pb-2" style="font-size: 0.95rem;">
-                        Riepilogo Piatti da Confermare (Pagamento alla cassa)
+                        {{ 'Order_SummaryPayAtCounter' | loc }}
                       </div>
                       <div class="mb-2">
                         @for (item of getPaymentItemsBreakdown(); track item.itemName) {
@@ -303,12 +318,12 @@
                         }
                       </div>
                       <div class="d-flex justify-content-between align-items-center pt-2 mt-1 border-top fw-bold text-primary" style="font-size: 0.95rem;">
-                        <span>Subtotale Piatti</span>
+                        <span>{{ 'Order_ItemsSubtotalLabel' | loc }}</span>
                         <span>€{{ pendingSubtotal().toFixed(2) }}</span>
                       </div>
                       @if (getEffectiveSeatingFee() > 0) {
                         <div class="d-flex justify-content-between align-items-center pt-1 text-muted" style="font-size: 0.875rem;">
-                          <span>Coperto / Seating Fee</span>
+                          <span>{{ 'Order_CoverSeatingFeeTitle' | loc }}</span>
                           <span>€{{ getEffectiveSeatingFee().toFixed(2) }}</span>
                         </div>
                       }
@@ -316,7 +331,7 @@
 
                     <button type="button" class="btn btn-success w-100 py-3 fw-bold shadow-sm" (click)="startConfirmTimer()" [disabled]="isBusy()"
                             style="border-radius: 0.75rem; background-color: #10b981; border: none; font-size: 1.05rem;">
-                      Conferma Ordine e Paga alla Cassa
+                      {{ 'Order_BtnConfirmOrder' | loc }}
                     </button>
                   }
 
@@ -326,11 +341,11 @@
                     <div class="p-3 my-2 border rounded text-start" style="background-color: #f8fafc; border-color: #e2e8f0;">
                       <div class="d-flex align-items-center justify-content-between mb-2">
                         <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.95rem;">
-                          <span>Lascia una Mancia al Personale</span>
+                          <span>{{ 'Order_AddTipHeader' | loc }}</span>
                         </div>
                         @if (!showExplicitTipForm() && (!restaurant()?.showTips || !(restaurant()?.tipsHints && restaurant()!.tipsHints!.length > 0))) {
                           <button type="button" class="btn btn-sm btn-outline-primary" (click)="toggleExplicitTipForm()">
-                            Aggiungi Mancia
+                            Aggiungi {{ 'Order_TipLabel' | loc }}
                           </button>
                         } @else if (showExplicitTipForm() && (!restaurant()?.showTips || !(restaurant()?.tipsHints && restaurant()!.tipsHints!.length > 0))) {
                           <button type="button" class="btn btn-sm btn-link text-secondary p-0 ms-auto" (click)="toggleExplicitTipForm()">
@@ -391,7 +406,7 @@
 
                           @if (isTipOver50Percent()) {
                             <div class="alert alert-warning p-2 small mt-2 mb-0 d-flex flex-column gap-2" style="border-radius: 0.5rem;">
-                              <div class="fw-bold text-dark">Attenzione: Mancia elevata (>50%)</div>
+                              <div class="fw-bold text-dark">Attenzione: {{ 'Order_TipLabel' | loc }} elevata (>50%)</div>
                               <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="confirmHighTipCheck"
                                        [(ngModel)]="isHighTipConfirmed" />
@@ -419,7 +434,7 @@
                         }
                       </div>
                       <div class="d-flex justify-content-between align-items-center py-1 fw-semibold text-dark" style="font-size: 0.875rem; border-top: 1px dashed #e2e8f0;">
-                        <span>Subtotale Piatti</span>
+                        <span>{{ 'Order_ItemsSubtotalLabel' | loc }}</span>
                         <span>€{{ pendingSubtotal().toFixed(2) }}</span>
                       </div>
                       @if (getEffectiveSeatingFee() > 0) {
@@ -430,12 +445,12 @@
                       }
                       @if (getSelectedTipAmount() > 0) {
                         <div class="d-flex justify-content-between align-items-center py-1 text-success fw-semibold" style="font-size: 0.875rem;">
-                          <span>Mancia</span>
+                          <span>{{ 'Order_TipLabel' | loc }}</span>
                           <span>€{{ getSelectedTipAmount().toFixed(2) }}</span>
                         </div>
                       }
                       <div class="d-flex justify-content-between align-items-center pt-2 mt-1 border-top fw-bold text-primary" style="font-size: 1.05rem;">
-                        <span>Totale da Pagare</span>
+                        <span>{{ 'Order_TotalToPayLabel' | loc }}</span>
                         <span>€{{ grandTotal().toFixed(2) }}</span>
                       </div>
                     </div>
@@ -469,9 +484,9 @@
                 <button type="button" class="btn btn-success w-100 fw-bold py-2 mt-2" (click)="handleConfirmStripePayment()" [disabled]="isBusy()">
                   @if (isBusy()) {
                     <span class="spinner-border spinner-border-sm me-2"></span>
-                    <span>Elaborazione pagamento in corso...</span>
+                    <span>{{ 'Order_BtnProcessing' | loc }}</span>
                   } @else {
-                    <span>Autorizza Pagamento con Carta</span>
+                    <span>{{ 'Order_BtnAuthorizePrepayment' | loc }}</span>
                   }
                 </button>
               }
@@ -498,8 +513,8 @@
           <svg style="width: 4rem; height: 4rem; color: #94a3b8; margin-bottom: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
-          <h4>Nessun piatto disponibile</h4>
-          <p class="mb-0">Al momento questo menu non contiene piatti attivi.</p>
+          <h4>{{ 'Order_MenuEmptyTitle' | loc }}</h4>
+          <p class="mb-0">{{ 'Order_MenuEmptySubtitle' | loc }}</p>
         </div>
       } @else {
         @for (grp of groupedCategories(); track grp.category) {
@@ -578,8 +593,8 @@
               <div class="d-flex align-items-center gap-2">
                 <span style="font-size: 1.4rem;">🔍</span>
                 <div>
-                  <h4 class="mb-0 fw-bold" style="color: #1e293b; font-size: 1.15rem;">Cerca nel Catalogo Extra</h4>
-                  <div class="small text-muted">Esplora e ordina piatti o bevande aggiuntive del locale</div>
+                  <h4 class="mb-0 fw-bold" style="color: #1e293b; font-size: 1.15rem;">{{ 'Order_ExtraSearchTitle' | loc }}</h4>
+                  <div class="small text-muted">{{ 'Order_ExtraSearchSubtitle' | loc }}</div>
                 </div>
               </div>
               <div class="form-check form-switch m-0">
@@ -625,7 +640,7 @@
                 @if (extraAvailableCategories().length > 0) {
                   <div class="mb-3">
                     <div class="small fw-bold text-secondary mb-2 d-flex align-items-center gap-1">
-                      <span>📁 Categorie Extra Disponibili:</span>
+                      <span>{{ 'Order_ExtraCategoriesTitle' | loc }}</span>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                       @for (cat of extraAvailableCategories(); track cat) {
@@ -653,12 +668,12 @@
                   @if (selectedExtraCategories().size === 0 && !extraSearchTerm()) {
                     <div class="text-center py-4 px-3 text-muted" style="background: white; border-radius: 1rem; border: 1px dashed #cbd5e1;">
                       <span style="font-size: 1.5rem;" class="d-block mb-1">👆</span>
-                      <div class="small">Seleziona una o più categorie oppure digita un termine per esplorare il catalogo extra.</div>
+                      <div class="small">{{ 'Order_ExtraSearchHint' | loc }}</div>
                     </div>
                   } @else if (filteredExtraMenuItems().length === 0) {
                     <div class="text-center py-4 px-3 text-muted" style="background: white; border-radius: 1rem; border: 1px dashed #cbd5e1;">
                       <span style="font-size: 1.5rem;" class="d-block mb-1">🔍</span>
-                      <div class="small fw-bold">Nessun elemento trovato nel catalogo extra per i criteri selezionati.</div>
+                      <div class="small fw-bold">{{ 'Order_ExtraSearchNoResults' | loc }}</div>
                     </div>
                   } @else {
                     <div class="menu-grid">
@@ -779,7 +794,7 @@
           <!-- Totals Breakdown -->
           <div class="p-3 my-3 bg-light rounded" style="border: 1px solid #e2e8f0;">
             <div class="d-flex justify-content-between align-items-center py-1">
-              <span class="text-secondary">Subtotale Piatti:</span>
+              <span class="text-secondary">{{ 'Order_ItemsSubtotalLabel' | loc }}:</span>
               <span class="fw-semibold">€{{ pendingSubtotal().toFixed(2) }}</span>
             </div>
             @if (getEffectiveSeatingFee() > 0) {
@@ -840,12 +855,12 @@
         <div class="modal-content" style="border-radius: 1rem; border: none; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
           <div class="modal-header border-0 pb-0">
             <h5 class="modal-title fw-bold" style="color: #0f172a;">
-              Allergeni: {{ selectedItemForAllergens() }}
+              {{ 'Order_AllergensModalTitle' | loc:selectedItemForAllergens() }}
             </h5>
             <button type="button" class="btn-close" (click)="closeAllergensModal()"></button>
           </div>
           <div class="modal-body py-3">
-            <p class="text-muted small mb-3">Questo piatto contiene o potrebbe contenere i seguenti allergeni:</p>
+            <p class="text-muted small mb-3">{{ 'Order_AllergensModalBody' | loc }}</p>
             <div class="d-flex flex-wrap gap-2">
               @if (selectedItemAllergens().length === 0) {
                 <span class="text-muted small">Nessun allergene specificato.</span>
@@ -859,7 +874,7 @@
             </div>
           </div>
           <div class="modal-footer border-0 pt-0">
-            <button type="button" class="btn btn-secondary btn-sm px-4" style="border-radius: 0.5rem;" (click)="closeAllergensModal()">Chiudi</button>
+            <button type="button" class="btn btn-secondary btn-sm px-4" style="border-radius: 0.5rem;" (click)="closeAllergensModal()">{{ 'Order_BtnClose' | loc }}</button>
           </div>
         </div>
       </div>

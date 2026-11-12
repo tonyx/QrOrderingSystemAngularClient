@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LocPipe } from '../../core/pipes/loc.pipe';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -11,7 +12,7 @@ import { MainLayoutComponent } from '../../shared/components/main-layout/main-la
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, MainLayoutComponent],
+  imports: [CommonModule, FormsModule, RouterModule, MainLayoutComponent, LocPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css',
 })
@@ -211,5 +212,101 @@ export class DashboardComponent implements OnInit {
     if (event) {
       event.preventDefault();
     }
+  }
+
+  getSubscriptionBadgeInfo(sub: any): {
+    badgeClass: string;
+    iconClass: string;
+    labelKey: string;
+    isExpired: boolean;
+    expiresTitle?: string;
+  } {
+    if (!sub) {
+      return {
+        badgeClass: 'bg-secondary-subtle text-secondary border border-secondary',
+        iconClass: 'bi-question-circle',
+        labelKey: 'RestsAdmin_SubUnknown',
+        isExpired: false,
+      };
+    }
+
+    const subType = sub.subscriptionType ?? sub.SubscriptionType;
+    let caseName = '';
+    let endingStr: string | null = null;
+
+    if (typeof subType === 'string') {
+      caseName = subType;
+    } else if (subType && typeof subType === 'object') {
+      caseName = subType.case || subType.Case || subType.name || subType.Name || '';
+      endingStr = subType.ending || subType.Ending || null;
+      if (!endingStr && Array.isArray(subType.fields) && subType.fields.length > 0) {
+        endingStr = subType.fields[0];
+      }
+      if (!endingStr && Array.isArray(subType.Fields) && subType.Fields.length > 0) {
+        endingStr = subType.Fields[0];
+      }
+    }
+
+    if (caseName === 'Endless') {
+      return {
+        badgeClass: 'bg-primary-subtle text-primary border border-primary',
+        iconClass: 'bi-infinity',
+        labelKey: 'RestsAdmin_SubEndless',
+        isExpired: false,
+      };
+    }
+
+    if (caseName === 'PendingPayment') {
+      return {
+        badgeClass: 'bg-warning-subtle text-warning border border-warning',
+        iconClass: 'bi-credit-card-2-front',
+        labelKey: 'RestsAdmin_SubPendingPayment',
+        isExpired: true,
+      };
+    }
+
+    let isExpired = false;
+    let expiresTitle: string | undefined;
+
+    if (endingStr) {
+      const parsed = new Date(endingStr);
+      if (!isNaN(parsed.getTime())) {
+        isExpired = parsed.getTime() < Date.now();
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const formatted = `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} ${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
+        expiresTitle = `Expires: ${formatted}`;
+      }
+    }
+
+    if (caseName === 'Trial') {
+      return {
+        badgeClass: isExpired
+          ? 'bg-danger-subtle text-danger border border-danger'
+          : 'bg-info-subtle text-info border border-info',
+        iconClass: isExpired ? 'bi-exclamation-octagon' : 'bi-clock-history',
+        labelKey: 'RestsAdmin_SubTrial',
+        isExpired,
+        expiresTitle,
+      };
+    }
+
+    if (caseName === 'Ordinary') {
+      return {
+        badgeClass: isExpired
+          ? 'bg-danger-subtle text-danger border border-danger'
+          : 'bg-success-subtle text-success border border-success',
+        iconClass: isExpired ? 'bi-exclamation-octagon' : 'bi-check-circle',
+        labelKey: 'RestsAdmin_SubOrdinary',
+        isExpired,
+        expiresTitle,
+      };
+    }
+
+    return {
+      badgeClass: 'bg-secondary-subtle text-secondary border border-secondary',
+      iconClass: 'bi-question-circle',
+      labelKey: 'RestsAdmin_SubUnknown',
+      isExpired: false,
+    };
   }
 }

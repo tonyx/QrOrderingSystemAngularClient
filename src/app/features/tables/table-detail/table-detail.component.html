@@ -2,7 +2,7 @@
   <div class="table-container">
     @if (errorMessage()) {
       <div class="alert alert-danger shadow-sm text-center py-4 my-5" style="border-radius: 1rem;">
-        <h4 class="fw-bold mb-1">Error</h4>
+        <h4 class="fw-bold mb-1">{{ 'AllOrders_ErrorHeader' | loc }}</h4>
         <p class="mb-0">{{ errorMessage() }}</p>
       </div>
     }
@@ -10,7 +10,7 @@
     @if (loading()) {
       <div class="text-center py-5 my-5">
         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-        <p class="text-muted mt-3 fw-bold">Loading table details...</p>
+        <p class="text-muted mt-3 fw-bold">{{ 'Table_LoadingDetails' | loc }}</p>
       </div>
     } @else if (restaurant(); as rest) {
       @if (table(); as tbl) {
@@ -35,27 +35,27 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mb-4">
-          <h4 class="fw-bold text-dark mb-0">Active Sessions & In-Progress Orders</h4>
+          <h4 class="fw-bold text-dark mb-0">{{ 'Table_ActiveSessionsHeader' | loc }}</h4>
         </div>
 
         @if (!tbl.sessions || tbl.sessions.length === 0) {
           <div class="alert alert-info text-center py-4 shadow-sm" style="border-radius: 1rem;">
             <i class="bi bi-info-circle fs-3 d-block mb-2 text-info"></i>
-            No active customer sessions or orders on this table at the moment.
+            {{ 'Table_NoActiveSessionsAlert' | loc }}
           </div>
         } @else {
           @for (session of tbl.sessions; track session.sessionId) {
             <div class="session-card">
               <div class="session-title">
                 <span>
-                  Session:
+                  {{ 'AllOrders_SessionHeader' | loc }}
                   <span class="badge-session">{{ session.sessionId.substring(0, 8) }}…</span>
                 </span>
                 <span class="text-muted small">Total items: {{ session.items.length }}</span>
               </div>
 
               @if (session.aggregatedItems.length === 0) {
-                <p class="text-muted mb-0 fst-italic">Active session with no items ordered yet.</p>
+                <p class="text-muted mb-0 fst-italic">{{ 'Table_NoItemsInSession' | loc }}</p>
               } @else {
                 <div class="list-group list-group-flush mb-3">
                   @for (order of session.aggregatedItems; track order.dishName + order.status) {
@@ -75,14 +75,14 @@
                             style="border-radius: 0.4rem; font-size: 0.75rem;"
                             (click)="markItemAsDone(session.sessionId, order.dishName)"
                           >
-                            <i class="bi bi-check-lg me-1"></i> Done
+                            <i class="bi bi-check-lg me-1"></i> {{ 'AllOrders_BtnDone' | loc }}
                           </button>
                           <button
                             class="btn btn-outline-danger btn-sm py-1 px-2"
                             style="border-radius: 0.4rem; font-size: 0.75rem;"
                             (click)="promptRejectItem(session.sessionId, order.dishName)"
                           >
-                            <i class="bi bi-x-lg me-1"></i> Reject
+                            <i class="bi bi-x-lg me-1"></i> {{ 'AllOrders_BtnReject' | loc }}
                           </button>
                         </div>
                       }
@@ -97,7 +97,7 @@
                       style="border-radius: 0.4rem; font-weight: 600;"
                       (click)="markAllAsDone(session.sessionId, session.items)"
                     >
-                      <i class="bi bi-check-all me-1"></i> Mark All Done
+                      <i class="bi bi-check-all me-1"></i> {{ 'Table_BtnMarkAllDone' | loc }}
                     </button>
                   }
                 </div>
@@ -138,7 +138,7 @@
           </div>
         }
         <div class="d-flex justify-content-end gap-2 w-100 mt-2">
-          <button class="btn btn-secondary btn-sm px-3" (click)="cancelRejectItem()">Cancel</button>
+          <button class="btn btn-secondary btn-sm px-3" (click)="cancelRejectItem()">{{ 'AdminTables_BtnCancel' | loc }}</button>
           <button class="btn btn-danger btn-sm px-3 fw-bold" (click)="confirmRejectItem()" [disabled]="isRejectingItem()">
             @if (isRejectingItem()) {
               <span class="spinner-border spinner-border-sm me-1" role="status"></span>

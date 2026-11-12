@@ -2,11 +2,13 @@ import { Component, inject, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { CultureSelectorComponent } from '../culture-selector/culture-selector.component';
+import { LocPipe } from '../../../core/pipes/loc.pipe';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, CultureSelectorComponent, LocPipe],
   templateUrl: './main-layout.component.html',
   styleUrls: ['./main-layout.component.css'],
 })

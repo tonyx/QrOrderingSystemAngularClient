@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { LoginComponent } from './features/auth/login/login.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
 import { OnboardingComponent } from './features/restaurant/onboarding/onboarding.component';
+import { ManageRestaurantSubscriptionComponent } from './features/settlement/manage-restaurant-subscription/manage-restaurant-subscription.component';
 import { PublicMenuComponent } from './features/menu/public-menu/public-menu.component';
 import { MenuQrComponent } from './features/menu/menu-qr/menu-qr.component';
 import { RestaurantAdminComponent } from './features/restaurant/restaurant-admin/restaurant-admin.component';
@@ -9,6 +10,7 @@ import { AdminTablesComponent } from './features/tables/admin-tables/admin-table
 import { TableDetailComponent } from './features/tables/table-detail/table-detail.component';
 import { ShowQrsComponent } from './features/tables/show-qrs/show-qrs.component';
 import { OrderComponent } from './features/ordering/order/order.component';
+import { WaiterOrderComponent } from './features/ordering/waiter-order/waiter-order.component';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -29,6 +31,11 @@ export const routes: Routes = [
   {
     path: 'restaurantsAdmin/:restaurantId/onboarding',
     component: OnboardingComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'restaurantsAdmin/:restaurantId/subscription',
+    component: ManageRestaurantSubscriptionComponent,
     canActivate: [authGuard],
   },
   // Menu QR Code page
@@ -72,6 +79,12 @@ export const routes: Routes = [
   {
     path: 'order',
     component: OrderComponent,
+  },
+  // Waiter Table Ordering route matching Blazor (/waiter-order)
+  {
+    path: 'waiter-order',
+    component: WaiterOrderComponent,
+    canActivate: [authGuard],
   },
   {
     path: '',

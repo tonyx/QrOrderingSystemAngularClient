@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LocPipe } from '../../../core/pipes/loc.pipe';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { RestaurantService } from '../../../core/services/restaurant.service';
@@ -9,7 +10,7 @@ import { MainLayoutComponent } from '../../../shared/components/main-layout/main
 @Component({
   selector: 'app-admin-tables',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, MainLayoutComponent],
+  imports: [CommonModule, RouterModule, FormsModule, MainLayoutComponent, LocPipe],
   templateUrl: './admin-tables.component.html',
   styleUrls: ['./admin-tables.component.css'],
 })

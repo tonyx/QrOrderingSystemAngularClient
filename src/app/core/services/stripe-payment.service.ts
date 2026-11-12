@@ -2,7 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { StripeAccountStatus } from '../models/restaurant.models';
+import {
+  StripeAccountStatus,
+  SubscriptionSettingsConfig,
+  CreateSubscriptionIntentRequest,
+  CreateSubscriptionIntentResponse,
+} from '../models/restaurant.models';
 
 export interface ConnectAccountLinkResponse {
   url?: string;
@@ -16,6 +21,38 @@ export interface ConnectAccountLinkResponse {
 export class StripePaymentService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = environment.apiBaseUrl ? environment.apiBaseUrl.replace(/\/$/, '') : '';
+
+  /**
+   * Retrieves platform SaaS subscription pricing tiers, currency, and multi-month discount percentage configuration.
+   */
+  getSubscriptionConfig(): Observable<SubscriptionSettingsConfig> {
+    const url = `${this.baseUrl}/api/StripePayment/subscription-config`;
+    return this.http.get<any>(url).pipe(
+      map((res) => ({
+        monthlyFeeCents: Number(res?.monthlyFeeCents ?? res?.MonthlyFeeCents ?? 2990),
+        monthlyFeeCurrency: String(res?.monthlyFeeCurrency ?? res?.MonthlyFeeCurrency ?? 'EUR'),
+        discount3MonthsPercent: Number(res?.discount3MonthsPercent ?? res?.Discount3MonthsPercent ?? 10.0),
+        discount6MonthsPercent: Number(res?.discount6MonthsPercent ?? res?.Discount6MonthsPercent ?? 15.0),
+        discount12MonthsPercent: Number(res?.discount12MonthsPercent ?? res?.Discount12MonthsPercent ?? 20.0),
+      }))
+    );
+  }
+
+  /**
+   * Creates a Stripe Checkout session to purchase or extend a restaurant's platform subscription.
+   */
+  createSubscriptionIntent(
+    restaurantId: string,
+    payload: CreateSubscriptionIntentRequest
+  ): Observable<CreateSubscriptionIntentResponse> {
+    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/create-subscription-intent`;
+    return this.http.post<any>(url, payload).pipe(
+      map((res) => ({
+        checkoutUrl: res?.checkoutUrl ?? res?.CheckoutUrl ?? '',
+        isRealStripe: Boolean(res?.isRealStripe ?? res?.IsRealStripe ?? false),
+      }))
+    );
+  }
 
   /**
    * Retrieves Stripe Connect account status and verification requirements.

@@ -28,7 +28,7 @@
         (click)="closeSidebar()"
       >
         <i class="bi bi-list-nested"></i>
-        <span>Restaurant Admin</span>
+        <span>{{ 'Nav_RestaurantAdmin' | loc }}</span>
       </a>
 
       <a
@@ -37,7 +37,7 @@
         (click)="closeSidebar()"
       >
         <i class="bi bi-house-door-fill"></i>
-        <span>Home</span>
+        <span>{{ 'Nav_Home' | loc }}</span>
       </a>
 
       <a
@@ -47,7 +47,7 @@
         class="nav-link-item"
       >
         <i class="bi bi-info-circle"></i>
-        <span>Info & Support</span>
+        <span>{{ 'Nav_InfoSupport' | loc }}</span>
       </a>
 
       @if (authService.currentUser()?.email) {
@@ -59,7 +59,7 @@
 
       <button type="button" class="nav-link-item" (click)="logout()">
         <i class="bi bi-arrow-bar-left"></i>
-        <span>Logout</span>
+        <span>{{ 'Nav_Logout' | loc }}</span>
       </button>
     </nav>
   </aside>
@@ -73,7 +73,7 @@
           <ol class="breadcrumb mb-0 align-items-center">
             <li class="breadcrumb-item">
               <a routerLink="/restaurantsAdmin" class="text-decoration-none text-secondary">
-                <i class="bi bi-house me-1"></i> Admin
+                <i class="bi bi-house me-1"></i> {{ 'Nav_BreadcrumbAdmin' | loc }}
               </a>
             </li>
             @if (pageTitle()) {
@@ -86,6 +86,8 @@
       </div>
 
       <div class="top-bar-right">
+        <app-culture-selector class="me-2"></app-culture-selector>
+
         @if (authService.currentUser()?.email) {
           <span class="badge bg-light text-dark border d-none d-sm-inline-flex align-items-center">
             <i class="bi bi-person-circle me-1 text-primary"></i>

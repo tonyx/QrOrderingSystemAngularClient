@@ -116,7 +116,7 @@
                   [disabled]="isUpdatingSelfOrdering()"
                 />
                 <label class="form-check-label small text-dark w-100" for="radioCashOnly">
-                  <div class="fw-semibold">Pay at Register</div>
+                  <div class="fw-semibold">{{ 'RestAdmin_SelfOrderingCashOnly' | loc }}</div>
                   <div class="text-secondary text-wrap mt-1" style="font-size: 0.75rem; line-height: 1.25;">
                     Self-ordering enabled. Customer pays in person at register.
                   </div>
@@ -142,7 +142,7 @@
                   [disabled]="isUpdatingSelfOrdering() || !!rest.paymentConfig?.isCashOnly"
                 />
                 <label class="form-check-label small text-dark w-100" for="radioCacheAndStripe">
-                  <div class="fw-semibold">Pay Online or at Register</div>
+                  <div class="fw-semibold">{{ 'RestAdmin_SelfOrderingCacheAndStripe' | loc }}</div>
                   <div class="text-secondary text-wrap mt-1" style="font-size: 0.75rem; line-height: 1.25;">
                     Diners choose to pay online via card/Stripe or at register.
                   </div>
@@ -168,7 +168,7 @@
                   [disabled]="isUpdatingSelfOrdering() || !!rest.paymentConfig?.isCashOnly"
                 />
                 <label class="form-check-label small text-dark w-100" for="radioOnlyStripe">
-                  <div class="fw-semibold">Pay Online Only</div>
+                  <div class="fw-semibold">{{ 'RestAdmin_SelfOrderingOnlyStripe' | loc }}</div>
                   <div class="text-secondary text-wrap mt-1" style="font-size: 0.75rem; line-height: 1.25;">
                     Strict self-ordering with mandatory upfront payment.
                   </div>
@@ -183,19 +183,19 @@
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <span class="fw-bold text-dark fs-6 d-flex align-items-center gap-2">
-                <i class="bi bi-card-checklist"></i> Extra Catalogue
+                <i class="bi bi-card-checklist"></i> {{ 'RestAdmin_BtnExtraCatalogue' | loc }}
               </span>
               @if (!rest.extraCatalogueSetting || rest.extraCatalogueSetting.isUnavailable) {
                 <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2 py-1 rounded">
-                  <i class="bi bi-x-circle me-1"></i> Not Initialized
+                  <i class="bi bi-x-circle me-1"></i> {{ 'RestAdmin_ExtraCatalogueNotInit' | loc }}
                 </span>
               } @else if (rest.extraCatalogueSetting.isEnabled) {
                 <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded">
-                  <i class="bi bi-check-circle-fill me-1"></i> Enabled
+                  <i class="bi bi-check-circle-fill me-1"></i> {{ 'RestAdmin_ExtraCatalogueEnabled' | loc }}
                 </span>
               } @else if (rest.extraCatalogueSetting.isDisabled) {
                 <span class="badge bg-warning-subtle text-warning border border-warning px-2 py-1 rounded">
-                  <i class="bi bi-dash-circle-fill me-1"></i> Disabled
+                  <i class="bi bi-dash-circle-fill me-1"></i> {{ 'RestAdmin_ExtraCatalogueDisabled' | loc }}
                 </span>
               }
               @if (isUpdatingExtraCatalogue()) {
@@ -244,10 +244,10 @@
           <div class="col-6 col-md-auto">
             <div class="custom-tooltip-wrapper w-100">
               <a [routerLink]="['/m', rest.restaurantId]" class="btn btn-outline-secondary btn-sm fw-semibold w-100" target="_blank">
-                <i class="bi bi-book me-1"></i> View Menu
+                <i class="bi bi-book me-1"></i> {{ 'RestAdmin_BtnViewMenu' | loc }}
               </a>
               <div class="custom-tooltip-box">
-                <span>Preview the customer-facing digital menu in a new browser window.</span>
+                <span>{{ 'RestAdmin_TooltipViewMenu' | loc }}</span>
                 <div>
                   <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Digital Menu Setup & Customer View', rest.restaurantId)">
                     <i class="bi bi-robot"></i> Ask Assistant
@@ -265,7 +265,7 @@
                 <i class="bi bi-qr-code me-1"></i> QR Menu
               </button>
               <div class="custom-tooltip-box">
-                <span>Generate and view a printable QR code leading directly to the digital menu.</span>
+                <span>{{ 'RestAdmin_TooltipQrMenu' | loc }}</span>
                 <div>
                   <button type="button" class="tooltip-ask-btn" (click)="askAssistant('QR Code Menu Generation', rest.restaurantId)">
                     <i class="bi bi-robot"></i> Ask Assistant
@@ -280,10 +280,10 @@
           <div class="col-6 col-md-auto">
             <div class="custom-tooltip-wrapper w-100">
               <a [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'tables']" class="btn btn-outline-primary btn-sm fw-semibold w-100">
-                <i class="bi bi-table me-1"></i> Manage Tables
+                <i class="bi bi-table me-1"></i> {{ 'RestAdmin_BtnManageTables' | loc }}
               </a>
               <div class="custom-tooltip-box">
-                <span>Define dining area layout, table numbers, and generate table-specific QR codes.</span>
+                <span>{{ 'RestAdmin_TooltipManageTables' | loc }}</span>
                 <div>
                   <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Table Service & Table-specific QR Codes', rest.restaurantId)">
                     <i class="bi bi-robot"></i> Ask Assistant
@@ -298,10 +298,10 @@
           <div class="col-6 col-md-auto">
             <div class="custom-tooltip-wrapper w-100">
               <button type="button" class="btn btn-outline-success btn-sm fw-semibold w-100" (click)="noopAction($event)">
-                <i class="bi bi-plus-circle me-1"></i> Create / Clone Menu
+                <i class="bi bi-plus-circle me-1"></i> {{ 'RestAdmin_BtnCreateCloneMenu' | loc }}
               </button>
               <div class="custom-tooltip-box">
-                <span>Create a new menu catalog or clone the current menu for another seasonal or service schedule.</span>
+                <span>{{ 'RestAdmin_TooltipCreateCloneMenu' | loc }}</span>
                 <div>
                   <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Creating and Cloning Menus', rest.restaurantId)">
                     <i class="bi bi-robot"></i> Ask Assistant
@@ -316,10 +316,10 @@
           <div class="col-6 col-md-auto">
             <div class="custom-tooltip-wrapper w-100">
               <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold w-100" (click)="noopAction($event)">
-                <i class="bi bi-download me-1"></i> Download
+                <i class="bi bi-download me-1"></i> {{ 'RestAdmin_BtnDownloadMenu' | loc }}
               </button>
               <div class="custom-tooltip-box">
-                <span>Export and download the current menu catalog as a JSON backup.</span>
+                <span>{{ 'RestAdmin_TooltipDownloadMenu' | loc }}</span>
                 <div>
                   <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Download Menu JSON', rest.restaurantId)">
                     <i class="bi bi-robot"></i> Ask Assistant
@@ -334,10 +334,10 @@
           <div class="col-6 col-md-auto">
             <div class="custom-tooltip-wrapper w-100">
               <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold w-100" (click)="noopAction($event)">
-                <i class="bi bi-upload me-1"></i> Import
+                <i class="bi bi-upload me-1"></i> {{ 'RestAdmin_BtnImportMenu' | loc }}
               </button>
               <div class="custom-tooltip-box">
-                <span>Import and restore a menu catalog from an exported JSON file.</span>
+                <span>{{ 'RestAdmin_TooltipImportMenu' | loc }}</span>
                 <div>
                   <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Import Menu JSON', rest.restaurantId)">
                     <i class="bi bi-robot"></i> Ask Assistant
@@ -351,11 +351,11 @@
           <!-- Subscription / Stripe Connect -->
           <div class="col-6 col-md-auto">
             <div class="custom-tooltip-wrapper w-100">
-              <a [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'onboarding']" class="btn btn-outline-success btn-sm fw-semibold w-100">
-                <i class="bi bi-credit-card me-1"></i> Subscription
+              <a [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'subscription']" class="btn btn-outline-success btn-sm fw-semibold w-100">
+                <i class="bi bi-credit-card me-1"></i> {{ 'RestAdmin_BtnSubscription' | loc }}
               </a>
               <div class="custom-tooltip-box">
-                <span>Manage subscription status, renewal date, upgrade plans, or payment methods.</span>
+                <span>{{ 'RestAdmin_TooltipSubscription' | loc }}</span>
                 <div>
                   <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Subscription Management', rest.restaurantId)">
                     <i class="bi bi-robot"></i> Ask Assistant
@@ -371,10 +371,10 @@
             <div class="col-6 col-md-auto">
               <div class="custom-tooltip-wrapper w-100">
                 <a href="javascript:void(0)" class="btn btn-outline-info btn-sm fw-semibold w-100" (click)="noopAction($event)">
-                  <i class="bi bi-card-checklist me-1"></i> Extra Catalogue
+                  <i class="bi bi-card-checklist me-1"></i> {{ 'RestAdmin_BtnExtraCatalogue' | loc }}
                 </a>
                 <div class="custom-tooltip-box">
-                  <span>Configure extra catalogue add-ons, modifiers, and upsell items.</span>
+                  <span>{{ 'RestAdmin_TooltipExtraCatalogue' | loc }}</span>
                   <div>
                     <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Extra Catalogue & Upsells', rest.restaurantId)">
                       <i class="bi bi-robot"></i> Ask Assistant
@@ -393,14 +393,14 @@
     <div class="card mt-4 shadow-sm border-0">
       <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
         <h5 class="mb-0 fw-bold">
-          <i class="bi bi-cash-coin text-success me-2"></i>Tip Options
+          <i class="bi bi-cash-coin text-success me-2"></i>{{ 'RestAdmin_TipOptionsHeader' | loc }}
         </h5>
         <button
           class="btn btn-outline-secondary btn-sm"
           (click)="resetTipsHints()"
           [disabled]="isUpdatingTips()"
         >
-          <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Tips
+          <i class="bi bi-arrow-counterclockwise me-1"></i> {{ 'RestAdmin_BtnResetTips' | loc }}
         </button>
       </div>
       <div class="card-body">
@@ -425,13 +425,13 @@
           </label>
         </div>
 
-        <h6 class="fw-bold mt-3">Current Tip Hints:</h6>
+        <h6 class="fw-bold mt-3">{{ 'RestAdmin_CurrentTipHintsHeader' | loc }}</h6>
         @if (rest.tipsHints && rest.tipsHints.length > 0) {
           <div class="d-flex flex-wrap gap-2 mb-3">
             @for (item of rest.tipsHints; track item.percentage) {
               @if (item.isDefault) {
                 <div class="badge bg-primary text-white d-flex align-items-center p-2 rounded shadow-sm" style="font-size: 0.9rem;">
-                  <span>{{ item.percentage }}% <small class="fw-bold ms-1">(Default)</small></span>
+                  <span>{{ item.percentage }}% <small class="fw-bold ms-1">{{ 'RestAdmin_DefaultTipBadge' | loc }}</small></span>
                   <button
                     type="button"
                     class="btn btn-link p-0 text-white ms-2 text-decoration-none"
@@ -518,7 +518,7 @@
         }
 
         <p class="mb-2">
-          Current Seating Fee: <strong>€{{ rest.seatingFee?.toFixed(2) }}</strong>
+          {{ 'RestAdmin_CurrentSeatingFeeLabel' | loc }} <strong>€{{ rest.seatingFee?.toFixed(2) }}</strong>
         </p>
 
         <div class="input-group" style="max-width: 350px;">
@@ -551,7 +551,7 @@
     <div class="card mt-4 shadow-sm border-0 mb-5">
       <div class="card-header bg-white py-3">
         <h5 class="mb-0 fw-bold">
-          <i class="bi bi-receipt text-warning me-2"></i>VAT Department Codes & Rates
+          <i class="bi bi-receipt text-warning me-2"></i>{{ 'RestAdmin_VatSectionHeader' | loc }}
         </h5>
       </div>
       <div class="card-body">
@@ -610,7 +610,7 @@
               <input
                 type="number"
                 class="form-control"
-                placeholder="Rate"
+                [placeholder]="'RestAdmin_VatRatePlaceholder' | loc"
                 [(ngModel)]="newVatRateInput"
                 min="0"
                 max="99"
@@ -659,7 +659,7 @@
           </p>
         </div>
         <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
-          <button type="button" class="btn btn-secondary px-4" (click)="closeAssistant()">Close</button>
+          <button type="button" class="btn btn-secondary px-4" (click)="closeAssistant()">{{ 'RestAdmin_BtnClose' | loc }}</button>
         </div>
       </div>
     </div>
@@ -678,7 +678,7 @@
       <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
         <div class="modal-header bg-dark text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
           <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0">
-            <i class="bi bi-qr-code"></i> Digital Menu QR Code
+            <i class="bi bi-qr-code"></i> {{ 'RestAdmin_DigitalMenuQrModalTitle' | loc }}
           </h5>
           <button type="button" class="btn-close btn-close-white" (click)="closeMenuQrModal()"></button>
         </div>
@@ -715,10 +715,10 @@
             <i class="bi bi-arrows-fullscreen me-1"></i> Dedicated Stand Page
           </a>
           <button type="button" class="btn btn-secondary px-3 ms-auto" (click)="closeMenuQrModal()">
-            Close
+            {{ 'RestAdmin_BtnClose' | loc }}
           </button>
           <button type="button" class="btn btn-primary px-4 fw-bold" (click)="printMenuQr()">
-            <i class="bi bi-printer-fill me-1"></i> Print QR
+            <i class="bi bi-printer-fill me-1"></i> {{ 'RestAdmin_BtnPrintQr' | loc }}
           </button>
         </div>
       </div>

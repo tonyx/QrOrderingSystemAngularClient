@@ -2,7 +2,10 @@ import { Component, OnInit, OnDestroy, inject, signal, computed } from '@angular
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { RestaurantService } from '../../../core/services/restaurant.service';
+import { RestaurantService, parseTranslationsMap, parseAllergensMap } from '../../../core/services/restaurant.service';
+import { LocalizationService } from '../../../core/services/localization.service';
+import { LocPipe } from '../../../core/pipes/loc.pipe';
+import { CultureSelectorComponent } from '../../../shared/components/culture-selector/culture-selector.component';
 import { PublicRestaurantDetails, MenuItemModel } from '../../../core/models/menu.models';
 import { TableModel, TableSessionModel, OrderItemModel, AggregatedOrderItem } from '../../../core/models/restaurant.models';
 
@@ -21,7 +24,7 @@ interface PaymentBreakdownItem {
 @Component({
   selector: 'app-order',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LocPipe, CultureSelectorComponent],
   templateUrl: './order.component.html',
   styleUrls: ['./order.component.css'],
 })
@@ -29,6 +32,7 @@ export class OrderComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly restaurantService = inject(RestaurantService);
+  readonly loc = inject(LocalizationService);
 
   // Query Params
   restaurantId = '';
@@ -78,8 +82,12 @@ export class OrderComponent implements OnInit, OnDestroy {
   confirmCountdown = signal<number>(0);
   private confirmTimerId: any = null;
 
-  // Language translation
-  selectedLang = 'default';
+  // Menu Language translation (orthogonal to UI language)
+  selectedLang = signal<string>('default');
+
+  onMenuLanguageChange(lang: string): void {
+    this.selectedLang.set(lang);
+  }
 
   // Stripe & Online Payment
   isStripeConfigEnabled = signal(true);
@@ -171,7 +179,7 @@ export class OrderComponent implements OnInit, OnDestroy {
     if (!Array.isArray(rawItems)) return [];
 
     const names = new Set<string>();
-    const lang = this.selectedLang;
+    const lang = (this.selectedLang() || 'default').toLowerCase();
 
     for (const item of rawItems) {
       if (item.available === false || item.Available === false) continue;
@@ -180,8 +188,9 @@ export class OrderComponent implements OnInit, OnDestroy {
         names.add(defaultName);
       }
 
-      if (lang !== 'default' && item.translations && item.translations[lang]?.name) {
-        const transName = item.translations[lang].name;
+      const transMap = parseTranslationsMap(item.translations ?? item.Translations);
+      if (lang !== 'default' && transMap[lang]?.name) {
+        const transName = transMap[lang].name;
         if (transName.toLowerCase().includes(term)) {
           names.add(transName);
         }
@@ -206,7 +215,7 @@ export class OrderComponent implements OnInit, OnDestroy {
     }
 
     const results: MenuItemModel[] = [];
-    const lang = this.selectedLang;
+    const lang = (this.selectedLang() || 'default').toLowerCase();
 
     rawItems.forEach((rawItem: any, idx: number) => {
       const isAvail = rawItem?.available ?? rawItem?.Available ?? true;
@@ -233,8 +242,9 @@ export class OrderComponent implements OnInit, OnDestroy {
         let descStr = typeof optDesc === 'string' ? optDesc : (optDesc?.fields?.[0] || optDesc?.value || '');
         let descMatch = descStr.toLowerCase().includes(term);
 
-        if (lang !== 'default' && rawItem?.translations && rawItem.translations[lang]) {
-          const trans = rawItem.translations[lang];
+        const transMap = parseTranslationsMap(rawItem?.translations ?? rawItem?.Translations);
+        if (lang !== 'default' && transMap[lang]) {
+          const trans = transMap[lang];
           if (trans.name && trans.name.toLowerCase().includes(term)) nameMatch = true;
           if (trans.description && trans.description.toLowerCase().includes(term)) descMatch = true;
         }
@@ -274,8 +284,8 @@ export class OrderComponent implements OnInit, OnDestroy {
         price,
         imageUrl: null,
         available: true,
-        allergens: rawItem?.allergens ?? rawItem?.Allergens ?? {},
-        translations: rawItem?.translations ?? rawItem?.Translations ?? {},
+        allergens: parseAllergensMap(rawItem?.allergens ?? rawItem?.Allergens),
+        translations: parseTranslationsMap(rawItem?.translations ?? rawItem?.Translations),
         isExtra: true,
       });
     });
@@ -514,7 +524,7 @@ export class OrderComponent implements OnInit, OnDestroy {
       .addMenuItemPerSession(this.restaurantId, this.tableNumber, tbl.tableId, sess, itemName)
       .subscribe({
         next: () => {
-          this.showToast(`${itemName} • Aggiunto all'ordine`);
+          this.showToast(`${itemName} • ${this.loc.translate('Order_AddedToast')}`);
           this.refreshOrders();
           this.isBusy.set(false);
         },
@@ -812,14 +822,25 @@ export class OrderComponent implements OnInit, OnDestroy {
     this.selectedItemForAllergens.set(itemName);
     const list: string[] = [];
     if (allergens) {
-      Object.values(allergens).forEach((val) => {
-        if (typeof val === 'string' && val.trim()) {
-          val.split(',').forEach((a) => {
-            const clean = a.trim();
-            if (clean && !list.includes(clean)) list.push(clean);
-          });
-        }
-      });
+      const currentMenuLang = (this.selectedLang() || 'default').toLowerCase();
+      let allergensStr = '';
+
+      if (currentMenuLang !== 'default' && allergens[currentMenuLang] && allergens[currentMenuLang].trim()) {
+        allergensStr = allergens[currentMenuLang];
+      } else if (allergens['en'] && allergens['en'].trim()) {
+        allergensStr = allergens['en'];
+      } else if (allergens['it'] && allergens['it'].trim()) {
+        allergensStr = allergens['it'];
+      } else {
+        allergensStr = Object.values(allergens).find((v) => typeof v === 'string' && v.trim()) ?? '';
+      }
+
+      if (allergensStr) {
+        allergensStr.split(',').forEach((a) => {
+          const clean = a.trim();
+          if (clean && !list.includes(clean)) list.push(clean);
+        });
+      }
     }
     this.selectedItemAllergens.set(list);
     this.showAllergensModal.set(true);
@@ -908,15 +929,23 @@ export class OrderComponent implements OnInit, OnDestroy {
   // --- UI Helpers ---
 
   getItemName(item: MenuItemModel): string {
-    if (this.selectedLang !== 'default' && item.translations && item.translations[this.selectedLang]?.name) {
-      return item.translations[this.selectedLang].name!;
+    const lang = (this.selectedLang() || 'default').toLowerCase();
+    if (lang !== 'default' && item.translations) {
+      const trans = item.translations[lang];
+      if (trans && trans.name && trans.name.trim()) {
+        return trans.name;
+      }
     }
     return item.name;
   }
 
   getItemDescription(item: MenuItemModel): string {
-    if (this.selectedLang !== 'default' && item.translations && item.translations[this.selectedLang]?.description) {
-      return item.translations[this.selectedLang].description!;
+    const lang = (this.selectedLang() || 'default').toLowerCase();
+    if (lang !== 'default' && item.translations) {
+      const trans = item.translations[lang];
+      if (trans && trans.description && trans.description.trim()) {
+        return trans.description;
+      }
     }
     return item.description;
   }

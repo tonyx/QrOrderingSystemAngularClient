@@ -1,8 +1,8 @@
-<app-main-layout pageTitle="Print Table QR Codes">
+<app-main-layout [pageTitle]="'ShowQrs_PageTitle' | loc">
   <div class="qr-print-container">
     @if (errorMessage()) {
       <div class="alert alert-danger shadow-sm text-center py-4 my-5" style="border-radius: 1rem;">
-        <h4 class="fw-bold mb-1">Error</h4>
+        <h4 class="fw-bold mb-1">{{ 'ShowQrs_ErrorHeader' | loc }}</h4>
         <p class="mb-0">{{ errorMessage() }}</p>
       </div>
     }
@@ -10,20 +10,20 @@
     @if (loading()) {
       <div class="text-center py-5 my-5">
         <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-        <p class="text-muted mt-3 fw-bold">Loading table QR codes...</p>
+        <p class="text-muted mt-3 fw-bold">{{ 'ShowQrs_LoadingTableQrCodes' | loc }}</p>
       </div>
     } @else if (restaurant(); as rest) {
       <div class="qr-sheet-header d-flex justify-content-between align-items-center flex-wrap gap-3">
         <div>
           <h2 class="fw-bold mb-1 text-white">{{ rest.restaurantName }} - Table QR Sheet</h2>
-          <p class="mb-0 text-white-50 small">Print and cut out individual QR codes for each table.</p>
+          <p class="mb-0 text-white-50 small">{{ 'ShowQrs_TableQrSheetSubtitle' | loc }}</p>
         </div>
         <div class="d-flex align-items-center gap-2 no-print">
           <a [routerLink]="['/m', rest.restaurantId]" class="btn btn-outline-light fw-bold" target="_blank">
-            <i class="bi bi-book me-1"></i> Preview Menu
+            <i class="bi bi-book me-1"></i> {{ 'ShowQrs_BtnPreviewMenu' | loc }}
           </a>
           <button type="button" class="btn btn-light fw-bold" (click)="printSheet()">
-            <i class="bi bi-printer-fill me-1"></i> Print Sheet
+            <i class="bi bi-printer-fill me-1"></i> {{ 'ShowQrs_BtnPrintSheet' | loc }}
           </button>
           <a [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'tables']" class="btn btn-outline-light fw-bold">
             <i class="bi bi-arrow-left me-1"></i> Back to Tables
@@ -33,7 +33,7 @@
 
       @if (!rest.parsedTables || rest.parsedTables.length === 0) {
         <div class="alert alert-info text-center py-4">
-          No tables registered for this restaurant yet.
+          {{ 'AdminTables_NoTablesRegistered' | loc }}
         </div>
       } @else {
         <div class="qr-grid">
@@ -56,7 +56,7 @@
               />
 
               <div class="qr-card-footer">
-                Scan with phone camera to order
+                {{ 'ShowQrs_ScanInstruction' | loc }}
               </div>
             </div>
           }

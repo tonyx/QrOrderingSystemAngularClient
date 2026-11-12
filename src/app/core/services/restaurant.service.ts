@@ -15,7 +15,68 @@ import {
   OrderItemModel,
   AggregatedOrderItem,
 } from '../models/restaurant.models';
-import { PublicRestaurantDetails, MenuItemModel } from '../models/menu.models';
+import { PublicRestaurantDetails, MenuItemModel, MenuItemTranslation } from '../models/menu.models';
+
+export function parseTranslationsMap(rawTrans: any): Record<string, MenuItemTranslation> {
+  const translations: Record<string, MenuItemTranslation> = {};
+  if (!rawTrans) return translations;
+
+  if (Array.isArray(rawTrans)) {
+    rawTrans.forEach((entry: any) => {
+      if (Array.isArray(entry) && entry.length >= 2) {
+        const lCode = String(entry[0]).toLowerCase();
+        const val = entry[1];
+        translations[lCode] = {
+          name: val?.name ?? val?.Name ?? '',
+          description: val?.description ?? val?.Description ?? '',
+        };
+      } else if (entry && typeof entry === 'object') {
+        const lCode = String(entry.key ?? entry.Key ?? '').toLowerCase();
+        const val = entry.value ?? entry.Value;
+        if (lCode) {
+          translations[lCode] = {
+            name: val?.name ?? val?.Name ?? '',
+            description: val?.description ?? val?.Description ?? '',
+          };
+        }
+      }
+    });
+  } else if (typeof rawTrans === 'object') {
+    Object.keys(rawTrans).forEach((key) => {
+      const lCode = key.toLowerCase();
+      const val = rawTrans[key];
+      translations[lCode] = {
+        name: val?.name ?? val?.Name ?? '',
+        description: val?.description ?? val?.Description ?? '',
+      };
+    });
+  }
+  return translations;
+}
+
+export function parseAllergensMap(rawAllergens: any): Record<string, string> {
+  const allergens: Record<string, string> = {};
+  if (!rawAllergens) return allergens;
+
+  if (Array.isArray(rawAllergens)) {
+    rawAllergens.forEach((entry: any) => {
+      if (Array.isArray(entry) && entry.length >= 2) {
+        allergens[String(entry[0]).toLowerCase()] = String(entry[1] || '');
+      } else if (entry && typeof entry === 'object') {
+        const lCode = String(entry.key ?? entry.Key ?? '').toLowerCase();
+        const val = entry.value ?? entry.Value;
+        if (lCode) {
+          allergens[lCode] = String(val || '');
+        }
+      }
+    });
+  } else if (typeof rawAllergens === 'object') {
+    Object.keys(rawAllergens).forEach((key) => {
+      allergens[key.toLowerCase()] = String(rawAllergens[key] || '');
+    });
+  }
+  return allergens;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -285,6 +346,49 @@ export class RestaurantService {
       TableId: tableId,
       SessionId: sessionId,
       MenuItemName: menuItemName,
+    });
+  }
+
+  addOrderItem(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string, menuItemName: string, comment?: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/item/add`;
+    return this.http.post<void>(url, {
+      TableNum: tableNumber,
+      TableId: tableId,
+      SessionId: sessionId,
+      OrderItemId: orderItemId,
+      MenuItemName: menuItemName,
+      Comment: comment || null,
+    });
+  }
+
+  setOrderItemComment(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string, comment: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/item/comment/set`;
+    return this.http.post<void>(url, {
+      TableNum: tableNumber,
+      TableId: tableId,
+      SessionId: sessionId,
+      OrderItemId: orderItemId,
+      Comment: comment,
+    });
+  }
+
+  unsetOrderItemComment(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/item/comment/unset`;
+    return this.http.post<void>(url, {
+      TableNum: tableNumber,
+      TableId: tableId,
+      SessionId: sessionId,
+      OrderItemId: orderItemId,
+    });
+  }
+
+  removeOrderItemById(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/item/remove`;
+    return this.http.post<void>(url, {
+      TableNum: tableNumber,
+      TableId: tableId,
+      SessionId: sessionId,
+      OrderItemId: orderItemId,
     });
   }
 
@@ -729,6 +833,14 @@ export class RestaurantService {
       ratingStats = { mean, stdDev: Math.sqrt(variance) };
     }
 
+    // Parse translations map (F# Map<string, MenuItemTranslation> may serialize as object, array of pairs, or array of Key/Value)
+    const rawTrans = rawItem?.translations ?? rawItem?.Translations;
+    const translations = parseTranslationsMap(rawTrans);
+
+    // Parse allergens map (F# Map<string, string> or object)
+    const rawAllergens = rawItem?.allergens ?? rawItem?.Allergens;
+    const allergens = parseAllergensMap(rawAllergens);
+
     return {
       name,
       category,
@@ -737,8 +849,8 @@ export class RestaurantService {
       price,
       imageUrl,
       available: rawItem?.available ?? rawItem?.Available ?? true,
-      allergens: rawItem?.allergens ?? rawItem?.Allergens ?? {},
-      translations: rawItem?.translations ?? rawItem?.Translations ?? {},
+      allergens,
+      translations,
       isExtra: false,
       fiveStarVotesCount,
       fourStarVotesCount,
@@ -1227,15 +1339,17 @@ export class RestaurantService {
             });
           }
 
-          // Aggregated items: group by dishName + status + paymentMethod
+          // Aggregated items: group by dishName + comment + status + paymentMethod
           const aggregatedMap = new Map<string, AggregatedOrderItem>();
           items.forEach((it) => {
             const pmKey = it.paymentMethod ? `${it.paymentMethod.icon}_${it.paymentMethod.label}` : 'none';
-            const key = `${it.dishName}__${it.status}__${pmKey}`;
+            const cKey = it.comment ? it.comment.trim() : '';
+            const key = `${it.dishName}__${cKey}__${it.status}__${pmKey}`;
             if (!aggregatedMap.has(key)) {
               aggregatedMap.set(key, {
                 quantity: 0,
                 dishName: it.dishName,
+                comment: it.comment || null,
                 status: it.status,
                 isConfirmed: it.isConfirmed,
                 isPending: it.isPending,
@@ -1243,9 +1357,14 @@ export class RestaurantService {
                 isRejected: it.isRejected,
                 rejectionReason: it.rejectionReason,
                 paymentMethod: it.paymentMethod,
+                itemIds: [],
               });
             }
-            aggregatedMap.get(key)!.quantity += 1;
+            const agg = aggregatedMap.get(key)!;
+            agg.quantity += 1;
+            if (it.id) {
+              agg.itemIds.push(it.id);
+            }
           });
 
           // Fiscal metadata

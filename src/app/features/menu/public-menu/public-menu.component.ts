@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { RestaurantService } from '../../../core/services/restaurant.service';
+import { LocPipe } from '../../../core/pipes/loc.pipe';
 import { PublicRestaurantDetails, MenuItemModel } from '../../../core/models/menu.models';
 
 interface CategoryGroup {
@@ -13,7 +14,7 @@ interface CategoryGroup {
 @Component({
   selector: 'app-public-menu',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, LocPipe],
   templateUrl: './public-menu.component.html',
   styleUrl: './public-menu.component.css',
 })

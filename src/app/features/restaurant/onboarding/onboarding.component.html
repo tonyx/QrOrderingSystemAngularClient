@@ -16,7 +16,7 @@
   <!-- Error Alert -->
   @if (errorMessage()) {
     <div class="alert alert-danger shadow-sm">
-      <strong>Error:</strong> {{ errorMessage() }}
+      <strong>{{ 'OnBoarding_ErrorLabel' | loc }}</strong> {{ errorMessage() }}
     </div>
   }
 
@@ -35,19 +35,19 @@
         <div class="card shadow-sm border-0 h-100">
           <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-              <h4 class="card-title mb-0 fw-bold">Payment Account Status</h4>
+              <h4 class="card-title mb-0 fw-bold">{{ 'OnBoarding_PaymentAccountStatusTitle' | loc }}</h4>
 
               @if (accountStatus()?.isConnected && accountStatus()?.detailsSubmitted && accountStatus()?.chargesEnabled) {
                 <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">
-                  <i class="bi bi-check-circle-fill me-1"></i> Connected & Ready
+                  <i class="bi bi-check-circle-fill me-1"></i> {{ 'OnBoarding_BadgeConnectedReady' | loc }}
                 </span>
               } @else if (accountStatus()?.isConnected) {
                 <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill">
-                  <i class="bi bi-exclamation-triangle-fill me-1"></i> Setup Incomplete
+                  <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ 'OnBoarding_BadgeSetupIncomplete' | loc }}
                 </span>
               } @else {
                 <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill">
-                  <i class="bi bi-dash-circle-fill me-1"></i> Not Connected
+                  <i class="bi bi-dash-circle-fill me-1"></i> {{ 'OnBoarding_BadgeNotConnected' | loc }}
                 </span>
               }
             </div>
@@ -61,7 +61,7 @@
               <div class="p-3 bg-light rounded-3 mb-4 border">
                 <div class="row align-items-center g-3">
                   <div class="col-sm-6">
-                    <small class="text-uppercase text-muted fw-bold d-block">Stripe Account ID</small>
+                    <small class="text-uppercase text-muted fw-bold d-block">{{ 'OnBoarding_StripeAccountIdLabel' | loc }}</small>
                     <span class="font-monospace fw-semibold fs-6">
                       {{ accountStatus()?.stripeAccountId || restaurant()?.paymentConfig?.stripeAccountId }}
                     </span>
@@ -109,33 +109,33 @@
                   @if (isActionProcessing()) {
                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                   }
-                  <i class="bi bi-pencil-square me-1"></i> Update Account Info
+                  <i class="bi bi-pencil-square me-1"></i> {{ 'OnBoarding_BtnUpdateAccountInfo' | loc }}
                 </button>
                 <button class="btn btn-outline-primary" (click)="openStripeDashboard()" [disabled]="isActionProcessing()">
                   @if (isActionProcessing()) {
                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                   }
-                  <i class="bi bi-box-arrow-up-right me-1"></i> Open Stripe Dashboard
+                  <i class="bi bi-box-arrow-up-right me-1"></i> {{ 'OnBoarding_BtnOpenStripeDashboard' | loc }}
                 </button>
                 <button class="btn btn-outline-danger ms-auto" (click)="disconnectStripe()" [disabled]="isActionProcessing()">
                   @if (isActionProcessing()) {
                     <span class="spinner-border spinner-border-sm me-1" role="status"></span>
                   }
-                  <i class="bi bi-x-circle me-1"></i> Disconnect Account
+                  <i class="bi bi-x-circle me-1"></i> {{ 'OnBoarding_BtnDisconnectAccount' | loc }}
                 </button>
               </div>
             } @else {
               <!-- Not Connected Banner -->
               <div class="p-4 bg-light rounded-3 mb-4 text-center border">
                 <i class="bi bi-stripe fs-1 text-primary mb-2 d-block"></i>
-                <h5>Connect with Stripe Connect</h5>
+                <h5>{{ 'OnBoarding_ConnectWithStripeConnect' | loc }}</h5>
                 <p class="text-muted small mx-auto" style="max-width: 450px;">
                   Receive direct card, Apple Pay, and Google Pay payouts deposited directly to your bank account with zero intermediate escrow.
                 </p>
                 <button class="btn btn-primary btn-lg px-4 shadow-sm" (click)="startOnboardingFlow()" [disabled]="isActionProcessing()">
                   @if (isActionProcessing()) {
                     <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                    <span>Connecting...</span>
+                    <span>{{ 'OnBoarding_Connecting' | loc }}</span>
                   } @else {
                     <i class="bi bi-arrow-right-circle me-1"></i> Connect with Stripe
                   }
