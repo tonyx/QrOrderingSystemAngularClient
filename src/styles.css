@@ -1,0 +1,125 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary: #4c6152;
+  --primary-container: #647a6a;
+  --on-primary: #ffffff;
+  --on-primary-container: #f6fff5;
+
+  --secondary: #4a6173;
+  --secondary-container: #cde6fb;
+  --on-secondary: #ffffff;
+  --on-secondary-container: #506779;
+
+  --background: #f7f9ff;
+  --on-background: #181c20;
+
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f1f4fa;
+  --surface-container: #ebeef4;
+  --surface-container-high: #e5e8ee;
+  --surface-container-highest: #dfe3e8;
+
+  --on-surface: #181c20;
+  --on-surface-variant: #434843;
+
+  --outline: #737873;
+  --outline-variant: #c3c8c1;
+
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+
+  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+html, body {
+  font-family: var(--font-family);
+  background-color: var(--background);
+  color: var(--on-surface);
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Tooltip styles from Blazor app.css */
+.custom-tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.custom-tooltip-box {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background-color: #0f172a;
+  color: #ffffff;
+  padding: 0.6rem 0.85rem;
+  border-radius: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: normal;
+  width: max-content;
+  max-width: 240px;
+  text-align: left;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  z-index: 1080;
+}
+
+.custom-tooltip-box::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 16px;
+  background: transparent;
+}
+
+.custom-tooltip-arrow {
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border-width: 6px 6px 0 6px;
+  border-style: solid;
+  border-color: #0f172a transparent transparent transparent;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  z-index: 1080;
+}
+
+.custom-tooltip-wrapper:hover .custom-tooltip-box,
+.custom-tooltip-wrapper:hover .custom-tooltip-arrow,
+.custom-tooltip-box:hover,
+.custom-tooltip-box:hover + .custom-tooltip-arrow {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltip-ask-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  padding: 0.25rem 0.5rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  color: #ffffff !important;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+}

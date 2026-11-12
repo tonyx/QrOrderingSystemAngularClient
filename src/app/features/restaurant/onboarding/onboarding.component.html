@@ -1,0 +1,189 @@
+<div class="container py-4">
+  <!-- Top Navigation Header -->
+  <div class="d-flex align-items-center mb-4">
+    <button class="btn btn-outline-secondary me-3" (click)="goBackToAdmin()">
+      <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+    </button>
+    <div>
+      <h2 class="mb-0 fw-bold">Stripe Connect & Payouts</h2>
+      <p class="text-muted mb-0">
+        {{ restaurant()?.restaurantName || 'Restaurant' }} · Configure payments, KYC verification, and payout bank accounts
+      </p>
+    </div>
+  </div>
+
+  <!-- Error Alert -->
+  @if (errorMessage()) {
+    <div class="alert alert-danger shadow-sm">
+      <strong>Error:</strong> {{ errorMessage() }}
+    </div>
+  }
+
+  <!-- Loading View -->
+  @if (isLoading()) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">Loading details...</span>
+      </div>
+      <p class="mt-3 text-muted">Loading Stripe configuration & KYC status...</p>
+    </div>
+  } @else if (restaurant()) {
+    <div class="row g-4">
+      <!-- Account Status Card -->
+      <div class="col-lg-7">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h4 class="card-title mb-0 fw-bold">Payment Account Status</h4>
+
+              @if (accountStatus()?.isConnected && accountStatus()?.detailsSubmitted && accountStatus()?.chargesEnabled) {
+                <span class="badge bg-success-subtle text-success border border-success px-3 py-2 rounded-pill">
+                  <i class="bi bi-check-circle-fill me-1"></i> Connected & Ready
+                </span>
+              } @else if (accountStatus()?.isConnected) {
+                <span class="badge bg-warning-subtle text-warning border border-warning px-3 py-2 rounded-pill">
+                  <i class="bi bi-exclamation-triangle-fill me-1"></i> Setup Incomplete
+                </span>
+              } @else {
+                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill">
+                  <i class="bi bi-dash-circle-fill me-1"></i> Not Connected
+                </span>
+              }
+            </div>
+
+            <p class="text-secondary">
+              Connect your Stripe account to receive direct payments and tips from diner mobile orders.
+            </p>
+
+            @if (accountStatus()?.isConnected) {
+              <!-- Connected Details Box -->
+              <div class="p-3 bg-light rounded-3 mb-4 border">
+                <div class="row align-items-center g-3">
+                  <div class="col-sm-6">
+                    <small class="text-uppercase text-muted fw-bold d-block">Stripe Account ID</small>
+                    <span class="font-monospace fw-semibold fs-6">
+                      {{ accountStatus()?.stripeAccountId || restaurant()?.paymentConfig?.stripeAccountId }}
+                    </span>
+                  </div>
+                  <div class="col-sm-6">
+                    <small class="text-uppercase text-muted fw-bold d-block">Capability Status</small>
+                    @if (accountStatus()?.chargesEnabled && accountStatus()?.payoutsEnabled) {
+                      <span class="text-success fw-semibold">
+                        <i class="bi bi-check-circle-fill me-1"></i> Direct Charges & Payouts Active
+                      </span>
+                    } @else if (accountStatus()?.detailsSubmitted) {
+                      <span class="text-info fw-semibold">
+                        <i class="bi bi-hourglass-split me-1"></i> Pending Verification by Stripe
+                      </span>
+                    } @else {
+                      <span class="text-warning fw-semibold">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> Action Required (KYC Missing)
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- Incomplete Requirements Warning Banner -->
+              @if (!accountStatus()?.detailsSubmitted || !accountStatus()?.chargesEnabled) {
+                <div class="alert alert-warning shadow-sm mb-4">
+                  <h6 class="fw-bold mb-1">
+                    <i class="bi bi-exclamation-triangle me-2"></i> Incomplete Merchant Information
+                  </h6>
+                  <p class="small mb-2">
+                    Stripe requires additional business or identity verification before card payments can be accepted.
+                  </p>
+                  <button class="btn btn-warning btn-sm fw-bold" (click)="startOnboardingFlow()" [disabled]="isActionProcessing()">
+                    @if (isActionProcessing()) {
+                      <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    }
+                    Complete Account Setup
+                  </button>
+                </div>
+              }
+
+              <!-- Connected Action Buttons -->
+              <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-primary" (click)="startOnboardingFlow()" [disabled]="isActionProcessing()">
+                  @if (isActionProcessing()) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                  }
+                  <i class="bi bi-pencil-square me-1"></i> Update Account Info
+                </button>
+                <button class="btn btn-outline-primary" (click)="openStripeDashboard()" [disabled]="isActionProcessing()">
+                  @if (isActionProcessing()) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                  }
+                  <i class="bi bi-box-arrow-up-right me-1"></i> Open Stripe Dashboard
+                </button>
+                <button class="btn btn-outline-danger ms-auto" (click)="disconnectStripe()" [disabled]="isActionProcessing()">
+                  @if (isActionProcessing()) {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                  }
+                  <i class="bi bi-x-circle me-1"></i> Disconnect Account
+                </button>
+              </div>
+            } @else {
+              <!-- Not Connected Banner -->
+              <div class="p-4 bg-light rounded-3 mb-4 text-center border">
+                <i class="bi bi-stripe fs-1 text-primary mb-2 d-block"></i>
+                <h5>Connect with Stripe Connect</h5>
+                <p class="text-muted small mx-auto" style="max-width: 450px;">
+                  Receive direct card, Apple Pay, and Google Pay payouts deposited directly to your bank account with zero intermediate escrow.
+                </p>
+                <button class="btn btn-primary btn-lg px-4 shadow-sm" (click)="startOnboardingFlow()" [disabled]="isActionProcessing()">
+                  @if (isActionProcessing()) {
+                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    <span>Connecting...</span>
+                  } @else {
+                    <i class="bi bi-arrow-right-circle me-1"></i> Connect with Stripe
+                  }
+                </button>
+              </div>
+            }
+
+            @if (statusMessage()) {
+              <div class="alert alert-info alert-dismissible fade show mt-3 mb-0" role="alert">
+                {{ statusMessage() }}
+                <button type="button" class="btn-close" (click)="statusMessage.set(null)"></button>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Features & Info Card -->
+      <div class="col-lg-5">
+        <div class="card shadow-sm border-0 h-100 bg-body-tertiary">
+          <div class="card-body p-4">
+            <h5 class="card-title mb-3 fw-bold">Why connect Stripe?</h5>
+            <ul class="list-unstyled d-flex flex-column gap-3 mb-4">
+              <li class="d-flex align-items-start">
+                <div class="badge bg-primary rounded-circle p-2 me-3 mt-1">✓</div>
+                <div>
+                  <strong>Direct Bank Settlements</strong>
+                  <div class="small text-muted">Customer payments transfer directly to your IBAN with automated daily or weekly payouts.</div>
+                </div>
+              </li>
+              <li class="d-flex align-items-start">
+                <div class="badge bg-primary rounded-circle p-2 me-3 mt-1">✓</div>
+                <div>
+                  <strong>Apple Pay & Google Pay</strong>
+                  <div class="small text-muted">Diners can settle their bills from their smartphone browser with 1-click contactless payment.</div>
+                </div>
+              </li>
+              <li class="d-flex align-items-start">
+                <div class="badge bg-primary rounded-circle p-2 me-3 mt-1">✓</div>
+                <div>
+                  <strong>Automatic Group Bill Splitting</strong>
+                  <div class="small text-muted">Each diner session can confirm and pay for their own items independently or split the bill.</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+

@@ -1,0 +1,16 @@
+{
+  "/api": {
+    "target": "https://localhost:7113",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/hubs": {
+    "target": "https://localhost:7113",
+    "secure": false,
+    "ws": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}
+

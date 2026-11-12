@@ -24,11 +24,28 @@ testem.log
 /libpeerconnection.log
 __screenshots__/
 
-# Environment and sensitive credential overrides
+# Environment, secrets, and private access keys
 .env
 .env.*
-!.env.example
+!.env.template
 *.local
+
+# Sensitive Angular environment files containing API keys or private endpoints
+src/environments/environment.ts
+src/environments/environment.*.ts
+!src/environments/environment.template.ts
+!src/environments/environment.*.template.ts
+
+# Generic secrets, certificates, and keys
+*.key
+*.pem
+*.cert
+*.crt
+*.pfx
+*.p12
+*id_rsa*
+*id_ed25519*
+secrets.*
 
 # IDEs and editors
 .idea/
