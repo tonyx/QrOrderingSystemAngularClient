@@ -1,8 +1,17 @@
 # QrOrderingClient
 
-Experimental client for the QrOrderingSystem API using the backend of www.restaurantsystem.cloud
+In progress vibe-coded client for the QrOrderingSystem API using the backend of www.restaurantsystem.cloud
+
+Goal: a reference implementation for using the 
+www.restaurantsystem.cloud api for any independent developer or company.
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.6.
+
+## The Developer Keys
+
+To use this project you will need to generate sandbox keys. You can get the developer keys from the www.restaurantsystem.cloud website. The developer keys are used to authenticate with the api.
+The environment.template.fs shows a working example of how to use the api. You need to copy this file to environment.ts and insert your access key. The defaultRestaurantId can stey empty.
+Note. It is still true that the behavior is limited by the permissions related to the jwt token. Therefore the api key alone does not grant access to all restaurants or all features.
 
 ## Development server
 
