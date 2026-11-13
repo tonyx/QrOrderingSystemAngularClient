@@ -128,6 +128,9 @@ export interface PaymentMethodBadgeInfo {
   isPrepaidWithStripe: boolean;
   isPaidWithStripe: boolean;
   isCompedAsOmaggio: boolean;
+  isLedgerRegistered?: boolean;
+  paymentIntentId?: string | null;
+  tipAmount?: number;
   label: string;
   icon?: string;
   title?: string;
@@ -141,8 +144,10 @@ export interface OrderItemModel {
   isConfirmed: boolean;
   isPending: boolean;
   isDone: boolean;
+  isDoneWithPayAndEventualVote?: boolean;
   isRejected: boolean;
   rejectionReason?: string | null;
+  confirmedAt?: string | null;
   paymentMethod?: PaymentMethodBadgeInfo | null;
 }
 
@@ -154,8 +159,10 @@ export interface AggregatedOrderItem {
   isConfirmed: boolean;
   isPending: boolean;
   isDone: boolean;
+  isDoneWithPayAndEventualVote?: boolean;
   isRejected: boolean;
   rejectionReason?: string | null;
+  confirmedAt?: string | null;
   paymentMethod?: PaymentMethodBadgeInfo | null;
   itemIds: string[];
 }
@@ -182,3 +189,64 @@ export interface TableModel {
   hasActiveOrders: boolean;
   sessions: TableSessionModel[];
 }
+
+export interface SettlePayAtCounterItemSelectionDto {
+  TableNum: number;
+  TableId: string;
+  SessionId: string;
+  MenuItemName: string;
+  Quantity: number;
+  OrderItemId?: string | null;
+  IsGift: boolean;
+  OverriddenUnitPrice?: number | null;
+}
+
+export interface ArbitraryPaymentGroupItemDto {
+  MenuItemName: string;
+  Quantity: number;
+  UnitPrice: number;
+  IsGift: boolean;
+}
+
+export interface CreatePaymentGroupDto {
+  Name: string;
+  Discount?: number | null;
+  ItemSelections: SettlePayAtCounterItemSelectionDto[];
+  CustomItems: ArbitraryPaymentGroupItemDto[];
+}
+
+export interface PublishPaymentGroupSetRequestDto {
+  TableNum: number;
+  TableId: string;
+  IsFlexible: boolean;
+  Groups: CreatePaymentGroupDto[];
+  CommonItemSelections: SettlePayAtCounterItemSelectionDto[];
+  CommonCustomItems: ArbitraryPaymentGroupItemDto[];
+}
+
+export interface PaymentGroupItemModel {
+  sessionId: string;
+  menuItemName: string;
+  quantity: number;
+  unitPrice: number;
+  orderItemIds: string[];
+  isGift: boolean;
+  isCommonQuota: boolean;
+}
+
+export interface PaymentGroupModel {
+  groupId: string;
+  name: string;
+  items: PaymentGroupItemModel[];
+  discount?: number | null;
+  totalAmount: number;
+}
+
+export interface PaymentGroupSetModel {
+  setId: string;
+  tableNum: number;
+  tableId: string;
+  isFlexible: boolean;
+  groups: PaymentGroupModel[];
+}
+

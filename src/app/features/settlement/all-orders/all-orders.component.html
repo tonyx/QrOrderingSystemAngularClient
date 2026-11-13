@@ -1,0 +1,2024 @@
+<app-main-layout [pageTitle]="'AllOrders_PageTitle' | loc">
+<div
+  class="orders-container"
+  [class.has-split-layout]="hasSelectedItems && widgetLayoutMode === 'SidePanel'"
+>
+  @if (errorMessage) {
+    <div class="alert alert-danger shadow-sm text-center py-4 my-5" style="border-radius: 1rem;">
+      <h4 class="font-weight-bold">{{ 'AllOrders_ErrorHeader' | loc }}</h4>
+      <p class="mb-0">{{ errorMessage }}</p>
+    </div>
+  } @else if (isLoading() || !restaurant) {
+    <div class="text-center py-5 my-5">
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+      <p class="text-muted mt-3 font-weight-bold">{{ 'AllOrders_LoadingActiveOrders' | loc }}</p>
+    </div>
+  } @else {
+    <div class="orders-header">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h3 class="mb-1">{{ 'AllOrders_ActiveOrdersHeader' | loc }}</h3>
+          <p class="mb-0 text-muted-light" style="opacity: 0.8;">
+            {{ formatText('AllOrders_RestaurantLabel', restaurant.restaurantName) }}
+          </p>
+        </div>
+        <div>
+          <span class="badge bg-primary">
+            {{ formatText('AllOrders_ActiveTablesBadge', getActiveTablesCount()) }}
+          </span>
+        </div>
+      </div>
+      <div class="mt-3">
+        <a
+          class="btn btn-outline-light btn-sm"
+          [routerLink]="['/restaurantsAdmin', restaurantId]"
+          [innerHTML]="'AllOrders_BackToRestaurantAdmin' | loc"
+        ></a>
+      </div>
+    </div>
+
+    @if (settlementError) {
+      <div class="alert alert-danger shadow-sm py-3 px-4 mb-4" style="border-radius: 0.75rem;">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <strong>Settlement / Ledger Error:</strong> {{ settlementError }}
+          </div>
+          <button type="button" class="btn-close" (click)="settlementError = null"></button>
+        </div>
+      </div>
+    }
+
+    <div class="card mb-4 p-3 shadow-sm border-0" style="border-radius: 1rem; background-color: #ffffff;">
+      <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+        <h6 class="mb-0 font-weight-bold" style="color: #1e1b4b;">
+          {{ 'AllOrders_FilterByCategory' | loc }}
+        </h6>
+        <div class="d-flex gap-2">
+          <button
+            class="btn btn-outline-primary btn-sm"
+            (click)="SelectAllCategories()"
+            style="border-radius: 0.5rem; font-size: 0.8rem;"
+          >
+            {{ 'AllOrders_BtnSelectAll' | loc }}
+          </button>
+          <button
+            class="btn btn-outline-secondary btn-sm"
+            (click)="SelectNoCategories()"
+            style="border-radius: 0.5rem; font-size: 0.8rem;"
+          >
+            {{ 'AllOrders_BtnSelectNone' | loc }}
+          </button>
+        </div>
+      </div>
+      <div class="d-flex flex-wrap align-items-center gap-3">
+        @for (cat of availableCategories; track (cat ?? UNASSIGNED_CAT)) {
+          @let catKey = cat ?? UNASSIGNED_CAT;
+          <div class="form-check form-check-inline m-0 d-flex align-items-center me-3">
+            <input
+              class="form-check-input me-1"
+              type="checkbox"
+              [id]="'cat-' + catKey"
+              [checked]="isCategorySelected(cat)"
+              (change)="ToggleCategory(catKey, $event)"
+            />
+            <label class="form-check-label small text-dark" [for]="'cat-' + catKey">
+              {{ cat ? cat : ('AllOrders_UncategorizedLabel' | loc) }}
+            </label>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div
+      class="orders-workspace"
+      [class.is-split]="hasSelectedItems && widgetLayoutMode === 'SidePanel'"
+    >
+      <div
+        class="orders-main-content"
+        [class.has-bottom-clearance]="
+          hasSelectedItems && widgetLayoutMode === 'BottomDock' && !isSettlementWidgetMinimized
+        "
+        [class.has-bottom-clearance-mobile]="
+          hasSelectedItems && widgetLayoutMode === 'SidePanel' && !isSettlementWidgetMinimized
+        "
+      >
+        @if (!hasAnySessions()) {
+          <div class="alert alert-info text-center py-4">
+            {{ 'AllOrders_NoActiveSessionsOrOrders' | loc }}
+          </div>
+        } @else {
+          @for (table of getTablesWithSessions(); track table.tableNumber) {
+            <div class="table-orders-card">
+              <div class="table-orders-title">
+                <div class="d-flex align-items-center gap-2">
+                  <span>{{ formatText('AllOrders_TableTitle', table.tableNumber) }}</span>
+                  <span class="badge bg-secondary font-weight-normal" style="font-size: 0.85rem;">
+                    {{ formatText('AllOrders_ActiveSessionsBadge', table.sessions.length) }}
+                  </span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  @if (HasPayAtCounterItems(table)) {
+                    <button
+                      class="btn btn-outline-primary btn-sm font-weight-bold"
+                      (click)="OpenPaymentGroupBuilder(table.tableNumber, table.tableId)"
+                      [disabled]="!isStripeConnected"
+                      [title]="!isStripeConnected ? ('AllOrders_StripeRequiredTooltip' | loc) : ''"
+                      style="border-radius: 0.5rem; font-size: 0.8rem;"
+                    >
+                      ⚡ {{ 'AllOrders_BtnSplitBillGroups' | loc }}
+                    </button>
+                  }
+                  <button
+                    class="btn btn-outline-danger btn-sm"
+                    (click)="RequestResetOrders(table.tableNumber)"
+                    style="border-radius: 0.5rem; font-size: 0.8rem;"
+                  >
+                    {{ 'AllOrders_BtnResetOrders' | loc }}
+                  </button>
+                </div>
+              </div>
+
+              @for (session of table.sessions; track session.sessionId) {
+                @let filteredItems = getFilteredSessionItems(session);
+                @let selectableNames = GetSelectableItemNamesInSession(table.tableNumber, table.tableId, session.sessionId, filteredItems);
+                @let hasSelectableInSession = selectableNames.length > 0;
+                @let allSessionSelected = isAllSessionSelected(table.tableNumber, table.tableId, session);
+                @let selectedInSessionCount = getSelectedInSessionCount(table.tableNumber, table.tableId, session);
+
+                <div class="session-group">
+                  <div class="session-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      @if (hasSelectableInSession) {
+                        <input
+                          type="checkbox"
+                          class="form-check-input my-0"
+                          [checked]="allSessionSelected"
+                          [title]="
+                            allSessionSelected
+                              ? ('AllOrders_DeselectSessionTooltip' | loc)
+                              : ('AllOrders_SelectAllSessionTooltip' | loc)
+                          "
+                          (change)="ToggleSessionSelection(table.tableNumber, table.tableId, session, $event)"
+                        />
+                      }
+                      <span>
+                        {{ 'AllOrders_SessionHeader' | loc }}
+                        <span class="badge-session">{{ getShortSecret(session.sessionId, 8) }}</span>
+                      </span>
+
+                      @if (session.fiscalMetadata) {
+                        @if (session.fiscalMetadata.isCodiceFiscale) {
+                          <span class="badge bg-primary text-white font-monospace ms-2">
+                            CF: {{ session.fiscalMetadata.value }}
+                          </span>
+                        } @else if (session.fiscalMetadata.isCodiceLotteria) {
+                          <span class="badge bg-warning text-dark font-monospace ms-2">
+                            Lotteria: {{ session.fiscalMetadata.value }}
+                          </span>
+                        }
+                      }
+
+                      @if (hasSelectableInSession && selectedInSessionCount > 0) {
+                        <span
+                          class="badge bg-primary-subtle text-primary border border-primary-subtle"
+                          style="font-size: 0.72rem;"
+                        >
+                          {{ selectedInSessionCount }}/{{ selectableNames.length }}
+                          {{ 'AllOrders_SelectedBadge' | loc }}
+                        </span>
+                      }
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      @if (hasSelectableInSession) {
+                        <div class="btn-group btn-group-sm" role="group">
+                          <button
+                            type="button"
+                            class="btn btn-sm py-0 px-2"
+                            [class.btn-primary]="allSessionSelected"
+                            [class.text-white]="allSessionSelected"
+                            [class.btn-outline-primary]="!allSessionSelected"
+                            style="font-size: 0.75rem;"
+                            [title]="'AllOrders_SelectAllSessionTooltip' | loc"
+                            (click)="SelectAllInSession(table.tableNumber, table.tableId, session)"
+                          >
+                            <i class="bi bi-check2-all me-1"></i>{{ 'AllOrders_BtnSelectAll' | loc }}
+                          </button>
+                          @if (selectedInSessionCount > 0) {
+                            <button
+                              type="button"
+                              class="btn btn-outline-secondary btn-sm py-0 px-2"
+                              style="font-size: 0.75rem;"
+                              [title]="'AllOrders_DeselectSessionTooltip' | loc"
+                              (click)="DeselectAllInSession(table.tableNumber, table.tableId, session.sessionId)"
+                            >
+                              <i class="bi bi-x me-1"></i>{{ 'AllOrders_BtnSelectNone' | loc }}
+                            </button>
+                          }
+                        </div>
+                      }
+                      <span>
+                        {{ formatText('AllOrders_TotalItems', getFilteredSessionTotalItemsCount(session)) }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Ongoing Prepayments -->
+                  @let ongoingPrepayments = getOngoingPrepayments(session);
+                  @if (ongoingPrepayments.length > 0) {
+                    <div class="ongoing-prepayments mb-2 p-2 rounded bg-light border">
+                      <small class="text-muted d-block font-weight-bold mb-1">
+                        {{ 'AllOrders_OngoingPrepayments' | loc }}
+                      </small>
+                      <div class="d-flex flex-column gap-2">
+                        @for (prep of ongoingPrepayments; track prep.paymentIntentId) {
+                          <div class="d-flex align-items-center justify-content-between p-2 rounded border bg-white shadow-sm flex-wrap gap-2">
+                            <div class="d-flex flex-column">
+                              <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-warning text-dark">
+                                  {{ 'AllOrders_HoldIntentBadge' | loc }}
+                                </span>
+                                <code class="small text-monospace">{{ prep.shortPaymentIntent }}</code>
+                                <strong class="text-success ms-1">€{{ prep.total.toFixed(2) }}</strong>
+                              </div>
+                              @if (prep.itemsSummary) {
+                                <small class="text-muted mt-1">
+                                  <i class="bi bi-basket me-1"></i>
+                                  {{ formatText('AllOrders_ItemsSummary', prep.itemsSummary) }}
+                                </small>
+                              }
+                            </div>
+                            <button
+                              class="btn btn-outline-success btn-sm d-flex align-items-center gap-1"
+                              [title]="'Confirm and capture payment intent: ' + prep.paymentIntentId"
+                              type="button"
+                              (click)="ConfirmPaymentIntent(prep.paymentIntentId)"
+                            >
+                              <i class="bi bi-credit-card-2-front"></i>
+                              <span>{{ 'AllOrders_BtnConfirmIntent' | loc }}</span>
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Completed Stripe Payments -->
+                  @let completedStripe = getCompletedStripePayments(session);
+                  @if (completedStripe.length > 0) {
+                    <div class="completed-stripe-payments mb-2 p-2 rounded bg-light border">
+                      <small class="text-muted d-block font-weight-bold mb-1">
+                        Completed Stripe Payments
+                      </small>
+                      <div class="d-flex flex-column gap-2">
+                        @for (paid of completedStripe; track paid.paymentIntentId) {
+                          <div class="d-flex align-items-center justify-content-between p-2 rounded border bg-white shadow-sm flex-wrap gap-2">
+                            <div class="d-flex flex-column">
+                              <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span class="badge bg-success text-white">💳 Paid</span>
+                                <code class="small text-monospace">{{ paid.shortPaymentIntent }}</code>
+                                <strong class="text-success ms-1">€{{ paid.totalAmount.toFixed(2) }}</strong>
+                                @if (paid.tipAmount > 0) {
+                                  <span
+                                    class="badge bg-info-subtle text-info-emphasis border border-info-subtle"
+                                    title="Tip amount added by customer"
+                                  >
+                                    <i class="bi bi-heart-fill me-1 text-danger"></i>Tip: €{{
+                                      paid.tipAmount.toFixed(2)
+                                    }}
+                                  </span>
+                                  <span class="small fw-bold text-secondary">
+                                    (Total: €{{ (paid.totalAmount + paid.tipAmount).toFixed(2) }})
+                                  </span>
+                                }
+                              </div>
+                              @if (paid.itemsSummary) {
+                                <small class="text-muted mt-1">
+                                  <i class="bi bi-basket me-1"></i>{{ paid.itemsSummary }}
+                                </small>
+                              }
+                            </div>
+                            <button
+                              class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1"
+                              [title]="'Register this Stripe payment into Manual Ledger'"
+                              type="button"
+                              (click)="
+                                RegisterStripePaymentToLedger(
+                                  table.tableNumber,
+                                  table.tableId,
+                                  session.sessionId,
+                                  paid.paymentIntentId
+                                )
+                              "
+                            >
+                              <i class="bi bi-journal-plus"></i>
+                              <span>Send to Ledger</span>
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Session Items -->
+                  @if (!session.aggregatedItems || session.aggregatedItems.length === 0) {
+                    <p class="text-muted mb-0 small fst-italic">
+                      {{ 'AllOrders_NoItemsOrderedYet' | loc }}
+                    </p>
+                  } @else if (filteredItems.length === 0) {
+                    <p class="text-muted mb-0 small fst-italic">
+                      {{ 'AllOrders_NoItemsMatchCategoryFilters' | loc }}
+                    </p>
+                  } @else {
+                    <div>
+                      @for (order of filteredItems; track $index) {
+                        @let itemKey = getItemKey(table.tableNumber, table.tableId, session.sessionId, order.dishName);
+                        @let matchingOrderItems = getMatchingOrderItems(session, order);
+                        @let firstOrderItemId = matchingOrderItems.length > 0 ? matchingOrderItems[0].id : null;
+                        @let isSplit = isRowSplit(table.tableNumber, table.tableId, session.sessionId, order);
+                        @let isPayAtCounter = isItemPayAtCounter(order);
+                        @let isPaidAtCounter = isItemPaidAtCounter(order);
+                        @let isCompedAsOmaggio = isItemCompedAsOmaggio(order);
+                        @let itemSecret = getItemHoldSecret(order);
+                        @let isHold = !!itemSecret;
+
+                        @if (isSplit) {
+                          <div class="split-order-group mb-1 p-2 rounded border border-secondary-subtle bg-light-subtle shadow-sm">
+                            <div class="d-flex align-items-center justify-content-between px-1 py-1 mb-1 border-bottom small">
+                              <span class="text-secondary fw-semibold d-flex align-items-center gap-1">
+                                <i class="bi bi-diagram-3"></i> {{ order.dishName }}
+                                <span class="badge bg-secondary">{{ order.quantity }}&times; split</span>
+                              </span>
+                              <div class="d-flex align-items-center gap-1">
+                                <button
+                                  type="button"
+                                  class="btn btn-outline-secondary btn-sm py-0 px-2"
+                                  style="font-size: 0.75rem; line-height: 1.3;"
+                                  title="Group back into single row"
+                                  (click)="
+                                    UnsplitRow(
+                                      table.tableNumber,
+                                      table.tableId,
+                                      session.sessionId,
+                                      order.dishName,
+                                      order.quantity
+                                    )
+                                  "
+                                >
+                                  <i class="bi bi-arrows-collapse me-1"></i>Group
+                                </button>
+                                @if (!order.isDone && !order.isDoneWithPayAndEventualVote && !order.isRejected) {
+                                  <button
+                                    class="btn btn-success btn-sm py-0 px-2"
+                                    style="border-radius: 0.4rem; font-size: 0.75rem; background-color: #10b981; border: none; color: white;"
+                                    (click)="
+                                      MarkAsDone(
+                                        table.tableNumber,
+                                        table.tableId,
+                                        session.sessionId,
+                                        order.dishName,
+                                        firstOrderItemId
+                                      )
+                                    "
+                                  >
+                                    {{ 'AllOrders_BtnDone' | loc }}
+                                  </button>
+                                  @if (order.isConfirmed) {
+                                    <button
+                                      class="btn btn-outline-danger btn-sm py-0 px-2"
+                                      style="border-radius: 0.4rem; font-size: 0.75rem;"
+                                      (click)="
+                                        PromptRejectItem(
+                                          table.tableNumber,
+                                          table.tableId,
+                                          session.sessionId,
+                                          order.dishName,
+                                          firstOrderItemId
+                                        )
+                                      "
+                                    >
+                                      {{ 'AllOrders_BtnReject' | loc }}
+                                    </button>
+                                  }
+                                }
+                              </div>
+                            </div>
+
+                            @for (subIdx of getSubIndices(order.quantity); track subIdx) {
+                              @let subKey = getSubItemKey(itemKey, subIdx);
+                              @let isSubOrdinary = selectedOrdinaryKeys.has(subKey);
+                              @let isSubGift = selectedGiftKeys.has(subKey);
+                              @let curOrderItem = subIdx < matchingOrderItems.length ? matchingOrderItems[subIdx] : null;
+                              @let currentOrderItemId = curOrderItem ? curOrderItem.id : null;
+                              @let curComment = curOrderItem ? curOrderItem.comment : order.comment;
+
+                              <div
+                                class="order-item-row align-items-center p-1 rounded mb-1 ms-2 {{
+                                  getSubRowBorderClass(subKey)
+                                }}"
+                                style="display: flex; justify-content: space-between; align-items: center; background: white;"
+                              >
+                                <span class="d-flex align-items-center gap-2 flex-wrap">
+                                  <div class="d-flex align-items-center gap-1">
+                                    <input
+                                      type="checkbox"
+                                      class="form-check-input my-0"
+                                      title="Select to Pay (Cash/POS Card/Voucher)"
+                                      [checked]="isSubOrdinary"
+                                      (change)="
+                                        ToggleOrdinarySubItemSelection(
+                                          table.tableNumber,
+                                          table.tableId,
+                                          session.sessionId,
+                                          order.dishName,
+                                          subIdx,
+                                          $event
+                                        )
+                                      "
+                                    />
+                                    <button
+                                      type="button"
+                                      class="btn btn-sm py-0 px-1"
+                                      [class.btn-warning]="isSubGift"
+                                      [class.text-dark]="isSubGift"
+                                      [class.border-warning]="isSubGift"
+                                      [class.btn-outline-secondary]="!isSubGift"
+                                      style="font-size: 0.75rem; line-height: 1.2; border-radius: 4px;"
+                                      title="Select as Gift / On the house (Omaggio)"
+                                      (click)="
+                                        ToggleGiftSubItemSelection(
+                                          table.tableNumber,
+                                          table.tableId,
+                                          session.sessionId,
+                                          order.dishName,
+                                          subIdx
+                                        )
+                                      "
+                                    >
+                                      🎁
+                                    </button>
+                                  </div>
+                                  <span class="item-qty">1&times;</span>
+                                  <span class="item-name">
+                                    {{ order.dishName }}
+                                    <span class="text-muted small">#{{ subIdx + 1 }}</span>
+                                  </span>
+                                  @if (curComment) {
+                                    <span class="order-item-comment-badge ms-2" title="Note">
+                                      <i class="bi bi-chat-left-text me-1"></i>{{ curComment }}
+                                    </span>
+                                  }
+                                  @if (IsExtraMenuItem(order.dishName)) {
+                                    <span
+                                      class="badge text-white ms-1"
+                                      style="background-color: #7c3aed; font-size: 0.7rem;"
+                                    >
+                                      {{ 'Menu_ExtraItemBadge' | loc }}
+                                    </span>
+                                  }
+                                  <!-- OrderStatusBadge inline -->
+                                  <span class="ms-1 status-badge-wrapper">
+                                    @if (order.isPending) {
+                                      <span class="badge-status status-pending">
+                                        {{ 'OrderStatus_Pending' | loc }}
+                                      </span>
+                                    } @else if (order.isConfirmed) {
+                                      @let timerInfo = getConfirmedTimerBadge(order.confirmedAt);
+                                      <span
+                                        class="badge-status"
+                                        [style.background-color]="timerInfo.bgColor"
+                                      >
+                                        {{ timerInfo.text }}
+                                      </span>
+                                    } @else if (order.isDone || order.isDoneWithPayAndEventualVote) {
+                                      <span class="badge-status status-done">
+                                        {{ 'OrderStatus_Done' | loc }}
+                                      </span>
+                                    } @else if (order.isRejected) {
+                                      <span class="badge-status status-rejected">
+                                        ❌ {{ 'OrderStatus_Rejected' | loc }}
+                                        @if (order.rejectionReason) {
+                                          <span>({{ order.rejectionReason }})</span>
+                                        }
+                                      </span>
+                                    }
+                                    @if (order.paymentMethod) {
+                                      @if (order.paymentMethod.isPayAtCounter) {
+                                        <span
+                                          class="payment-badge payment-counter"
+                                          [title]="'OrderStatus_TooltipPayAtCounter' | loc"
+                                        >
+                                          <i class="bi bi-receipt"></i>
+                                          {{ 'OrderStatus_BadgeCounter' | loc }}
+                                        </span>
+                                      } @else if (order.paymentMethod.isPaidAtCounter) {
+                                        <span
+                                          class="payment-badge payment-paid-counter"
+                                          [title]="'OrderStatus_TooltipPaidAtCounter' | loc"
+                                        >
+                                          <i class="bi bi-check-circle-fill"></i>
+                                          {{ 'OrderStatus_BadgePaid' | loc }}
+                                        </span>
+                                      } @else if (order.paymentMethod.isPrepaidWithStripe) {
+                                        <span
+                                          class="payment-badge payment-stripe-hold"
+                                          [title]="'OrderStatus_TooltipStripeHold' | loc"
+                                        >
+                                          <i class="bi bi-credit-card"></i>
+                                          {{ 'OrderStatus_BadgeHold' | loc }}
+                                        </span>
+                                      } @else if (order.paymentMethod.isPaidWithStripe) {
+                                        <span
+                                          class="payment-badge payment-stripe-paid"
+                                          [title]="'OrderStatus_TooltipStripePaid' | loc"
+                                        >
+                                          <i class="bi bi-credit-card-2-front-fill"></i>
+                                          {{ 'OrderStatus_BadgePaid' | loc }}
+                                        </span>
+                                      } @else if (order.paymentMethod.isCompedAsOmaggio) {
+                                        <span
+                                          class="payment-badge payment-omaggio"
+                                          title="Omaggio / On the House"
+                                        >
+                                          🎁 Omaggio
+                                        </span>
+                                      }
+                                    }
+                                  </span>
+                                </span>
+
+                                @if (!order.isDone && !order.isDoneWithPayAndEventualVote && !order.isRejected) {
+                                  <div class="d-flex align-items-center gap-1">
+                                    <button
+                                      class="btn btn-success btn-sm py-0 px-2"
+                                      style="border-radius: 0.4rem; font-size: 0.75rem; background-color: #10b981; border: none; color: white;"
+                                      (click)="
+                                        MarkAsDone(
+                                          table.tableNumber,
+                                          table.tableId,
+                                          session.sessionId,
+                                          order.dishName,
+                                          currentOrderItemId
+                                        )
+                                      "
+                                    >
+                                      {{ 'AllOrders_BtnDone' | loc }}
+                                    </button>
+                                    @if (order.isConfirmed) {
+                                      <button
+                                        class="btn btn-outline-danger btn-sm py-0 px-2"
+                                        style="border-radius: 0.4rem; font-size: 0.75rem;"
+                                        (click)="
+                                          PromptRejectItem(
+                                            table.tableNumber,
+                                            table.tableId,
+                                            session.sessionId,
+                                            order.dishName,
+                                            currentOrderItemId
+                                          )
+                                        "
+                                      >
+                                        {{ 'AllOrders_BtnReject' | loc }}
+                                      </button>
+                                    }
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        } @else {
+                          @let isSelectedOrdinary = selectedOrdinaryKeys.has(itemKey);
+                          @let isSelectedGift = selectedGiftKeys.has(itemKey);
+                          <div
+                            class="order-item-row align-items-center p-1 rounded mb-1 {{
+                              getRowBorderClass(table.tableNumber, table.tableId, session.sessionId, order)
+                            }}"
+                            style="display: flex; justify-content: space-between; align-items: center;"
+                          >
+                            <span class="d-flex align-items-center gap-2 flex-wrap">
+                              @if (isPayAtCounter) {
+                                <div class="d-flex align-items-center gap-1">
+                                  <input
+                                    type="checkbox"
+                                    class="form-check-input my-0"
+                                    title="Select to Pay (Cash/POS Card/Voucher)"
+                                    [checked]="isSelectedOrdinary"
+                                    (change)="
+                                      ToggleOrdinarySelection(
+                                        table.tableNumber,
+                                        table.tableId,
+                                        session.sessionId,
+                                        order.dishName,
+                                        $event
+                                      )
+                                    "
+                                  />
+                                  <button
+                                    type="button"
+                                    class="btn btn-sm py-0 px-1"
+                                    [class.btn-warning]="isSelectedGift"
+                                    [class.text-dark]="isSelectedGift"
+                                    [class.border-warning]="isSelectedGift"
+                                    [class.btn-outline-secondary]="!isSelectedGift"
+                                    style="font-size: 0.75rem; line-height: 1.2; border-radius: 4px;"
+                                    title="Select as Gift / On the house (Omaggio)"
+                                    (click)="
+                                      ToggleGiftSelection(
+                                        table.tableNumber,
+                                        table.tableId,
+                                        session.sessionId,
+                                        order.dishName
+                                      )
+                                    "
+                                  >
+                                    🎁
+                                  </button>
+                                </div>
+                              } @else if (isPaidAtCounter) {
+                                <input
+                                  type="checkbox"
+                                  class="form-check-input my-0"
+                                  checked
+                                  disabled
+                                  title="Already paid at counter"
+                                />
+                              } @else if (isCompedAsOmaggio) {
+                                <span
+                                  class="badge bg-warning-subtle text-dark border border-warning"
+                                  title="Comped as Omaggio"
+                                >
+                                  🎁
+                                </span>
+                              }
+
+                              <span class="item-qty">{{ order.quantity }}&times;</span>
+                              <span class="item-name">{{ order.dishName }}</span>
+
+                              @if (order.comment) {
+                                <span class="order-item-comment-badge ms-2" title="Note">
+                                  <i class="bi bi-chat-left-text me-1"></i>{{ order.comment }}
+                                </span>
+                              }
+
+                              @if (order.quantity > 1 && isPayAtCounter) {
+                                <button
+                                  type="button"
+                                  class="btn btn-outline-secondary btn-xs py-0 px-1 text-nowrap ms-1"
+                                  style="font-size: 0.7rem; line-height: 1.2; border-radius: 3px;"
+                                  [title]="
+                                    'Split ' +
+                                    order.quantity +
+                                    ' items into separate single rows to pay individually or mark some as gift'
+                                  "
+                                  (click)="
+                                    SplitRow(
+                                      table.tableNumber,
+                                      table.tableId,
+                                      session.sessionId,
+                                      order.dishName,
+                                      order.quantity
+                                    )
+                                  "
+                                >
+                                  <i class="bi bi-scissors me-1"></i>Split
+                                </button>
+                              }
+
+                              @if (IsExtraMenuItem(order.dishName)) {
+                                <span
+                                  class="badge text-white ms-1"
+                                  style="background-color: #7c3aed; font-size: 0.7rem;"
+                                >
+                                  {{ 'Menu_ExtraItemBadge' | loc }}
+                                </span>
+                              }
+
+                              <!-- OrderStatusBadge inline -->
+                              <span class="ms-1 status-badge-wrapper">
+                                @if (order.isPending) {
+                                  <span class="badge-status status-pending">
+                                    {{ 'OrderStatus_Pending' | loc }}
+                                  </span>
+                                } @else if (order.isConfirmed) {
+                                  @let timerInfo = getConfirmedTimerBadge(order.confirmedAt);
+                                  <span
+                                    class="badge-status"
+                                    [style.background-color]="timerInfo.bgColor"
+                                  >
+                                    {{ timerInfo.text }}
+                                  </span>
+                                } @else if (order.isDone || order.isDoneWithPayAndEventualVote) {
+                                  <span class="badge-status status-done">
+                                    {{ 'OrderStatus_Done' | loc }}
+                                  </span>
+                                } @else if (order.isRejected) {
+                                  <span class="badge-status status-rejected">
+                                    ❌ {{ 'OrderStatus_Rejected' | loc }}
+                                    @if (order.rejectionReason) {
+                                      <span>({{ order.rejectionReason }})</span>
+                                    }
+                                  </span>
+                                }
+                                @if (order.paymentMethod) {
+                                  @if (order.paymentMethod.isPayAtCounter) {
+                                    <span
+                                      class="payment-badge payment-counter"
+                                      [title]="'OrderStatus_TooltipPayAtCounter' | loc"
+                                    >
+                                      <i class="bi bi-receipt"></i>
+                                      {{ 'OrderStatus_BadgeCounter' | loc }}
+                                    </span>
+                                  } @else if (order.paymentMethod.isPaidAtCounter) {
+                                    <span
+                                      class="payment-badge payment-paid-counter"
+                                      [title]="'OrderStatus_TooltipPaidAtCounter' | loc"
+                                    >
+                                      <i class="bi bi-check-circle-fill"></i>
+                                      {{ 'OrderStatus_BadgePaid' | loc }}
+                                    </span>
+                                  } @else if (order.paymentMethod.isPrepaidWithStripe) {
+                                    <span
+                                      class="payment-badge payment-stripe-hold"
+                                      [title]="'OrderStatus_TooltipStripeHold' | loc"
+                                    >
+                                      <i class="bi bi-credit-card"></i>
+                                      {{ 'OrderStatus_BadgeHold' | loc }}
+                                    </span>
+                                  } @else if (order.paymentMethod.isPaidWithStripe) {
+                                    <span
+                                      class="payment-badge payment-stripe-paid"
+                                      [title]="'OrderStatus_TooltipStripePaid' | loc"
+                                    >
+                                      <i class="bi bi-credit-card-2-front-fill"></i>
+                                      {{ 'OrderStatus_BadgePaid' | loc }}
+                                    </span>
+                                  } @else if (order.paymentMethod.isCompedAsOmaggio) {
+                                    <span
+                                      class="payment-badge payment-omaggio"
+                                      title="Omaggio / On the House"
+                                    >
+                                      🎁 Omaggio
+                                    </span>
+                                  }
+                                }
+                              </span>
+
+                              @if (isHold) {
+                                <span
+                                  class="badge bg-light text-secondary border ms-1"
+                                  style="font-size: 0.7rem;"
+                                  [title]="'Linked to Payment Intent: ' + itemSecret"
+                                >
+                                  {{ formatText('AllOrders_IntentBadge', getShortSecret(itemSecret, 8)) }}
+                                </span>
+                              }
+                            </span>
+
+                            @if (!order.isDone && !order.isDoneWithPayAndEventualVote && !order.isRejected) {
+                              <div class="d-flex align-items-center gap-1">
+                                <button
+                                  class="btn btn-success btn-sm"
+                                  style="border-radius: 0.4rem; padding: 0.25rem 0.5rem; font-size: 0.8rem; background-color: #10b981; border: none; color: white;"
+                                  (click)="
+                                    MarkAsDone(
+                                      table.tableNumber,
+                                      table.tableId,
+                                      session.sessionId,
+                                      order.dishName,
+                                      firstOrderItemId
+                                    )
+                                  "
+                                >
+                                  {{ 'AllOrders_BtnDone' | loc }}
+                                </button>
+                                @if (order.isConfirmed) {
+                                  <button
+                                    class="btn btn-outline-danger btn-sm"
+                                    style="border-radius: 0.4rem; padding: 0.25rem 0.5rem; font-size: 0.8rem;"
+                                    (click)="
+                                      PromptRejectItem(
+                                        table.tableNumber,
+                                        table.tableId,
+                                        session.sessionId,
+                                        order.dishName,
+                                        firstOrderItemId
+                                      )
+                                    "
+                                  >
+                                    {{ 'AllOrders_BtnReject' | loc }}
+                                  </button>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Pay & Settle Widget -->
+      @if (hasSelectedItems) {
+        <div
+          [class]="GetWidgetContainerClass()"
+          [ngStyle]="GetWidgetContainerStyle()"
+          (pointermove)="OnWidgetPointerMove($event)"
+          (pointerup)="OnWidgetPointerUp()"
+        >
+          <div
+            class="settlement-card"
+            [class.is-sidebar]="widgetLayoutMode === 'SidePanel'"
+            [class.is-floating]="widgetLayoutMode === 'Floating'"
+          >
+            <div
+              class="settlement-header"
+              [class.drag-handle]="widgetLayoutMode === 'Floating'"
+              (pointerdown)="OnWidgetPointerDown($event)"
+            >
+              <div class="d-flex align-items-center gap-2">
+                @if (widgetLayoutMode === 'Floating') {
+                  <i class="bi bi-arrows-move text-warning me-1" title="Drag to move"></i>
+                }
+                <span class="fw-bold text-white small">
+                  🧾 {{ 'AllOrders_SettlementTitle' | loc }}
+                </span>
+                @if (isSettlementWidgetMinimized) {
+                  <span class="badge bg-primary ms-1">{{ GetSelectedOrdinaryTotalCount() }}</span>
+                  @if (selectedGiftKeys.size > 0) {
+                    <span class="badge bg-warning text-dark">
+                      🎁 {{ GetSelectedGiftTotalCount() }}
+                    </span>
+                  }
+                  <span class="badge bg-success ms-1">
+                    €{{ GetSelectedOrdinaryTotal().toFixed(2) }}
+                  </span>
+                }
+              </div>
+
+              <div class="d-flex align-items-center gap-1">
+                <div class="btn-group btn-group-sm me-1" role="group">
+                  <button
+                    type="button"
+                    class="btn btn-xs py-0 px-1"
+                    [class.btn-primary]="widgetLayoutMode === 'SidePanel'"
+                    [class.text-white]="widgetLayoutMode === 'SidePanel'"
+                    [class.btn-outline-secondary]="widgetLayoutMode !== 'SidePanel'"
+                    [class.text-white-50]="widgetLayoutMode !== 'SidePanel'"
+                    style="font-size: 0.72rem;"
+                    title="Side Panel Layout"
+                    (click)="SetWidgetMode('SidePanel'); $event.stopPropagation()"
+                  >
+                    <i class="bi bi-layout-sidebar-inset-reverse"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-xs py-0 px-1"
+                    [class.btn-primary]="widgetLayoutMode === 'Floating'"
+                    [class.text-white]="widgetLayoutMode === 'Floating'"
+                    [class.btn-outline-secondary]="widgetLayoutMode !== 'Floating'"
+                    [class.text-white-50]="widgetLayoutMode !== 'Floating'"
+                    style="font-size: 0.72rem;"
+                    title="Floating Window (Draggable)"
+                    (click)="SetWidgetMode('Floating'); $event.stopPropagation()"
+                  >
+                    <i class="bi bi-window"></i>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-xs py-0 px-1"
+                    [class.btn-primary]="widgetLayoutMode === 'BottomDock'"
+                    [class.text-white]="widgetLayoutMode === 'BottomDock'"
+                    [class.btn-outline-secondary]="widgetLayoutMode !== 'BottomDock'"
+                    [class.text-white-50]="widgetLayoutMode !== 'BottomDock'"
+                    style="font-size: 0.72rem;"
+                    title="Dock to Bottom"
+                    (click)="SetWidgetMode('BottomDock'); $event.stopPropagation()"
+                  >
+                    <i class="bi bi-layout-split"></i>
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-xs py-0 px-2 text-white"
+                  style="font-size: 0.75rem; border-radius: 4px;"
+                  [title]="
+                    isSettlementWidgetMinimized
+                      ? ('AllOrders_BtnExpand' | loc)
+                      : ('AllOrders_BtnMinimize' | loc)
+                  "
+                  (click)="ToggleWidgetMinimized(); $event.stopPropagation()"
+                >
+                  <i
+                    class="bi"
+                    [class.bi-chevron-up]="isSettlementWidgetMinimized"
+                    [class.bi-dash-lg]="!isSettlementWidgetMinimized"
+                  ></i>
+                </button>
+              </div>
+            </div>
+
+            @if (isSettlementWidgetMinimized) {
+              <div class="settlement-minimized-strip">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                  @if (selectedOrdinaryKeys.size > 0) {
+                    <span class="badge bg-primary fs-6">
+                      Pay: {{ GetSelectedOrdinaryTotalCount() }} (€{{
+                        GetSelectedOrdinaryTotal().toFixed(2)
+                      }})
+                    </span>
+                    @if (settlementDiscount > 0) {
+                      <span class="badge bg-danger text-white fs-6" title="Discount applied">
+                        🏷️ -€{{ settlementDiscount.toFixed(2) }} (Net: €{{
+                          (GetSelectedOrdinaryTotal() - settlementDiscount > 0
+                            ? GetSelectedOrdinaryTotal() - settlementDiscount
+                            : 0
+                          ).toFixed(2)
+                        }})
+                      </span>
+                    }
+                  }
+                  @if (selectedGiftKeys.size > 0) {
+                    <span class="badge bg-warning text-dark fs-6">
+                      🎁 Gift: {{ GetSelectedGiftTotalCount() }}
+                    </span>
+                  }
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                  <button
+                    class="btn btn-outline-light btn-sm py-0 px-2"
+                    (click)="ClearItemSelection()"
+                    [disabled]="isSettling"
+                  >
+                    ✕ Deselect
+                  </button>
+                  <button
+                    class="btn btn-success btn-sm py-0 px-3 fw-bold"
+                    (click)="isSettlementWidgetMinimized = false"
+                  >
+                    <i class="bi bi-chevron-up me-1"></i> {{ 'AllOrders_BtnExpand' | loc }}
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div class="p-3 d-flex flex-column gap-2">
+                @if (hasUnsetSelectedOrdinaryPrices()) {
+                  <div class="w-100 alert alert-warning py-1 px-2 small mb-0 d-flex align-items-center justify-content-between">
+                    <span>⚠️ {{ 'AllOrders_PriceUnsetWarning' | loc }}</span>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-warning py-0 px-2 fw-bold"
+                      (click)="showPriceAdjustmentPanel = true"
+                    >
+                      {{ 'AllOrders_EditPrices' | loc }}
+                    </button>
+                  </div>
+                }
+
+                @if (showPriceAdjustmentPanel) {
+                  <div
+                    class="w-100 p-2 rounded bg-black bg-opacity-75 border border-secondary"
+                    style="max-height: 220px; overflow-y: auto;"
+                  >
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                      <strong class="small text-info">🏷️ {{ 'AllOrders_EditPrices' | loc }}</strong>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-link text-white text-decoration-none py-0 px-1"
+                        (click)="showPriceAdjustmentPanel = false"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div class="d-flex flex-column gap-1">
+                      @for (kv of selectedPayAtCounterEntries; track kv[0]) {
+                        @let itemKey = kv[0];
+                        @let itemVal = kv[1];
+                        @let isGift = selectedGiftKeys.has(itemKey);
+                        <div
+                          class="d-flex justify-content-between align-items-center small py-1 px-2 rounded bg-dark border"
+                          [class.border-warning]="itemVal.unitPrice <= 0 && !isGift"
+                          [class.border-secondary]="!(itemVal.unitPrice <= 0 && !isGift)"
+                        >
+                          <div class="d-flex align-items-center gap-2">
+                            @if (isGift) {
+                              <span class="badge bg-warning text-dark">🎁</span>
+                            }
+                            <span>{{ itemVal.quantity }}&times; {{ itemVal.menuItemName }}</span>
+                            @if (IsExtraMenuItem(itemVal.menuItemName)) {
+                              <span
+                                class="badge text-white"
+                                style="background-color: #7c3aed; font-size: 0.65rem;"
+                              >
+                                {{ 'Menu_ExtraItemBadge' | loc }}
+                              </span>
+                            }
+                            @if (itemVal.unitPrice <= 0 && !isGift) {
+                              <span
+                                class="badge bg-danger text-white"
+                                style="font-size: 0.65rem;"
+                              >
+                                {{ 'Menu_CounterPrice' | loc }}
+                              </span>
+                            }
+                          </div>
+                          <div class="d-flex align-items-center gap-2">
+                            <div class="input-group input-group-sm" style="width: 120px;">
+                              <span class="input-group-text py-0 px-1 bg-secondary text-white border-0">
+                                €
+                              </span>
+                              <input
+                                type="number"
+                                step="0.50"
+                                min="0"
+                                class="form-control form-control-sm py-0 px-1 text-end bg-dark text-white border-secondary"
+                                [class.border-danger]="itemVal.unitPrice <= 0 && !isGift"
+                                [class.text-warning]="itemVal.unitPrice <= 0 && !isGift"
+                                [class.fw-bold]="itemVal.unitPrice <= 0 && !isGift"
+                                [value]="itemVal.unitPrice.toFixed(2)"
+                                (change)="UpdateSelectedItemUnitPrice(itemKey, $event)"
+                              />
+                            </div>
+                            <span class="text-white-50" style="min-width: 65px; text-align: right;">
+                              = €{{ (itemVal.quantity * itemVal.unitPrice).toFixed(2) }}
+                            </span>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <div class="d-flex align-items-center gap-3 flex-wrap justify-content-between w-100">
+                  <div>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      @if (selectedOrdinaryKeys.size > 0) {
+                        <span class="badge bg-primary fs-6">
+                          Pay: {{ GetSelectedOrdinaryTotalCount() }} (€{{
+                            GetSelectedOrdinaryTotal().toFixed(2)
+                          }})
+                        </span>
+                        @if (settlementDiscount > 0) {
+                          <span class="badge bg-danger text-white fs-6" title="Discount applied">
+                            🏷️ Sconto: -€{{ settlementDiscount.toFixed(2) }} (Net: €{{
+                              (GetSelectedOrdinaryTotal() - settlementDiscount > 0
+                                ? GetSelectedOrdinaryTotal() - settlementDiscount
+                                : 0
+                              ).toFixed(2)
+                            }})
+                          </span>
+                        }
+                      }
+                      @if (selectedGiftKeys.size > 0) {
+                        <span class="badge bg-warning text-dark fs-6">
+                          🎁 Gift: {{ GetSelectedGiftTotalCount() }} (€{{
+                            GetSelectedGiftTotal().toFixed(2)
+                          }})
+                        </span>
+                      }
+                    </div>
+                    <small class="text-muted">Settle PayAtCounter items</small>
+                  </div>
+
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button
+                      class="btn btn-outline-light btn-sm"
+                      (click)="ClearItemSelection()"
+                      [disabled]="isSettling"
+                    >
+                      Deselect All
+                    </button>
+
+                    <button
+                      class="btn btn-outline-warning btn-sm fw-bold"
+                      (click)="showPriceAdjustmentPanel = !showPriceAdjustmentPanel"
+                      [disabled]="isSettling"
+                    >
+                      🏷️ {{ 'AllOrders_EditPrices' | loc }}
+                    </button>
+
+                    <button
+                      class="btn btn-outline-info btn-sm font-weight-bold"
+                      (click)="OpenPaymentGroupBuilderFromSelection()"
+                      [disabled]="isSettling || !isStripeConnected"
+                      [title]="!isStripeConnected ? ('AllOrders_StripeRequiredTooltip' | loc) : ''"
+                    >
+                      ⚡ {{ 'AllOrders_BtnSplitBillGroups' | loc }}
+                    </button>
+
+                    <button
+                      class="btn btn-outline-success btn-sm font-weight-bold"
+                      (click)="SettleSelectedNoLedger()"
+                      [disabled]="isSettling"
+                    >
+                      @if (isSettling) {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                      }
+                      Mark Paid (No Ledger)
+                    </button>
+
+                    @if (selectedOrdinaryKeys.size > 0) {
+                      <div
+                        class="input-group input-group-sm"
+                        style="width: 140px;"
+                        title="Subtotal Discount (Sconto Cassa)"
+                      >
+                        <span
+                          class="input-group-text bg-secondary text-white border-0 py-0 px-2"
+                          style="font-size: 0.75rem;"
+                        >
+                          🏷️ Sconto €
+                        </span>
+                        <input
+                          type="number"
+                          step="0.50"
+                          min="0"
+                          [max]="GetSelectedOrdinaryTotal()"
+                          class="form-control form-control-sm text-end"
+                          [(ngModel)]="settlementDiscount"
+                          [disabled]="isSettling"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    }
+
+                    <div class="input-group input-group-sm" style="width: auto;">
+                      @if (selectedOrdinaryKeys.size > 0) {
+                        <select
+                          class="form-select form-select-sm"
+                          [(ngModel)]="selectedLedgerPaymentMethodStr"
+                          [disabled]="isSettling"
+                        >
+                          <option value="Cash">Cash</option>
+                          <option value="ExternalCardTerminal">POS Counter Card</option>
+                          <option value="Voucher">Voucher</option>
+                        </select>
+                      }
+                      <button
+                        class="btn btn-primary font-weight-bold"
+                        (click)="SettleSelectedWithLedger()"
+                        [disabled]="isSettling"
+                      >
+                        @if (isSettling) {
+                          <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        Settle &amp; Add to Ledger
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                @if (settlementError) {
+                  <div class="w-100 alert alert-danger py-1 px-2 small mb-0 mt-1">
+                    {{ settlementError }}
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Reset Orders Modal -->
+@if (confirmTableNum !== null) {
+  <div class="confirm-overlay">
+    <div class="confirm-box">
+      <h5>{{ formatText('AllOrders_ResetModalTitle', confirmTableNum) }}</h5>
+      <p [innerHTML]="formatText('AllOrders_ResetModalBody', confirmTableNum)"></p>
+      @if (resetOrdersError) {
+        <div class="alert alert-danger py-2 small mb-3">{{ resetOrdersError }}</div>
+      }
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" (click)="CancelReset()">
+          {{ 'AllOrders_BtnCancel' | loc }}
+        </button>
+        <button class="btn btn-danger" (click)="ConfirmReset()" [disabled]="isResettingOrders">
+          @if (isResettingOrders) {
+            <span class="spinner-border spinner-border-sm" role="status"></span>
+          } @else {
+            <span>{{ 'AllOrders_BtnYesReset' | loc }}</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Reject Item Modal -->
+@if (rejectItemTarget) {
+  <div class="confirm-overlay">
+    <div class="confirm-box">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">❌ {{ 'AllOrders_RejectModalTitle' | loc }}</h5>
+        <button type="button" class="btn-close" (click)="CancelRejectItem()"></button>
+      </div>
+      <p class="mb-2">
+        <strong>{{ rejectItemTarget.itemName }}</strong>
+        ({{ formatText('Table_HeaderTitle', rejectItemTarget.tableNum) }})
+      </p>
+      <div class="mb-3">
+        <label class="form-label small text-muted">{{ 'AllOrders_RejectReasonPrompt' | loc }}</label>
+        <input
+          type="text"
+          class="form-control"
+          [(ngModel)]="rejectReason"
+          placeholder="es. Piatto esaurito / Out of stock"
+        />
+      </div>
+      @if (rejectItemError) {
+        <div class="alert alert-danger py-2 small mb-3">{{ rejectItemError }}</div>
+      }
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" (click)="CancelRejectItem()">
+          {{ 'AllOrders_BtnCancel' | loc }}
+        </button>
+        <button class="btn btn-danger" (click)="ConfirmRejectItem()" [disabled]="isRejectingItem">
+          @if (isRejectingItem) {
+            <span class="spinner-border spinner-border-sm" role="status"></span>
+          } @else {
+            <span>{{ 'AllOrders_BtnConfirmReject' | loc }}</span>
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Payment Group Builder (Split Bill) Modal -->
+@if (showPaymentGroupModal) {
+  <div class="group-builder-overlay">
+    <div class="group-builder-modal">
+      <div class="group-builder-header">
+        <div>
+          <h5 class="mb-0 font-weight-bold">
+            ⚡ {{ formatText('AllOrders_SplitBillModalTitle', groupModalTableNum) }}
+          </h5>
+          <small class="text-white-50">
+            {{
+              formatText(
+                'AllOrders_SplitItemsToSettle',
+                builderItems.length,
+                getBuilderTotalToSettle().toFixed(2)
+              )
+            }}
+          </small>
+        </div>
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          (click)="ClosePaymentGroupModal()"
+          aria-label="Close"
+        ></button>
+      </div>
+
+      <div class="group-builder-body">
+        @if (publishedGroupSet) {
+          <div class="text-center py-3">
+            <div class="badge bg-success fs-6 p-2 px-3 mb-3">
+              <i class="bi bi-check-circle-fill me-1"></i>{{ 'AllOrders_PublishedSuccess' | loc }}
+            </div>
+            <h4 class="font-weight-bold mb-3">
+              {{ formatText('AllOrders_TableTitle', groupModalTableNum) }} -
+              {{ formatText('AllOrders_GroupsCount', publishedGroupSet.groups.length) }}
+            </h4>
+            <p class="text-muted mb-4">{{ 'AllOrders_ChooseDistributionMode' | loc }}</p>
+
+            <div class="row g-3 mb-4 text-start">
+              <div class="col-md-6">
+                <div class="card h-100 p-3 shadow-sm border-primary border-2">
+                  <h5 class="font-weight-bold text-primary mb-2">
+                    <i class="bi bi-printer me-2"></i>{{ 'AllOrders_CardPrintTitle' | loc }}
+                  </h5>
+                  <p class="small text-muted mb-3">
+                    {{ 'AllOrders_CardPrintDesc' | loc }}
+                  </p>
+                  <a
+                    class="btn btn-outline-primary mt-auto font-weight-bold"
+                    [href]="
+                      '/restaurantsAdmin/' +
+                      restaurantId +
+                      '/table/' +
+                      groupModalTableNum +
+                      '/payment-groups/' +
+                      publishedGroupSet.setId +
+                      '/print'
+                    "
+                    target="_blank"
+                  >
+                    <i class="bi bi-printer-fill me-1"></i>{{ 'AllOrders_PrintPreBills' | loc }}
+                  </a>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card h-100 p-3 shadow-sm border-dark border-2 text-center">
+                  <h5 class="font-weight-bold text-dark mb-2 text-start">
+                    <i class="bi bi-phone me-2"></i>{{ 'AllOrders_CardWaiterTitle' | loc }}
+                  </h5>
+                  <p class="small text-muted mb-2 text-start">
+                    {{ 'AllOrders_CardWaiterDesc' | loc }}
+                  </p>
+                  @let waiterUrl = getWaiterUrl();
+                  <div class="my-2">
+                    <img
+                      [src]="getWaiterQrCodeUrl()"
+                      alt="Waiter Master QR"
+                      style="width: 150px; height: 150px; border-radius: 0.5rem;"
+                      class="shadow-sm border p-1"
+                    />
+                  </div>
+                  <div class="p-2 bg-light rounded border text-start mb-2" style="font-size: 0.75rem;">
+                    <small class="text-muted fw-bold d-block mb-1">
+                      {{ 'AllOrders_WaiterTestLinkLabel' | loc }}
+                    </small>
+                    <div class="input-group input-group-sm">
+                      <input
+                        type="text"
+                        class="form-control font-monospace py-0"
+                        readonly
+                        [value]="waiterUrl"
+                        style="font-size: 0.75rem;"
+                      />
+                      <a
+                        [href]="waiterUrl"
+                        target="_blank"
+                        class="btn btn-outline-primary btn-sm py-0"
+                        title="Apri link"
+                      >
+                        <i class="bi bi-box-arrow-up-right"></i>
+                      </a>
+                      <button
+                        class="btn btn-outline-secondary btn-sm py-0"
+                        type="button"
+                        title="Copia link"
+                        (click)="CopyToClipboard(waiterUrl)"
+                      >
+                        <i class="bi bi-clipboard"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <a
+                    class="btn btn-dark btn-sm font-weight-bold mt-auto"
+                    [href]="waiterUrl"
+                    target="_blank"
+                  >
+                    <i class="bi bi-box-arrow-up-right me-1"></i>{{ 'AllOrders_WaiterQrView' | loc }}
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <div class="card p-3 bg-light border text-start mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="font-weight-bold mb-0">{{ 'AllOrders_DirectGroupLinksTitle' | loc }}</h6>
+                @if (copyFeedback) {
+                  <span class="badge bg-success">{{ copyFeedback }}</span>
+                }
+              </div>
+              <div class="d-flex flex-column gap-2">
+                @for (grp of publishedGroupSet.groups; track grp.groupId) {
+                  @let groupPayUrl = getGroupPayUrl(grp.groupId);
+                  <div class="p-2 bg-white rounded border">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
+                      <div>
+                        <strong>{{ grp.name }}</strong>
+                        <span class="text-success ms-2 font-weight-bold">
+                          €{{ grp.totalAmount.toFixed(2) }}
+                        </span>
+                        @if (grp.discount && grp.discount > 0) {
+                          <small class="text-danger ms-1">
+                            ({{ formatText('WaiterView_DiscountLabel', grp.discount.toFixed(2)) }})
+                          </small>
+                        }
+                      </div>
+                      <div class="d-flex gap-1">
+                        <a
+                          [href]="groupPayUrl"
+                          target="_blank"
+                          class="btn btn-outline-secondary btn-sm"
+                        >
+                          <i class="bi bi-box-arrow-up-right me-1"></i
+                          >{{ 'AllOrders_BtnOpenPayLink' | loc }}
+                        </a>
+                        <button
+                          type="button"
+                          class="btn btn-outline-dark btn-sm"
+                          [title]="'AllOrders_CopyLinkTooltip' | loc"
+                          (click)="CopyToClipboard(groupPayUrl)"
+                        >
+                          <i class="bi bi-clipboard me-1"></i>{{ 'Common_BtnCopy' | loc }}
+                        </button>
+                      </div>
+                    </div>
+                    <div class="input-group input-group-sm mt-1">
+                      <span
+                        class="input-group-text bg-light text-muted py-0 px-2"
+                        style="font-size: 0.72rem;"
+                      >
+                        {{ 'AllOrders_SmsChatLinkLabel' | loc }}
+                      </span>
+                      <input
+                        type="text"
+                        class="form-control font-monospace py-0"
+                        readonly
+                        [value]="groupPayUrl"
+                        style="font-size: 0.75rem;"
+                      />
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        } @else {
+          @if (publishGroupError) {
+            <div class="alert alert-danger py-2 small mb-3">{{ publishGroupError }}</div>
+          }
+
+          <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded flex-wrap gap-2">
+            <div class="form-check form-switch mb-0">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="flexSwitchCheck"
+                [(ngModel)]="isFlexibleGroupSet"
+              />
+              <label class="form-check-label small font-weight-bold" for="flexSwitchCheck">
+                {{ 'AllOrders_FlexibleMode' | loc }}
+              </label>
+            </div>
+            <div class="d-flex gap-2">
+              <button
+                class="btn btn-outline-success btn-sm font-weight-bold"
+                (click)="
+                  showAddCustomItemForm = !showAddCustomItemForm;
+                  showCustomItemAutocomplete = false;
+                  addCustomItemError = null
+                "
+              >
+                <i class="bi bi-plus-square me-1"></i>{{ 'AllOrders_AddCustomItem' | loc }}
+              </button>
+              <button
+                class="btn btn-outline-primary btn-sm font-weight-bold"
+                (click)="AddBuilderGroup()"
+              >
+                <i class="bi bi-plus-circle me-1"></i>{{ 'AllOrders_AddGroup' | loc }}
+              </button>
+            </div>
+          </div>
+
+          @if (showAddCustomItemForm) {
+            @let availableSearchCategories = GetCustomItemAvailableCategories();
+            <div class="card p-3 mb-3 border-success shadow-sm bg-light-subtle">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0 text-success">
+                  <i class="bi bi-pencil-square me-1"></i>{{ 'AllOrders_AddCustomItemTitle' | loc }}
+                </h6>
+                <button
+                  type="button"
+                  class="btn-close btn-sm"
+                  (click)="
+                    showAddCustomItemForm = false;
+                    showCustomItemAutocomplete = false;
+                    addCustomItemError = null
+                  "
+                ></button>
+              </div>
+
+              @if (availableSearchCategories.length > 0) {
+                <div class="mb-2 p-2 bg-white rounded border">
+                  <div class="d-flex align-items-center justify-content-between mb-1">
+                    <small class="fw-bold text-secondary">
+                      <i class="bi bi-funnel me-1"></i
+                      >{{ 'AllOrders_CustomItemSearchCategories' | loc }}
+                    </small>
+                    @if (customItemSearchCategories.size > 0) {
+                      <button
+                        type="button"
+                        class="btn btn-link btn-sm p-0 text-decoration-none"
+                        style="font-size: 0.75rem;"
+                        (click)="ClearCustomItemSearchCategories()"
+                      >
+                        <i class="bi bi-arrow-counterclockwise me-1"></i
+                        >{{ 'AllOrders_CustomItemAllCategories' | loc }}
+                      </button>
+                    }
+                  </div>
+                  <div
+                    class="d-flex align-items-center gap-2 flex-wrap"
+                    style="max-height: 90px; overflow-y: auto;"
+                  >
+                    <div
+                      class="form-check form-check-inline my-0 me-2"
+                      style="font-size: 0.8rem;"
+                    >
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        id="cat_filter_all"
+                        [checked]="customItemSearchCategories.size === 0"
+                        (change)="ClearCustomItemSearchCategories()"
+                      />
+                      <label class="form-check-label fw-bold" for="cat_filter_all">
+                        {{ 'AllOrders_CustomItemAllCategories' | loc }}
+                      </label>
+                    </div>
+                    @for (cat of availableSearchCategories; track cat) {
+                      <div
+                        class="form-check form-check-inline my-0 me-2"
+                        style="font-size: 0.8rem;"
+                      >
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          [id]="'cat_filter_' + cat"
+                          [checked]="customItemSearchCategories.has(cat)"
+                          (change)="ToggleCustomItemSearchCategory(cat)"
+                        />
+                        <label class="form-check-label" [for]="'cat_filter_' + cat">
+                          {{ cat }}
+                        </label>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+
+              <div class="row g-2 align-items-end">
+                <div class="col-md-4 col-sm-6 position-relative">
+                  <label class="form-label small fw-bold mb-1">
+                    {{ 'AllOrders_CustomItemDescription' | loc }}
+                  </label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white">
+                      <i class="bi bi-search text-muted"></i>
+                    </span>
+                    <input
+                      type="text"
+                      class="form-control form-control-sm"
+                      [placeholder]="'AllOrders_CustomItemPlaceholder' | loc"
+                      [value]="newCustomItemDescription"
+                      (input)="OnCustomItemDescriptionInput($event)"
+                      (focus)="OnCustomItemDescriptionFocus()"
+                      autocomplete="off"
+                    />
+                    @if (newCustomItemDescription) {
+                      <button
+                        class="btn btn-outline-secondary btn-sm"
+                        type="button"
+                        (click)="ClearCustomItemDescription()"
+                      >
+                        <i class="bi bi-x"></i>
+                      </button>
+                    }
+                  </div>
+
+                  @if (showCustomItemAutocomplete && autocompleteResults.length > 0) {
+                    <div
+                      class="position-absolute start-0 end-0 bg-white border rounded shadow-lg mt-1 list-group list-group-flush"
+                      style="top: 100%; z-index: 1060; max-height: 240px; overflow-y: auto;"
+                    >
+                      @for (item of autocompleteResults; track item.name + '_' + item.isExtra) {
+                        <button
+                          type="button"
+                          class="list-group-item list-group-item-action p-2 d-flex align-items-center justify-content-between"
+                          style="cursor: pointer;"
+                          (mousedown)="SelectCustomItemSuggestion(item)"
+                        >
+                          <div class="d-flex flex-column text-start me-2" style="min-width: 0;">
+                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                              <span
+                                class="fw-semibold text-truncate"
+                                style="font-size: 0.85rem;"
+                              >
+                                {{ item.name }}
+                              </span>
+                              @if (item.isExtra) {
+                                <span
+                                  class="badge text-white"
+                                  style="background-color: #7c3aed; font-size: 0.65rem;"
+                                >
+                                  {{ 'AllOrders_MenuSourceExtra' | loc }}
+                                </span>
+                              } @else {
+                                <span class="badge bg-secondary" style="font-size: 0.65rem;">
+                                  {{ 'AllOrders_MenuSourceOrdinary' | loc }}
+                                </span>
+                              }
+                              @if (!item.isAvailable) {
+                                <span
+                                  class="badge bg-danger-subtle text-danger border border-danger-subtle"
+                                  style="font-size: 0.65rem;"
+                                >
+                                  {{ 'AllOrders_ItemDisabledBadge' | loc }}
+                                </span>
+                              }
+                            </div>
+                            @if (item.category) {
+                              <small class="text-muted" style="font-size: 0.72rem;">
+                                {{ item.category }}
+                              </small>
+                            }
+                          </div>
+                          <span
+                            class="badge bg-success-subtle text-success border border-success-subtle fw-bold"
+                            style="font-size: 0.8rem; white-space: nowrap;"
+                          >
+                            €{{ item.price.toFixed(2) }}
+                          </span>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <div class="col-md-2 col-sm-3 col-6">
+                  <label class="form-label small fw-bold mb-1">
+                    {{ 'AllOrders_CustomItemAmount' | loc }}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.10"
+                    min="0.01"
+                    class="form-control form-control-sm"
+                    placeholder="0.00"
+                    [(ngModel)]="newCustomItemUnitPrice"
+                  />
+                </div>
+
+                <div class="col-md-2 col-sm-3 col-6">
+                  <label class="form-label small fw-bold mb-1">
+                    {{ 'AllOrders_CustomItemQuantity' | loc }}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    class="form-control form-control-sm"
+                    [(ngModel)]="newCustomItemQuantity"
+                  />
+                </div>
+
+                <div class="col-md-2 col-sm-6">
+                  <label class="form-label small fw-bold mb-1">
+                    {{ 'AllOrders_MoveToGroup' | loc }}
+                  </label>
+                  <select class="form-select form-select-sm" [(ngModel)]="newCustomItemTargetGroup">
+                    <option value="">{{ 'AllOrders_UnassignedOption' | loc }}</option>
+                    @for (g of builderGroups; track g.id) {
+                      <option [value]="g.id">{{ g.name }}</option>
+                    }
+                    <option value="common">{{ 'AllOrders_SharedOption' | loc }}</option>
+                  </select>
+                </div>
+
+                <div class="col-md-2 col-sm-6 d-flex gap-1">
+                  <button
+                    type="button"
+                    class="btn btn-sm w-100"
+                    [class.btn-warning]="newCustomItemIsGift"
+                    [class.text-dark]="newCustomItemIsGift"
+                    [class.btn-outline-secondary]="!newCustomItemIsGift"
+                    (click)="newCustomItemIsGift = !newCustomItemIsGift"
+                    [title]="'CustomerGroupPay_GiftBadge' | loc"
+                  >
+                    {{ newCustomItemIsGift ? ('CustomerGroupPay_GiftBadge' | loc) : 'No' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-success w-100 fw-bold"
+                    (click)="AddCustomItemToBuilder()"
+                  >
+                    <i class="bi bi-check-lg me-1"></i
+                    >{{ 'AllOrders_BtnAddCustomItemConfirm' | loc }}
+                  </button>
+                </div>
+              </div>
+
+              @if (addCustomItemError) {
+                <div class="text-danger small mt-2 fw-semibold">
+                  <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ addCustomItemError }}
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Groups summary cards bar -->
+          <div class="row g-2 mb-4">
+            @for (grp of builderGroups; track grp.id) {
+              @let summary = getGroupSummary(grp);
+              <div [class]="getGroupCardColClass()">
+                <div class="p-2 border rounded bg-white shadow-sm h-100">
+                  <div class="d-flex align-items-center justify-content-between gap-1 mb-2">
+                    <div class="input-group input-group-sm flex-grow-1">
+                      <span
+                        class="input-group-text bg-light border-0 py-0 px-1 font-weight-bold"
+                        style="font-size: 0.75rem;"
+                      >
+                        {{ 'AllOrders_GroupNameLabel' | loc }}:
+                      </span>
+                      <input
+                        type="text"
+                        class="form-control form-control-sm font-weight-bold py-0"
+                        [(ngModel)]="grp.name"
+                        [placeholder]="'AllOrders_GroupNameLabel' | loc"
+                      />
+                    </div>
+                    @if (builderGroups.length > 1) {
+                      <button
+                        type="button"
+                        class="btn-close flex-shrink-0"
+                        (click)="RemoveBuilderGroup(grp.id)"
+                        [title]="'AllOrders_RemoveGroupTooltip' | loc"
+                        style="font-size: 0.75rem; cursor: pointer;"
+                      ></button>
+                    }
+                  </div>
+
+                  <div class="d-flex justify-content-between align-items-center small mb-1">
+                    <span class="text-muted">{{ 'AllOrders_DirectItemsLabel' | loc }}</span>
+                    <span>{{ summary.assignedCount }} (€{{ summary.assignedTotal.toFixed(2) }})</span>
+                  </div>
+
+                  @if (summary.commonShare > 0) {
+                    <div class="d-flex justify-content-between align-items-center small mb-1">
+                      <span class="text-muted">{{ 'AllOrders_CommonQuotaLabel' | loc }}</span>
+                      <span class="text-info">+€{{ summary.commonShare.toFixed(2) }}</span>
+                    </div>
+                  }
+
+                  @if (summary.gifts > 0) {
+                    <div class="d-flex justify-content-between align-items-center small mb-1">
+                      <span class="text-muted">{{ 'AllOrders_GiftsCountLabel' | loc }}</span>
+                      <span class="text-warning">{{ summary.gifts }}</span>
+                    </div>
+                  }
+
+                  <div class="input-group input-group-sm mb-1" style="max-width: 150px;">
+                    <span
+                      class="input-group-text py-0 px-1 bg-light border-0"
+                      style="font-size: 0.75rem;"
+                    >
+                      {{ 'AllOrders_GroupDiscount' | loc }}:
+                    </span>
+                    <input
+                      type="number"
+                      step="0.50"
+                      min="0"
+                      [max]="summary.groupSubtotal"
+                      class="form-control form-control-sm text-end py-0"
+                      [(ngModel)]="grp.discountAmount"
+                    />
+                  </div>
+
+                  <div class="d-flex justify-content-between align-items-center pt-1 border-top font-weight-bold">
+                    <span>{{ 'PrintReceipts_Total' | loc }}</span>
+                    <span class="text-success fs-6">€{{ summary.netTotal.toFixed(2) }}</span>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Items selection by session and custom items -->
+          <h6 class="font-weight-bold mb-2">{{ 'AllOrders_TableItemsAssignmentTitle' | loc }}</h6>
+          <div class="d-flex flex-column gap-3">
+            @let customItemsList = getCustomBuilderItems();
+            @if (customItemsList.length > 0) {
+              <div class="border border-success rounded p-2 bg-light-subtle shadow-sm">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom flex-wrap gap-2">
+                  <div>
+                    <strong class="text-success me-2">
+                      <i class="bi bi-stars me-1"></i
+                      >{{ 'AllOrders_CustomItemsSectionTitle' | loc }}
+                    </strong>
+                    <small class="text-muted">({{ customItemsList.length }} voci)</small>
+                  </div>
+                  <button
+                    class="btn btn-outline-success btn-sm py-0 px-2"
+                    style="font-size: 0.8rem;"
+                    (click)="showAddCustomItemForm = true; addCustomItemError = null"
+                  >
+                    <i class="bi bi-plus-circle me-1"></i>{{ 'AllOrders_AddCustomItem' | loc }}
+                  </button>
+                </div>
+
+                <div class="d-flex flex-column gap-1">
+                  @for (item of customItemsList; track item.key) {
+                    <div class="d-flex justify-content-between align-items-center p-2 bg-white rounded border flex-wrap gap-2">
+                      <div class="d-flex align-items-center gap-2">
+                        <button
+                          type="button"
+                          class="btn btn-sm py-0 px-2"
+                          [class.btn-warning]="item.isGift"
+                          [class.text-dark]="item.isGift"
+                          [class.border-warning]="item.isGift"
+                          [class.fw-bold]="item.isGift"
+                          [class.btn-outline-secondary]="!item.isGift"
+                          style="font-size: 0.75rem; border-radius: 4px;"
+                          [title]="'CustomerGroupPay_GiftBadge' | loc"
+                          (click)="item.isGift = !item.isGift"
+                        >
+                          {{ item.isGift ? ('CustomerGroupPay_GiftBadge' | loc) : '🎁' }}
+                        </button>
+                        <span
+                          class="badge bg-success-subtle text-success border border-success-subtle py-0 px-1"
+                          style="font-size: 0.7rem;"
+                        >
+                          Extra
+                        </span>
+                        <span class="font-weight-bold">{{ item.quantity }}&times;</span>
+                        <span class="fw-semibold">{{ item.menuItemName }}</span>
+                        <span class="text-muted small ms-2">
+                          €{{ (item.quantity * item.unitPrice).toFixed(2) }}
+                        </span>
+                      </div>
+
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex align-items-center gap-1">
+                          <span class="small text-muted">{{ 'AllOrders_MoveToGroup' | loc }}:</span>
+                          <select
+                            class="form-select form-select-sm py-0"
+                            style="width: auto; font-size: 0.8rem;"
+                            [value]="item.isCommon ? 'common' : item.assignedGroupId"
+                            (change)="
+                              SetItemAssignment(item, $any($event.target).value)
+                            "
+                          >
+                            <option value="">{{ 'AllOrders_UnassignedOption' | loc }}</option>
+                            @for (g of builderGroups; track g.id) {
+                              <option [value]="g.id">{{ g.name }}</option>
+                            }
+                            <option value="common">{{ 'AllOrders_SharedOption' | loc }}</option>
+                          </select>
+                        </div>
+                        <button
+                          type="button"
+                          class="btn btn-outline-danger btn-sm py-0 px-2"
+                          [title]="'AllOrders_RemoveCustomItemTooltip' | loc"
+                          (click)="RemoveCustomItem(item.key)"
+                        >
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            @for (sessGroup of getSessionBuilderGroups(); track sessGroup.sessionId) {
+              <div class="border rounded p-2 bg-light">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-1 border-bottom flex-wrap gap-2">
+                  <div>
+                    <strong class="me-2">
+                      {{ 'AllOrders_SessionLabel' | loc }}
+                      <code class="badge bg-secondary">{{ sessGroup.shortSession }}</code>
+                    </strong>
+                    <small class="text-muted">({{ sessGroup.items.length }})</small>
+                  </div>
+                  <div class="d-flex align-items-center gap-1">
+                    <small class="text-muted me-1">{{ 'AllOrders_AssignSessionTo' | loc }}:</small>
+                    <select
+                      class="form-select form-select-sm py-0"
+                      style="width: auto; font-size: 0.8rem;"
+                      (change)="AssignEntireSession(sessGroup.sessionId, $any($event.target).value)"
+                    >
+                      <option value="">{{ 'AllOrders_UnassignedOption' | loc }}</option>
+                      @for (g of builderGroups; track g.id) {
+                        <option [value]="g.id">{{ g.name }}</option>
+                      }
+                      <option value="common">{{ 'AllOrders_SharedOption' | loc }}</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="d-flex flex-column gap-1">
+                  @for (item of sessGroup.items; track item.key) {
+                    <div class="d-flex justify-content-between align-items-center p-2 bg-white rounded border flex-wrap gap-2">
+                      <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          class="btn btn-sm py-0 px-2"
+                          [class.btn-warning]="item.isGift"
+                          [class.text-dark]="item.isGift"
+                          [class.border-warning]="item.isGift"
+                          [class.fw-bold]="item.isGift"
+                          [class.btn-outline-secondary]="!item.isGift"
+                          style="font-size: 0.75rem; border-radius: 4px;"
+                          [title]="'CustomerGroupPay_GiftBadge' | loc"
+                          (click)="item.isGift = !item.isGift"
+                        >
+                          {{ item.isGift ? ('CustomerGroupPay_GiftBadge' | loc) : '🎁' }}
+                        </button>
+                        <span class="font-weight-bold">{{ item.quantity }}&times;</span>
+                        <span>{{ item.menuItemName }}</span>
+                        @if (IsExtraMenuItem(item.menuItemName)) {
+                          <span
+                            class="badge text-white ms-1"
+                            style="background-color: #7c3aed; font-size: 0.65rem;"
+                          >
+                            {{ 'Menu_ExtraItemBadge' | loc }}
+                          </span>
+                        }
+                        <div
+                          class="input-group input-group-sm ms-2"
+                          style="width: 105px;"
+                          [title]="'AllOrders_EditPrices' | loc"
+                        >
+                          <span class="input-group-text py-0 px-1" style="font-size: 0.75rem;">
+                            €
+                          </span>
+                          <input
+                            type="number"
+                            step="0.50"
+                            min="0"
+                            class="form-control form-control-sm py-0 px-1 text-end"
+                            style="font-size: 0.8rem;"
+                            [value]="item.unitPrice"
+                            (change)="updateBuilderItemUnitPrice(item, $event)"
+                          />
+                        </div>
+                        <span class="text-muted small ms-1">
+                          (= €{{ (item.quantity * item.unitPrice).toFixed(2) }})
+                        </span>
+                      </div>
+
+                      <div class="d-flex align-items-center gap-1">
+                        <span class="small text-muted">{{ 'AllOrders_MoveToGroup' | loc }}:</span>
+                        <select
+                          class="form-select form-select-sm py-0"
+                          style="width: auto; font-size: 0.8rem;"
+                          [value]="item.isCommon ? 'common' : item.assignedGroupId"
+                          (change)="SetItemAssignment(item, $any($event.target).value)"
+                        >
+                          <option value="">{{ 'AllOrders_UnassignedOption' | loc }}</option>
+                          @for (g of builderGroups; track g.id) {
+                            <option [value]="g.id">{{ g.name }}</option>
+                          }
+                          <option value="common">{{ 'AllOrders_SharedOption' | loc }}</option>
+                        </select>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="group-builder-footer">
+        @if (publishedGroupSet) {
+          <div class="ms-auto">
+            <button class="btn btn-secondary" (click)="ClosePaymentGroupModal()">
+              {{ 'AllOrders_BtnCancel' | loc }}
+            </button>
+          </div>
+        } @else {
+          <div>
+            @let unassigned = getUnassignedBuilderItemsCount();
+            @if (unassigned > 0) {
+              <span class="text-danger small font-weight-bold">
+                <i class="bi bi-exclamation-circle me-1"></i
+                >{{ formatText('AllOrders_UnassignedItemsWarning', unassigned) }}
+              </span>
+            } @else {
+              <span class="text-success small font-weight-bold">
+                <i class="bi bi-check-circle me-1"></i
+                >{{ 'AllOrders_AllItemsAssignedSuccess' | loc }}
+              </span>
+            }
+          </div>
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-outline-secondary"
+              (click)="ClosePaymentGroupModal()"
+              [disabled]="isPublishingGroups"
+            >
+              {{ 'AllOrders_BtnCancel' | loc }}
+            </button>
+            <button
+              class="btn btn-primary font-weight-bold"
+              (click)="PublishPaymentGroups()"
+              [disabled]="isPublishingGroups || builderGroups.length === 0"
+            >
+              @if (isPublishingGroups) {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+              }
+              <span>🚀 {{ 'AllOrders_PublishGroups' | loc }}</span>
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+</app-main-layout>

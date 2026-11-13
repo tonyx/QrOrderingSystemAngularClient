@@ -1,3 +1,5 @@
+export type ExternalAuthProvider = 'Google' | 'Facebook';
+
 export interface TokenRequest {
   email: string;
   password: string;

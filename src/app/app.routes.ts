@@ -13,6 +13,7 @@ import { EditMenuItemComponent } from './features/restaurant/edit-menu-item/edit
 import { EditExtraCatalogueComponent } from './features/restaurant/edit-extra-catalogue/edit-extra-catalogue.component';
 import { OrderComponent } from './features/ordering/order/order.component';
 import { WaiterOrderComponent } from './features/ordering/waiter-order/waiter-order.component';
+import { AllOrdersComponent } from './features/settlement/all-orders/all-orders.component';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -47,6 +48,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   // Table Management pages
+  {
+    path: 'restaurantsAdmin/:restaurantId/orders',
+    component: AllOrdersComponent,
+    canActivate: [authGuard],
+  },
   {
     path: 'restaurantsAdmin/:restaurantId/tables',
     component: AdminTablesComponent,

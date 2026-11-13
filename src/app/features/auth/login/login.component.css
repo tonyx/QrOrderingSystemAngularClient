@@ -257,6 +257,75 @@ input:disabled {
   animation: spin 0.8s linear infinite;
 }
 
+.spinner-dark {
+  border-color: rgba(15, 23, 42, 0.25);
+  border-top-color: #0f172a;
+}
+
+.social-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0.25rem 0;
+}
+
+.social-divider::before,
+.social-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.social-divider span {
+  padding: 0 0.75rem;
+}
+
+.social-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.btn-social {
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.7rem 1rem;
+}
+
+.btn-social:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.social-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
+}
+
+.btn-google {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-google:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.btn-facebook {
+  background: #1877f2;
+  color: #ffffff;
+}
+
+.btn-facebook:hover:not(:disabled) {
+  background: #166fe5;
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

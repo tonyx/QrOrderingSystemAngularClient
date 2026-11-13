@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { ExternalAuthProvider } from '../../../core/models/auth.models';
 
 @Component({
   selector: 'app-login',
@@ -22,6 +23,7 @@ export class LoginComponent implements OnInit {
 
   // UI state
   protected isLoading = signal(false);
+  protected externalLoadingProvider = signal<ExternalAuthProvider | null>(null);
   protected errorMessage = signal<string | null>(null);
   protected successMessage = signal<string | null>(null);
 
@@ -30,10 +32,62 @@ export class LoginComponent implements OnInit {
   ngOnInit(): void {
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/dashboard';
 
-    // If already authenticated when landing here, immediately navigate to dashboard
+    // 1. Check if returning from a backend external OAuth callback (Google / Facebook)
+    if (this.handleExternalCallbackIfPresent()) {
+      return;
+    }
+
+    // 2. If already authenticated when landing here, immediately navigate to dashboard
     if (this.authService.isAuthenticated()) {
       this.router.navigateByUrl(this.returnUrl);
     }
+  }
+
+  private handleExternalCallbackIfPresent(): boolean {
+    const queryParams = this.route.snapshot.queryParams;
+    const fragment = this.route.snapshot.fragment;
+    const hashParams = new URLSearchParams(fragment || '');
+
+    const errorParam =
+      hashParams.get('error') ||
+      hashParams.get('errorMessage') ||
+      queryParams['error'] ||
+      queryParams['errorMessage'];
+
+    if (errorParam) {
+      this.errorMessage.set(decodeURIComponent(errorParam));
+      return true;
+    }
+
+    const externalToken =
+      hashParams.get('token') ||
+      hashParams.get('access_token') ||
+      queryParams['token'] ||
+      queryParams['access_token'];
+
+    if (externalToken) {
+      const email = hashParams.get('email') || queryParams['email'] || null;
+      const userId = hashParams.get('userId') || queryParams['userId'] || null;
+
+      const targetUrl = this.authService.completeExternalLoginFromCallback({
+        token: externalToken,
+        email,
+        userId,
+      });
+
+      this.successMessage.set(`Welcome back${email ? ', ' + email : ''}!`);
+      this.router.navigateByUrl( queryParams['returnUrl'] || targetUrl, { replaceUrl: true });
+      return true;
+    }
+
+    return false;
+  }
+
+  onExternalLogin(provider: ExternalAuthProvider): void {
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.externalLoadingProvider.set(provider);
+    this.authService.initiateExternalLogin(provider, this.returnUrl);
   }
 
   onSubmit(): void {

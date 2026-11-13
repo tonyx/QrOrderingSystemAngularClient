@@ -15,6 +15,11 @@ import {
   TableSessionModel,
   OrderItemModel,
   AggregatedOrderItem,
+  SettlePayAtCounterItemSelectionDto,
+  PublishPaymentGroupSetRequestDto,
+  PaymentGroupSetModel,
+  PaymentGroupModel,
+  PaymentGroupItemModel,
 } from '../models/restaurant.models';
 import { PublicRestaurantDetails, MenuItemModel, MenuItemTranslation } from '../models/menu.models';
 
@@ -596,6 +601,141 @@ export class RestaurantService {
       MenuItemName: menuItemName,
       Reason: reason || null,
     });
+  }
+
+  makeOrderItemDoneById(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/session/item/done`;
+    return this.http.post<void>(url, {
+      TableNum: tableNumber,
+      TableId: tableId,
+      SessionId: sessionId,
+      OrderItemId: orderItemId,
+    });
+  }
+
+  rejectOrderItemById(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string, reason?: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/session/item/reject`;
+    return this.http.post<void>(url, {
+      TableNum: tableNumber,
+      TableId: tableId,
+      SessionId: sessionId,
+      OrderItemId: orderItemId,
+      Reason: reason || null,
+    });
+  }
+
+  // --- Settlement, Stripe Capture & Payment Groups ---
+
+  capturePaymentIntent(restaurantId: string, secret: string): Observable<void> {
+    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/capture-payment-intent`;
+    return this.http.post<void>(url, {
+      Secret: secret,
+    });
+  }
+
+  registerStripePaymentToLedger(
+    restaurantId: string,
+    tableNumber: number,
+    tableId: string,
+    sessionId: string,
+    paymentIntentId: string
+  ): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/session/register-stripe-ledger`;
+    return this.http.post<void>(url, {
+      TableNum: tableNumber,
+      TableId: tableId,
+      SessionId: sessionId,
+      PaymentIntentId: paymentIntentId,
+    });
+  }
+
+  markPayAtCounterItemsWithoutLedger(restaurantId: string, items: SettlePayAtCounterItemSelectionDto[]): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/mark-pay-at-counter-no-ledger`;
+    return this.http.post<void>(url, {
+      Items: items,
+    });
+  }
+
+  settlePayAtCounterItemsWithLedger(
+    restaurantId: string,
+    items: SettlePayAtCounterItemSelectionDto[],
+    ordinaryPaymentMethod: 'Cash' | 'ExternalCardTerminal' | 'Voucher',
+    discountAmount?: number | null
+  ): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/settle-pay-at-counter-with-ledger`;
+    return this.http.post<void>(url, {
+      Items: items,
+      OrdinaryPaymentMethod: { Case: ordinaryPaymentMethod },
+      DiscountAmount: discountAmount && discountAmount > 0 ? discountAmount : null,
+    });
+  }
+
+  publishPaymentGroupSet(restaurantId: string, request: PublishPaymentGroupSetRequestDto): Observable<PaymentGroupSetModel> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/payment-groups`;
+    return this.http.post<any>(url, request).pipe(
+      map((raw) => this.normalizePaymentGroupSet(raw))
+    );
+  }
+
+  private normalizePaymentGroupSet(raw: any): PaymentGroupSetModel {
+    const unwrapId = (val: any): string => {
+      if (typeof val === 'string') return val;
+      if (val && typeof val === 'object') {
+        return String(val.fields?.[0] ?? val.Fields?.[0] ?? val.value ?? val.Value ?? '');
+      }
+      return '';
+    };
+
+    const rawGroups = raw?.groups ?? raw?.Groups ?? [];
+    const groups: PaymentGroupModel[] = Array.isArray(rawGroups)
+      ? rawGroups.map((g: any) => {
+          const rawItems = g?.items ?? g?.Items ?? [];
+          const items: PaymentGroupItemModel[] = Array.isArray(rawItems)
+            ? rawItems.map((it: any) => ({
+                sessionId: String(it?.sessionId ?? it?.SessionId ?? ''),
+                menuItemName: String(it?.menuItemName ?? it?.MenuItemName ?? ''),
+                quantity: Number(it?.quantity ?? it?.Quantity ?? 1),
+                unitPrice: Number(it?.unitPrice ?? it?.UnitPrice ?? 0),
+                orderItemIds: Array.isArray(it?.orderItemIds ?? it?.OrderItemIds)
+                  ? (it?.orderItemIds ?? it?.OrderItemIds).map((oid: any) => unwrapId(oid))
+                  : [],
+                isGift: Boolean(it?.isGift ?? it?.IsGift ?? false),
+                isCommonQuota: Boolean(it?.isCommonQuota ?? it?.IsCommonQuota ?? false),
+              }))
+            : [];
+
+          let discount: number | null = null;
+          const rawDiscount = g?.discount ?? g?.Discount;
+          if (typeof rawDiscount === 'number') {
+            discount = rawDiscount;
+          } else if (rawDiscount && typeof rawDiscount === 'object') {
+            const dVal = rawDiscount.fields?.[0] ?? rawDiscount.Fields?.[0] ?? rawDiscount.value ?? rawDiscount.Value;
+            if (dVal !== undefined && dVal !== null) discount = Number(dVal);
+          }
+
+          const subtotal = items
+            .filter((i) => !i.isGift)
+            .reduce((acc, i) => acc + i.quantity * i.unitPrice, 0);
+          const discountVal = discount && discount > 0 ? discount : 0;
+          const totalAmount = Math.round(Math.max(0, subtotal - discountVal) * 100) / 100;
+
+          return {
+            groupId: unwrapId(g?.groupId ?? g?.GroupId),
+            name: String(g?.name ?? g?.Name ?? ''),
+            items,
+            discount,
+            totalAmount,
+          };
+        })
+      : [];
+
+    return {
+      setId: unwrapId(raw?.setId ?? raw?.SetId),
+      tableNum: Number(raw?.tableNum ?? raw?.TableNum ?? 0),
+      tableId: unwrapId(raw?.tableId ?? raw?.TableId),
+      isFlexible: Boolean(raw?.isFlexible ?? raw?.IsFlexible ?? false),
+      groups,
+    };
   }
 
   // --- Customer / Diner Public Ordering Endpoints ---
@@ -1573,23 +1713,48 @@ export class RestaurantService {
 
           if (Array.isArray(rawItems)) {
             rawItems.forEach((it: any) => {
+              const rawItemId = it?.id ?? it?.Id;
+              const itemId =
+                typeof rawItemId === 'string'
+                  ? rawItemId
+                  : rawItemId?.fields?.[0] || rawItemId?.Fields?.[0] || rawItemId?.value || rawItemId?.Value || undefined;
+
               const dishName = it?.dishName ?? it?.DishName ?? it?.[1] ?? 'Item';
-              const comment = it?.comment ?? it?.Comment ?? null;
+              const rawComment = it?.comment ?? it?.Comment ?? null;
+              const comment =
+                typeof rawComment === 'string'
+                  ? rawComment
+                  : rawComment && typeof rawComment === 'object'
+                  ? rawComment.fields?.[0] || rawComment.Fields?.[0] || rawComment.value || rawComment.Value || null
+                  : null;
+
               const rawStatus = it?.status ?? it?.Status ?? 'Pending';
               const statusStr = typeof rawStatus === 'string' ? rawStatus : (rawStatus?.case || rawStatus?.Case || 'Pending');
               const isConfirmed = statusStr.toLowerCase().includes('confirm');
+              const isDoneWithPayAndEventualVote = statusStr === 'DoneWithPayAndEventualVote' || statusStr.toLowerCase().includes('donewithpay');
               const isDone = statusStr.toLowerCase().includes('done') || statusStr.toLowerCase().includes('voted');
               const isRejected = statusStr.toLowerCase().includes('reject');
               const isPending = !isConfirmed && !isDone && !isRejected;
 
-              // Parse paymentMethod and reason from rawStatus if present
+              // Parse paymentMethod, confirmedAt, and reason from rawStatus if present
               let paymentMethod: any = null;
               let rejectionReason: string | null = null;
+              let confirmedAt: string | null = null;
 
               const extractPaymentMethod = (rawPm: any) => {
                 if (!rawPm) return null;
                 const pmCase = typeof rawPm === 'string' ? rawPm : (rawPm.case || rawPm.Case || '');
                 const pmLower = pmCase.toLowerCase();
+                const pmFields = rawPm?.fields || rawPm?.Fields || [];
+                const paymentIntentId =
+                  typeof pmFields[0] === 'string'
+                    ? pmFields[0]
+                    : rawPm?.paymentIntentId ?? rawPm?.PaymentIntentId ?? null;
+                const tipAmount =
+                  pmFields.length > 1
+                    ? Number(pmFields[1] || 0)
+                    : Number(rawPm?.tipAmount ?? rawPm?.TipAmount ?? 0);
+                const isLedgerRegistered = pmLower.includes('ledgerregistered');
 
                 if (pmLower.includes('prepaidwithstripe')) {
                   return {
@@ -1598,6 +1763,9 @@ export class RestaurantService {
                     isPrepaidWithStripe: true,
                     isPaidWithStripe: false,
                     isCompedAsOmaggio: false,
+                    isLedgerRegistered: false,
+                    paymentIntentId,
+                    tipAmount: 0,
                     label: 'Hold',
                     icon: '💳',
                     title: 'Stripe Pre-authorization Intent',
@@ -1610,6 +1778,9 @@ export class RestaurantService {
                     isPrepaidWithStripe: false,
                     isPaidWithStripe: true,
                     isCompedAsOmaggio: false,
+                    isLedgerRegistered,
+                    paymentIntentId,
+                    tipAmount,
                     label: 'Paid',
                     icon: '💳',
                     title: 'Stripe Payment Completed',
@@ -1622,6 +1793,9 @@ export class RestaurantService {
                     isPrepaidWithStripe: false,
                     isPaidWithStripe: false,
                     isCompedAsOmaggio: false,
+                    isLedgerRegistered: true,
+                    paymentIntentId: null,
+                    tipAmount: 0,
                     label: 'Paid',
                     icon: '💵',
                     title: 'Paid at counter',
@@ -1634,6 +1808,9 @@ export class RestaurantService {
                     isPrepaidWithStripe: false,
                     isPaidWithStripe: false,
                     isCompedAsOmaggio: false,
+                    isLedgerRegistered: false,
+                    paymentIntentId: null,
+                    tipAmount: 0,
                     label: '',
                     icon: '🧾',
                     title: 'Pay at counter',
@@ -1646,6 +1823,9 @@ export class RestaurantService {
                     isPrepaidWithStripe: false,
                     isPaidWithStripe: false,
                     isCompedAsOmaggio: true,
+                    isLedgerRegistered: true,
+                    paymentIntentId: null,
+                    tipAmount: 0,
                     label: 'Omaggio',
                     icon: '🎁',
                     title: 'Omaggio / On the House',
@@ -1659,6 +1839,9 @@ export class RestaurantService {
                 if (statusStr === 'Confirmed') {
                   // Confirmed: field 0 is DateTime, field 1 is PaymentMethodInfo
                   if (fields.length > 1) {
+                    if (typeof fields[0] === 'string') {
+                      confirmedAt = fields[0];
+                    }
                     paymentMethod = extractPaymentMethod(fields[1]);
                   } else if (fields.length === 1) {
                     paymentMethod = extractPaymentMethod(fields[0]);
@@ -1675,7 +1858,7 @@ export class RestaurantService {
                   if (fields.length > 0) {
                     const r0 = fields[0];
                     if (typeof r0 === 'string') rejectionReason = r0;
-                    else if (r0 && typeof r0 === 'object') rejectionReason = r0.fields?.[0] || r0.value || null;
+                    else if (r0 && typeof r0 === 'object') rejectionReason = r0.fields?.[0] || r0.Fields?.[0] || r0.value || r0.Value || null;
                   }
                   if (fields.length > 1) {
                     paymentMethod = extractPaymentMethod(fields[1]);
@@ -1684,15 +1867,17 @@ export class RestaurantService {
               }
 
               items.push({
-                id: it?.id ?? it?.Id,
+                id: itemId,
                 dishName,
                 comment,
                 status: statusStr,
                 isConfirmed,
                 isDone,
+                isDoneWithPayAndEventualVote,
                 isPending,
                 isRejected,
                 rejectionReason,
+                confirmedAt,
                 paymentMethod,
               });
             });
@@ -1701,7 +1886,9 @@ export class RestaurantService {
           // Aggregated items: group by dishName + comment + status + paymentMethod
           const aggregatedMap = new Map<string, AggregatedOrderItem>();
           items.forEach((it) => {
-            const pmKey = it.paymentMethod ? `${it.paymentMethod.icon}_${it.paymentMethod.label}` : 'none';
+            const pmKey = it.paymentMethod
+              ? `${it.paymentMethod.icon}_${it.paymentMethod.label}_${it.paymentMethod.paymentIntentId || ''}_${it.paymentMethod.isLedgerRegistered ? '1' : '0'}`
+              : 'none';
             const cKey = it.comment ? it.comment.trim() : '';
             const key = `${it.dishName}__${cKey}__${it.status}__${pmKey}`;
             if (!aggregatedMap.has(key)) {
@@ -1713,8 +1900,10 @@ export class RestaurantService {
                 isConfirmed: it.isConfirmed,
                 isPending: it.isPending,
                 isDone: it.isDone,
+                isDoneWithPayAndEventualVote: it.isDoneWithPayAndEventualVote,
                 isRejected: it.isRejected,
                 rejectionReason: it.rejectionReason,
+                confirmedAt: it.confirmedAt,
                 paymentMethod: it.paymentMethod,
                 itemIds: [],
               });

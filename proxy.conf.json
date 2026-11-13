@@ -5,6 +5,24 @@
     "changeOrigin": true,
     "logLevel": "debug"
   },
+  "/signin-google": {
+    "target": "https://localhost:7113",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/signin-facebook": {
+    "target": "https://localhost:7113",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/Account": {
+    "target": "https://localhost:7113",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
   "/hubs": {
     "target": "https://localhost:7113",
     "secure": false,

@@ -1,18 +1,21 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, tap, catchError, throwError } from 'rxjs';
-import { TokenRequest, TokenResponse, CurrentUserResponse } from '../models/auth.models';
+import { TokenRequest, TokenResponse, CurrentUserResponse, ExternalAuthProvider } from '../models/auth.models';
 import { environment } from '../../../environments/environment';
 
 const TOKEN_STORAGE_KEY = 'qr_auth_token';
 const USER_STORAGE_KEY = 'qr_auth_user';
+const RETURN_URL_STORAGE_KEY = 'qr_auth_return_url';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.apiBaseUrl ? environment.apiBaseUrl.replace(/\/$/, '') : '';
+  private readonly baseUrl = environment.apiBaseUrl
+    ? environment.apiBaseUrl.replace(/\/$/, '').replace(/\/api$/, '')
+    : '';
 
   // Reactive state signals
   readonly token = signal<string | null>(this.getStoredToken());
@@ -46,6 +49,59 @@ export class AuthService {
         return throwError(() => new Error(errorMsg));
       })
     );
+  }
+
+  /**
+   * Approach 1: Initiates a backend-driven OAuth redirect flow for Google or Facebook.
+   * Redirects the browser to GET /api/Auth/external-login?provider=<Provider>&returnUrl=<CallbackUrl>
+   */
+  initiateExternalLogin(provider: ExternalAuthProvider, returnUrl: string = '/dashboard'): void {
+    try {
+      sessionStorage.setItem(RETURN_URL_STORAGE_KEY, returnUrl);
+    } catch {
+      // Ignore storage errors
+    }
+
+    const oauthOrigin = (environment as { oauthBackendOrigin?: string }).oauthBackendOrigin
+      ? (environment as { oauthBackendOrigin?: string }).oauthBackendOrigin!.replace(/\/$/, '')
+      : this.baseUrl;
+
+    const callbackUrl = `${window.location.origin}/login`;
+    const externalLoginUrl = `${oauthOrigin}/api/Auth/external-login?provider=${encodeURIComponent(
+      provider
+    )}&returnUrl=${encodeURIComponent(callbackUrl)}`;
+
+    window.location.href = externalLoginUrl;
+  }
+
+  /**
+   * Processes the token returned by the backend after an external OAuth redirect.
+   * Supports parameters in either the URL hash fragment (#token=...) or query string (?token=...).
+   */
+  completeExternalLoginFromCallback(params: {
+    token: string;
+    email?: string | null;
+    userId?: string | null;
+    roles?: string[];
+  }): string {
+    this.setSession(
+      {
+        token: params.token,
+        email: params.email ?? undefined,
+        userId: params.userId ?? undefined,
+        roles: params.roles,
+      },
+      params.token
+    );
+
+    let savedReturnUrl = '/dashboard';
+    try {
+      savedReturnUrl = sessionStorage.getItem(RETURN_URL_STORAGE_KEY) || '/dashboard';
+      sessionStorage.removeItem(RETURN_URL_STORAGE_KEY);
+    } catch {
+      // Ignore storage errors
+    }
+    return savedReturnUrl;
   }
 
   fetchCurrentUser(): Observable<CurrentUserResponse> {
