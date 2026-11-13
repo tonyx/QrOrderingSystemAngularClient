@@ -20,6 +20,14 @@
         </div>
       }
 
+      <!-- Success message -->
+      @if (successMessage()) {
+        <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+          {{ successMessage() }}
+          <button type="button" class="btn-close" (click)="successMessage.set(null)"></button>
+        </div>
+      }
+
       <!-- Loading State -->
       @if (isLoading() && restaurants().length === 0) {
         <div class="d-flex align-items-center gap-2 text-muted py-4">
@@ -266,11 +274,11 @@
                         </div>
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <button type="button" class="btn btn-sm btn-outline-secondary w-100" (click)="noopAction($event)">
-                            <i class="bi bi-download me-1"></i> Download JSON
+                          <button type="button" class="btn btn-sm btn-outline-secondary w-100" (click)="downloadMenuJson(restaurant)">
+                            <i class="bi bi-download me-1"></i> {{ 'RestsAdmin_BtnDownloadMenu' | loc }}
                           </button>
                           <div class="custom-tooltip-box">
-                            <span>Export menu configuration as JSON backup.</span>
+                            <span>{{ 'RestsAdmin_TooltipDownloadMenu' | loc }}</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Download Menu JSON', restaurant.restaurantId)">
                                 <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}
@@ -281,11 +289,27 @@
                         </div>
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <button type="button" class="btn btn-sm btn-outline-secondary w-100" (click)="noopAction($event)">
-                            <i class="bi bi-upload me-1"></i> Import JSON
-                          </button>
+                          <label
+                            class="btn btn-sm btn-outline-secondary w-100 mb-0 d-flex align-items-center justify-content-center"
+                            style="cursor: pointer;"
+                            [class.disabled]="importingRestaurantId() === restaurant.restaurantId"
+                          >
+                            @if (importingRestaurantId() === restaurant.restaurantId) {
+                              <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            } @else {
+                              <i class="bi bi-upload me-1"></i>
+                            }
+                            {{ 'RestsAdmin_BtnImportMenu' | loc }}
+                            <input
+                              type="file"
+                              class="d-none"
+                              accept=".json,application/json"
+                              [disabled]="importingRestaurantId() === restaurant.restaurantId"
+                              (change)="handleMenuFileImport($event, restaurant)"
+                            />
+                          </label>
                           <div class="custom-tooltip-box">
-                            <span>Import dishes and categories from JSON.</span>
+                            <span>{{ 'RestsAdmin_TooltipImportMenu' | loc }}</span>
                             <div>
                               <button type="button" class="tooltip-ask-btn" (click)="askAssistant('Import Menu JSON', restaurant.restaurantId)">
                                 <i class="bi bi-robot"></i> {{ 'RestsAdmin_BtnAskAssistant' | loc }}

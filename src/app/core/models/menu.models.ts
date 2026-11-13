@@ -46,3 +46,28 @@ export interface PublicRestaurantDetails {
   raw?: any;
 }
 
+export interface ExtraCatalogueItemDto {
+  name: string;
+  optCategory?: string | null;
+  optDescription?: string | null;
+  optOrdinaryPrice?: number | null;
+  available: boolean;
+  translations?: Record<string, MenuItemTranslation>;
+  allergens?: Record<string, string>;
+  composition?: any[];
+  pricesPerVatDepartments?: Record<string, number>;
+}
+
+export interface ExtraCatalogueItemDetailDto {
+  extraCatalogueMenuItem: ExtraCatalogueItemDto;
+  menuItemStockComponentDetails?: any[];
+}
+
+export interface ExtraCatalogueDetailsDto {
+  extraCatalogue: {
+    extraCatalogueId?: string;
+    extraCatalogueMenuItems?: ExtraCatalogueItemDto[];
+  };
+  extraCatalogueMenuItemDetails: ExtraCatalogueItemDetailDto[];
+}
+

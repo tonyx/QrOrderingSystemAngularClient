@@ -70,6 +70,11 @@ export interface StockInventorySettings {
   isDisabled?: boolean;
 }
 
+export interface SasResponse {
+  uploadUrl: string;
+  publicUrl: string;
+}
+
 export interface VatDepartmentCodeAndRate {
   code: string;
   rate: number;
@@ -110,7 +115,10 @@ export interface RestaurantItem {
   stripeStatus?: StripeAccountStatus | null;
   selfOrderingConfig?: SelfOrderingConfig;
   subscription?: RestaurantSubscription;
+  isExpired?: boolean;
   stockInventorySettings?: StockInventorySettings;
+  items?: import('./menu.models').MenuItemModel[];
+  categoriesOrdering?: Record<number, string | null>;
   raw?: unknown;
 }
 

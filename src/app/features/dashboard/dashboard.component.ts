@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LocPipe } from '../../core/pipes/loc.pipe';
+import { LocalizationService } from '../../core/services/localization.service';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -20,12 +21,15 @@ export class DashboardComponent implements OnInit {
   protected readonly authService = inject(AuthService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly stripePaymentService = inject(StripePaymentService);
+  private readonly loc = inject(LocalizationService);
   private readonly router = inject(Router);
 
   // Data state
   protected restaurants = signal<RestaurantItem[]>([]);
   protected isLoading = signal(false);
   protected errorMessage = signal<string | null>(null);
+  protected successMessage = signal<string | null>(null);
+  protected importingRestaurantId = signal<string | null>(null);
 
   // Updating tracking
   protected updatingSelfOrderingIds = signal<Set<string>>(new Set());
@@ -206,6 +210,82 @@ export class DashboardComponent implements OnInit {
 
   closeAssistant(): void {
     this.assistantTopic.set(null);
+  }
+
+  downloadMenuJson(restaurant: RestaurantItem): void {
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+
+    const raw = restaurant.raw as any;
+    let menuObj: any = null;
+
+    if (raw) {
+      const rawMenus = raw.menus ?? raw.Menus;
+      if (rawMenus) {
+        const idx = rawMenus.curentMenuIndex ?? rawMenus.CurentMenuIndex ?? 0;
+        const list = rawMenus.menus ?? rawMenus.Menus;
+        if (Array.isArray(list) && list.length > 0) {
+          menuObj = list[idx] || list[0];
+        }
+      }
+      if (!menuObj) {
+        menuObj = raw.currentMenu ?? raw.CurrentMenu;
+      }
+    }
+
+    if (!menuObj) {
+      this.errorMessage.set(this.loc.translate('RestsAdmin_MenuDownloadError'));
+      return;
+    }
+
+    const menuName = menuObj.menuName ?? menuObj.MenuName ?? restaurant.currentMenuName ?? 'Menu';
+    const json = JSON.stringify(menuObj, null, 2);
+    const rawSafeName = `${restaurant.restaurantName}_${menuName}`.replace(/[\\/:*?"<>|]/g, '_');
+    const fileName = `${rawSafeName}.json`;
+
+    const blob = new Blob([json], { type: 'application/json' });
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+  }
+
+  async handleMenuFileImport(event: Event, restaurant: RestaurantItem): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.importingRestaurantId.set(restaurant.restaurantId);
+
+    try {
+      const jsonText = await file.text();
+      this.restaurantService.importMenu(restaurant.restaurantId, jsonText).subscribe({
+        next: () => {
+          this.importingRestaurantId.set(null);
+          this.successMessage.set(this.loc.translate('RestsAdmin_MenuImportSuccess'));
+          input.value = '';
+          this.loadRestaurants();
+        },
+        error: (err) => {
+          this.importingRestaurantId.set(null);
+          input.value = '';
+          const errMsg = typeof err?.error === 'string'
+            ? err.error
+            : err?.error?.message || err?.message || this.loc.translate('RestsAdmin_MenuImportError');
+          this.errorMessage.set(errMsg);
+        },
+      });
+    } catch (err: any) {
+      this.importingRestaurantId.set(null);
+      input.value = '';
+      this.errorMessage.set(err?.message || this.loc.translate('RestsAdmin_MenuImportError'));
+    }
   }
 
   noopAction(event?: Event): void {

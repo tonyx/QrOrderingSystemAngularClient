@@ -8,6 +8,14 @@
     </div>
   }
 
+  @if (successMessage()) {
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <i class="bi bi-check-circle-fill me-2"></i>
+      {{ successMessage() }}
+      <button type="button" class="btn-close" (click)="successMessage.set(null)" aria-label="Close"></button>
+    </div>
+  }
+
   @if (loading()) {
     <div class="text-center py-5">
       <div class="spinner-border text-primary" role="status">
@@ -31,19 +39,29 @@
                   <button
                     type="button"
                     class="btn btn-outline-secondary font-monospace d-inline-flex align-items-center gap-1"
-                    title="Switch to Menu #{{ menu[0] }}: {{ menu[1] }}"
-                    (click)="noopAction($event)"
+                    [title]="rest.hasActiveOrders ? 'Cannot switch menu when there are active orders' : ('Switch to Menu #' + menu[0] + ': ' + menu[1])"
+                    [disabled]="isSwitchingMenu() || isDroppingMenu() || rest.hasActiveOrders"
+                    (click)="switchToSelectedMenu(menu[0])"
                   >
                     <i class="bi bi-journal-text me-1"></i>Menu #{{ menu[0] }}: {{ menu[1] }}
-                    <i class="bi bi-arrow-right-short"></i>
+                    @if (isSwitchingMenu() && targetSwitchMenuIdx() === menu[0]) {
+                      <span class="spinner-border spinner-border-sm ms-1" role="status"></span>
+                    } @else {
+                      <i class="bi bi-arrow-right-short"></i>
+                    }
                   </button>
                   <button
                     type="button"
                     class="btn btn-outline-danger"
-                    title="Remove Menu #{{ menu[0] }}"
-                    (click)="noopAction($event)"
+                    [title]="menu[0] === 0 ? 'Cannot delete the default menu' : ('Remove menu #' + menu[0])"
+                    [disabled]="isSwitchingMenu() || isDroppingMenu() || menu[0] === 0"
+                    (click)="promptDropMenu(menu[0], menu[1])"
                   >
-                    <i class="bi bi-x-lg"></i>
+                    @if (isDroppingMenu() && targetDropMenuIdx() === menu[0]) {
+                      <span class="spinner-border spinner-border-sm" role="status"></span>
+                    } @else {
+                      <i class="bi bi-x-lg"></i>
+                    }
                   </button>
                 </div>
               }
@@ -297,7 +315,7 @@
           <!-- Create / Clone Menu -->
           <div class="col-6 col-md-auto">
             <div class="custom-tooltip-wrapper w-100">
-              <button type="button" class="btn btn-outline-success btn-sm fw-semibold w-100" (click)="noopAction($event)">
+              <button type="button" class="btn btn-outline-success btn-sm fw-semibold w-100" (click)="openCreateMenuModal()">
                 <i class="bi bi-plus-circle me-1"></i> {{ 'RestAdmin_BtnCreateCloneMenu' | loc }}
               </button>
               <div class="custom-tooltip-box">
@@ -315,7 +333,7 @@
           <!-- Download Menu JSON -->
           <div class="col-6 col-md-auto">
             <div class="custom-tooltip-wrapper w-100">
-              <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold w-100" (click)="noopAction($event)">
+              <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold w-100" (click)="downloadMenuJson()">
                 <i class="bi bi-download me-1"></i> {{ 'RestAdmin_BtnDownloadMenu' | loc }}
               </button>
               <div class="custom-tooltip-box">
@@ -333,9 +351,25 @@
           <!-- Import Menu JSON -->
           <div class="col-6 col-md-auto">
             <div class="custom-tooltip-wrapper w-100">
-              <button type="button" class="btn btn-outline-secondary btn-sm fw-semibold w-100" (click)="noopAction($event)">
-                <i class="bi bi-upload me-1"></i> {{ 'RestAdmin_BtnImportMenu' | loc }}
-              </button>
+              <label
+                class="btn btn-outline-secondary btn-sm fw-semibold w-100 mb-0 d-flex align-items-center justify-content-center"
+                style="cursor: pointer;"
+                [class.disabled]="isImportingMenu()"
+              >
+                @if (isImportingMenu()) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                } @else {
+                  <i class="bi bi-upload me-1"></i>
+                }
+                {{ 'RestAdmin_BtnImportMenu' | loc }}
+                <input
+                  type="file"
+                  class="d-none"
+                  accept=".json,application/json"
+                  [disabled]="isImportingMenu()"
+                  (change)="handleMenuFileImport($event)"
+                />
+              </label>
               <div class="custom-tooltip-box">
                 <span>{{ 'RestAdmin_TooltipImportMenu' | loc }}</span>
                 <div>
@@ -370,7 +404,7 @@
           @if (rest.extraCatalogueSetting && !rest.extraCatalogueSetting.isUnavailable) {
             <div class="col-6 col-md-auto">
               <div class="custom-tooltip-wrapper w-100">
-                <a href="javascript:void(0)" class="btn btn-outline-info btn-sm fw-semibold w-100" (click)="noopAction($event)">
+                <a [routerLink]="['/restaurantsAdmin', rest.restaurantId, 'extra-catalogue']" class="btn btn-outline-info btn-sm fw-semibold w-100">
                   <i class="bi bi-card-checklist me-1"></i> {{ 'RestAdmin_BtnExtraCatalogue' | loc }}
                 </a>
                 <div class="custom-tooltip-box">
@@ -388,6 +422,494 @@
         </div>
       </div>
     </div>
+
+    <!-- Capture Menu Card (Clone of RestaurantAdmin.razor) -->
+    <div class="card mt-4 shadow-sm border-0">
+      <div class="card-header bg-white py-3">
+        <h5 class="m-0 fw-bold">{{ 'RestAdmin_CaptureMenuHeader' | loc }}</h5>
+      </div>
+      <div class="card-body">
+        @if (rest.isExpired) {
+          <div class="alert alert-secondary mb-0">
+            <i class="bi bi-lock-fill me-2"></i> {{ 'RestAdmin_AiScanningDisabled' | loc }}
+          </div>
+        } @else {
+          @if (cameraActive()) {
+            <div class="mb-3">
+              <video id="menuVideo" width="320" height="240" autoplay style="border: 1px solid #ccc; max-width: 100%; border-radius: 6px; background-color: #000;"></video>
+            </div>
+          }
+
+          <div class="card p-2 bg-light-subtle border mb-3" style="max-width: 480px;">
+            <div class="form-check mb-0">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                id="resolveCompositionScanCheck"
+                [checked]="resolveComposition()"
+                (change)="resolveComposition.set(!resolveComposition())"
+                [disabled]="isProcessingImage()"
+              />
+              <label class="form-check-label fw-semibold text-dark d-block" for="resolveCompositionScanCheck">
+                <i class="bi bi-boxes me-1 text-primary"></i>{{ 'RestAdmin_ResolveComposition' | loc }}
+              </label>
+              <div class="form-text text-muted mt-0 small">
+                {{ 'RestAdmin_ResolveCompositionHint' | loc }}
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            @if (cameraActive()) {
+              <button class="btn btn-success" (click)="captureFrame()" [disabled]="isProcessingImage()">
+                @if (isProcessingImage()) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  <span>{{ 'RestAdmin_BtnProcessing' | loc }}</span>
+                } @else {
+                  <i class="bi bi-camera me-1"></i>
+                  <span>{{ 'RestAdmin_BtnCaptureProcessMenu' | loc }}</span>
+                }
+              </button>
+              <button class="btn btn-secondary" (click)="stopCamera()" [disabled]="isProcessingImage()">
+                {{ 'RestAdmin_BtnStopCamera' | loc }}
+              </button>
+            } @else {
+              <button class="btn btn-primary" (click)="startCamera()" [disabled]="isProcessingImage()">
+                <i class="bi bi-camera me-1"></i>
+                {{ 'RestAdmin_BtnStartCamera' | loc }}
+              </button>
+            }
+
+            <label
+              class="btn btn-outline-primary mb-0 d-inline-flex align-items-center"
+              style="cursor: pointer;"
+              [class.disabled]="isProcessingImage()"
+            >
+              @if (isProcessingImage() && !cameraActive()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <span>{{ 'RestAdmin_BtnProcessing' | loc }}</span>
+              } @else {
+                <i class="bi bi-cloud-arrow-up me-1"></i>
+                <span>{{ 'RestAdmin_BtnUploadMenuImage' | loc }}</span>
+              }
+              <input
+                type="file"
+                class="d-none"
+                accept="image/*"
+                [disabled]="isProcessingImage()"
+                (change)="handleMenuImageFileUpload($event)"
+              />
+            </label>
+          </div>
+        }
+
+        @if (processingStatusMessage()) {
+          <div class="alert alert-info mt-3 mb-0">
+            {{ processingStatusMessage() }}
+          </div>
+        }
+
+        @if (capturedImage()) {
+          <div class="mt-4">
+            <div class="d-flex justify-content-between align-items-center mb-2" style="max-width: 320px;">
+              <h6 class="m-0 fw-semibold">{{ 'RestAdmin_CapturedImagePreview' | loc }}</h6>
+              <button class="btn btn-sm btn-outline-secondary" (click)="clearPreview()" [disabled]="isProcessingImage()">
+                {{ 'RestAdmin_BtnDismiss' | loc }}
+              </button>
+            </div>
+            <img [src]="capturedImage()" alt="Captured Menu" class="img-fluid rounded" style="max-width: 320px; border: 1px solid #ccc;" />
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Menu Items Section (Clone of RestaurantAdmin.razor) -->
+    @if (rest.items && rest.items.length > 0) {
+      <div class="card mt-4 shadow-sm border-0">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h5 class="m-0 fw-bold">{{ 'RestAdmin_MenuItemsHeader' | loc }}</h5>
+            <span class="badge bg-primary font-monospace" title="Current Menu">{{ rest.currentMenuName }}</span>
+            @if (rest.otherAvailableMenus && rest.otherAvailableMenus.length > 0) {
+              @for (menu of rest.otherAvailableMenus; track menu[0]) {
+                <span class="badge bg-secondary font-monospace" title="Other Available Menu">#{{ menu[0] }}: {{ menu[1] }}</span>
+              }
+            }
+          </div>
+          <button
+            class="btn btn-danger btn-sm fw-semibold"
+            (click)="noopAction($event)"
+            title="Reset menu"
+          >
+            {{ 'RestAdmin_BtnResetMenu' | loc }}
+          </button>
+        </div>
+        <div class="card-body">
+          @if (menuResetErrorMessage()) {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+              {{ menuResetErrorMessage() }}
+              <button type="button" class="btn-close" (click)="menuResetErrorMessage.set(null)" aria-label="Close"></button>
+            </div>
+          }
+          @for (group of groupedCategories(); track group.categoryName) {
+            <h6
+              class="mt-4 mb-2 text-primary border-bottom pb-1 draggable-category"
+              [class.drag-over]="dragOverCategory() === group.categoryName"
+              draggable="true"
+              (dragstart)="handleCategoryDragStart($event, group.categoryName)"
+              (dragover)="handleCategoryDragOver($event, group.categoryName)"
+              (dragleave)="handleCategoryDragLeave($event, group.categoryName)"
+              (drop)="handleCategoryDrop($event, group.categoryName)"
+            >
+              <span class="drag-handle-category">☰</span>
+              @if (group.isSome && editingCategoryName() === group.categoryName) {
+                <span class="d-inline-flex align-items-center gap-2" (click)="$event.stopPropagation()">
+                  <input
+                    type="text"
+                    class="form-control form-control-sm d-inline-block"
+                    style="width: 200px;"
+                    [ngModel]="editingCategoryValue()"
+                    (ngModelChange)="editingCategoryValue.set($event)"
+                    (keyup)="handleCategoryRenameKeyUp($event, group.categoryName)"
+                  />
+                  <button type="button" class="btn btn-sm btn-success" (click)="saveCategoryRename(group.categoryName)">
+                    {{ 'RestAdmin_BtnSave' | loc }}
+                  </button>
+                  <button type="button" class="btn btn-sm btn-secondary" (click)="cancelCategoryRename()">
+                    {{ 'RestAdmin_BtnCancel' | loc }}
+                  </button>
+                </span>
+              } @else {
+                <span
+                  [style.cursor]="group.isSome ? 'pointer' : 'default'"
+                  (click)="startCategoryRename(group.categoryName, group.isSome)"
+                >
+                  {{ group.categoryName }}
+                </span>
+                @if (group.isSome) {
+                  <small
+                    class="text-muted ms-2"
+                    style="font-size: 0.75rem; font-weight: normal; cursor: pointer;"
+                    (click)="startCategoryRename(group.categoryName, group.isSome)"
+                  >
+                    {{ 'RestAdmin_ClickToRename' | loc }}
+                  </small>
+                }
+              }
+            </h6>
+
+            <!-- Desktop Table View -->
+            <table class="table table-striped mb-4 menu-desktop-table align-middle">
+              <thead>
+                <tr>
+                  <th style="width: 20%;">{{ 'RestAdmin_ThName' | loc }}</th>
+                  <th style="width: 25%;">{{ 'RestAdmin_ThDescription' | loc }}</th>
+                  <th style="width: 10%;">{{ 'RestAdmin_ThPrice' | loc }}</th>
+                  <th style="width: 15%;">{{ 'RestAdmin_ThRating' | loc }}</th>
+                  <th style="width: 10%;" class="text-center">{{ 'RestAdmin_ThAvailable' | loc }}</th>
+                  <th style="width: 10%;">{{ 'RestAdmin_ThImage' | loc }}</th>
+                  <th style="width: 10%;">{{ 'RestAdmin_ThActions' | loc }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of group.items; track item.name) {
+                  <tr
+                    class="align-middle draggable-row"
+                    [class.opacity-75]="!item.available"
+                    [class.bg-light]="!item.available"
+                    [class.drag-over]="dragOverItemKey() === (group.categoryName + '-' + item.orderIndex)"
+                    draggable="true"
+                    (dragstart)="handleItemDragStart($event, group.categoryName, item.orderIndex)"
+                    (dragover)="handleItemDragOver($event, group.categoryName, item.orderIndex)"
+                    (dragleave)="handleItemDragLeave($event, group.categoryName, item.orderIndex)"
+                    (drop)="handleItemDrop($event, group.categoryName, item.orderIndex)"
+                  >
+                    <td>
+                      <span class="drag-handle">☰</span>
+                      <strong class="text-dark">{{ item.name }}</strong>
+                    </td>
+                    <td>{{ item.description }}</td>
+                    <td>€{{ item.price != null ? item.price.toFixed(2) : '0.00' }}</td>
+                    <td>
+                      <div><strong>{{ (item.ratingStats?.mean ?? 0).toFixed(2) }} ★</strong></div>
+                      <small class="text-muted">(Std Dev: {{ (item.ratingStats?.stdDev ?? 0).toFixed(2) }})</small>
+                    </td>
+                    <td class="text-center">
+                      <div class="form-check form-switch d-inline-flex align-items-center justify-content-center m-0">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          [checked]="item.available"
+                          [disabled]="isProcessingImage() || rest.isExpired || updatingAvailabilityItems().has(item.name)"
+                          (change)="toggleMenuItemAvailability(item)"
+                          [title]="item.available ? ('RestAdmin_ThAvailable' | loc) : 'Unavailable'"
+                        />
+                      </div>
+                    </td>
+                    <td>
+                      @if (editingItemName() === item.name) {
+                        <div class="input-group input-group-sm">
+                          <input
+                            type="text"
+                            class="form-control"
+                            placeholder="https://..."
+                            [ngModel]="tempImageUrl()"
+                            (ngModelChange)="tempImageUrl.set($event)"
+                          />
+                          <button class="btn btn-success" type="button" (click)="saveImage(item.name)">✓</button>
+                          <button class="btn btn-secondary" type="button" (click)="cancelEditImage()">✗</button>
+                        </div>
+                        @if (imageErrorItemName() === item.name && imageErrorMsg()) {
+                          <div class="text-danger" style="font-size: 0.75rem; margin-top: 2px;">{{ imageErrorMsg() }}</div>
+                        }
+                      } @else {
+                        @if (item.imageUrl) {
+                          <div class="d-flex align-items-center gap-2">
+                            <img
+                              [src]="item.imageUrl"
+                              style="max-width: 40px; max-height: 40px; object-fit: cover; border-radius: 4px;"
+                              alt="image"
+                            />
+                            <div class="d-flex flex-column gap-1">
+                              <button
+                                class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                style="font-size: 0.7rem; line-height: 1;"
+                                (click)="startEditImage(item.name, item.imageUrl)"
+                              >
+                                {{ 'RestAdmin_BtnEdit' | loc }}
+                              </button>
+                              <button
+                                class="btn btn-sm btn-outline-danger py-0 px-1"
+                                style="font-size: 0.7rem; line-height: 1;"
+                                (click)="removeImage(item.name)"
+                              >
+                                {{ 'RestAdmin_BtnRemove' | loc }}
+                              </button>
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="d-flex gap-1 align-items-center">
+                            <button
+                              class="btn btn-sm btn-outline-primary py-1 px-2"
+                              style="font-size: 0.75rem;"
+                              (click)="startEditImage(item.name, '')"
+                            >
+                              {{ 'RestAdmin_BtnAddImage' | loc }}
+                            </button>
+                            <label
+                              class="btn btn-sm btn-outline-success py-1 px-2 mb-0"
+                              style="font-size: 0.75rem; cursor: pointer;"
+                            >
+                              @if (uploadingItemName() === item.name) {
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                <span>{{ uploadingStage() === 'processing' ? 'Processing...' : 'Uploading...' }}</span>
+                              } @else {
+                                {{ 'RestAdmin_BtnUploadImage' | loc }}
+                              }
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style="display: none;"
+                                [disabled]="uploadingItemName() === item.name"
+                                (change)="handleDirectFileUpload($event, item.name)"
+                              />
+                            </label>
+                            <button
+                              class="btn btn-sm btn-outline-info py-1 px-2"
+                              style="font-size: 0.75rem;"
+                              (click)="startScanImage(item.name)"
+                            >
+                              {{ 'RestAdmin_BtnScanImage' | loc }}
+                            </button>
+                          </div>
+                          @if (imageErrorItemName() === item.name && imageErrorMsg()) {
+                            <div class="text-danger" style="font-size: 0.75rem; margin-top: 2px;">{{ imageErrorMsg() }}</div>
+                          }
+                        }
+                      }
+                    </td>
+                    <td>
+                      <div class="d-flex gap-1">
+                        <button
+                          class="btn btn-outline-primary btn-sm"
+                          [disabled]="isProcessingImage()"
+                          (click)="navigateToEditItem(group.categoryName, item.orderIndex)"
+                        >
+                          {{ 'RestAdmin_BtnEdit' | loc }}
+                        </button>
+                        <button
+                          class="btn btn-danger btn-sm"
+                          [disabled]="isProcessingImage() || isRemovingItem() || hasOrderForMenuItem(item.name)"
+                          (click)="openRemoveItemConfirmation(item.name)"
+                          [title]="hasOrderForMenuItem(item.name) ? 'Cannot remove dish while active table orders exist' : ''"
+                        >
+                          {{ 'RestAdmin_BtnRemove' | loc }}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+
+            <!-- Mobile Card Stack View -->
+            <div class="menu-mobile-cards mb-4">
+              @for (item of group.items; track item.name) {
+                <div
+                  class="menu-item-card draggable-row"
+                  [class.opacity-75]="!item.available"
+                  [class.drag-over]="dragOverItemKey() === (group.categoryName + '-' + item.orderIndex)"
+                  draggable="true"
+                  (dragstart)="handleItemDragStart($event, group.categoryName, item.orderIndex)"
+                  (dragover)="handleItemDragOver($event, group.categoryName, item.orderIndex)"
+                  (dragleave)="handleItemDragLeave($event, group.categoryName, item.orderIndex)"
+                  (drop)="handleItemDrop($event, group.categoryName, item.orderIndex)"
+                >
+                  <div class="menu-item-card-header">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="drag-handle fs-5">☰</span>
+                      <strong class="fs-6 text-dark">{{ item.name }}</strong>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="badge bg-primary fs-6 fw-bold">€{{ item.price != null ? item.price.toFixed(2) : '0.00' }}</span>
+                    </div>
+                  </div>
+
+                  @if (item.description) {
+                    <p class="text-muted small mb-2">{{ item.description }}</p>
+                  }
+
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small text-muted">
+                      <strong>{{ (item.ratingStats?.mean ?? 0).toFixed(2) }} ★</strong> (Std Dev: {{ (item.ratingStats?.stdDev ?? 0).toFixed(2) }})
+                    </span>
+                    <div class="form-check form-switch d-inline-flex align-items-center gap-2 m-0">
+                      <label class="form-check-label small fw-semibold" [for]="'avail-switch-' + item.name">
+                        {{ 'RestAdmin_ThAvailable' | loc }}
+                      </label>
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        role="switch"
+                        [id]="'avail-switch-' + item.name"
+                        [checked]="item.available"
+                        [disabled]="isProcessingImage() || rest.isExpired || updatingAvailabilityItems().has(item.name)"
+                        (change)="toggleMenuItemAvailability(item)"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="border-top pt-2 mt-2 d-flex flex-column gap-2">
+                    @if (editingItemName() === item.name) {
+                      <div class="input-group input-group-sm mb-1">
+                        <input
+                          type="text"
+                          class="form-control"
+                          placeholder="https://..."
+                          [ngModel]="tempImageUrl()"
+                          (ngModelChange)="tempImageUrl.set($event)"
+                        />
+                        <button class="btn btn-success" type="button" (click)="saveImage(item.name)">✓</button>
+                        <button class="btn btn-secondary" type="button" (click)="cancelEditImage()">✗</button>
+                      </div>
+                      @if (imageErrorItemName() === item.name && imageErrorMsg()) {
+                        <div class="text-danger" style="font-size: 0.75rem; margin-top: 2px;">{{ imageErrorMsg() }}</div>
+                      }
+                    } @else {
+                      <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        @if (item.imageUrl) {
+                          <div class="d-flex align-items-center gap-2">
+                            <img
+                              [src]="item.imageUrl"
+                              style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px;"
+                              alt="image"
+                            />
+                            <div class="d-flex gap-1">
+                              <button
+                                class="btn btn-sm btn-outline-secondary"
+                                (click)="startEditImage(item.name, item.imageUrl)"
+                              >
+                                {{ 'RestAdmin_BtnEdit' | loc }}
+                              </button>
+                              <button
+                                class="btn btn-sm btn-outline-danger"
+                                (click)="removeImage(item.name)"
+                              >
+                                {{ 'RestAdmin_BtnRemove' | loc }}
+                              </button>
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="d-flex gap-1 flex-wrap w-100">
+                            <button
+                              class="btn btn-sm btn-outline-primary flex-fill"
+                              (click)="startEditImage(item.name, '')"
+                            >
+                              <i class="bi bi-image me-1"></i>{{ 'RestAdmin_BtnAddImage' | loc }}
+                            </button>
+                            <label
+                              class="btn btn-sm btn-outline-success flex-fill mb-0 d-flex align-items-center justify-content-center"
+                              style="cursor: pointer;"
+                            >
+                              @if (uploadingItemName() === item.name) {
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                <span>{{ uploadingStage() === 'processing' ? 'Processing...' : 'Uploading...' }}</span>
+                              } @else {
+                                <i class="bi bi-cloud-upload me-1"></i>{{ 'RestAdmin_BtnUploadImage' | loc }}
+                              }
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style="display: none;"
+                                [disabled]="uploadingItemName() === item.name"
+                                (change)="handleDirectFileUpload($event, item.name)"
+                              />
+                            </label>
+                            <button
+                              class="btn btn-sm btn-outline-info flex-fill"
+                              (click)="startScanImage(item.name)"
+                            >
+                              <i class="bi bi-camera me-1"></i>{{ 'RestAdmin_BtnScanImage' | loc }}
+                            </button>
+                          </div>
+                          @if (imageErrorItemName() === item.name && imageErrorMsg()) {
+                            <div class="text-danger" style="font-size: 0.75rem; margin-top: 2px;">{{ imageErrorMsg() }}</div>
+                          }
+                        }
+                      </div>
+                    }
+
+                    <div class="d-flex gap-2 justify-content-end mt-1">
+                      <button
+                        class="btn btn-outline-primary btn-sm flex-fill"
+                        [disabled]="isProcessingImage()"
+                        (click)="navigateToEditItem(group.categoryName, item.orderIndex)"
+                      >
+                        <i class="bi bi-pencil me-1"></i>{{ 'RestAdmin_BtnEdit' | loc }}
+                      </button>
+                      <button
+                        class="btn btn-outline-danger btn-sm flex-fill"
+                        [disabled]="isProcessingImage() || isRemovingItem() || hasOrderForMenuItem(item.name)"
+                        (click)="openRemoveItemConfirmation(item.name)"
+                        [title]="hasOrderForMenuItem(item.name) ? 'Cannot remove dish while active table orders exist' : ''"
+                      >
+                        <i class="bi bi-trash me-1"></i>{{ 'RestAdmin_BtnRemove' | loc }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="alert alert-info mt-4">
+        {{ 'RestAdmin_NoMenuItemsAlert' | loc }}
+      </div>
+    }
 
     <!-- Tip Options / Tip Hints Section -->
     <div class="card mt-4 shadow-sm border-0">
@@ -725,4 +1247,218 @@
     </div>
   </div>
 }
+
+<!-- Remove Menu Item Confirmation Modal -->
+@if (showRemoveItemConsentModal() && itemToRemoveName()) {
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1055;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+        <div class="modal-header bg-danger text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+          <h5 class="modal-title font-weight-bold d-flex align-items-center gap-2 text-white">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            {{ 'RestAdmin_RemoveItemModalTitle' | loc }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="cancelRemoveItem()"></button>
+        </div>
+        <div class="modal-body p-4 text-dark" style="line-height: 1.6;">
+          <p class="mb-0">
+            Are you sure you want to remove <strong>{{ itemToRemoveName() }}</strong> from the menu?
+          </p>
+        </div>
+        <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+          <button type="button" class="btn btn-secondary px-3" (click)="cancelRemoveItem()">
+            {{ 'RestAdmin_BtnCancel' | loc }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-danger px-4 fw-bold"
+            (click)="confirmRemoveItem()"
+            [disabled]="isRemovingItem()"
+          >
+            @if (isRemovingItem()) {
+              <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+              <span>{{ 'RestAdmin_BtnProcessing' | loc }}</span>
+            } @else {
+              <span><i class="bi bi-trash-fill me-1"></i> {{ 'RestAdmin_BtnYesRemoveItem' | loc }}</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Scan Image Camera Modal -->
+@if (scanningItemName()) {
+  <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5); z-index: 1055;" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content shadow-lg">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title d-flex align-items-center gap-2 text-white">
+            <i class="bi bi-camera me-1"></i> Scan Image for {{ scanningItemName() }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="cancelScan()" [disabled]="isUploadingScan()"></button>
+        </div>
+        <div class="modal-body text-center py-4">
+          @if (scanError()) {
+            <div class="alert alert-danger mb-3">{{ scanError() }}</div>
+          }
+
+          <div class="mb-3 d-flex justify-content-center">
+            <video
+              id="scanVideo"
+              width="320"
+              height="240"
+              autoplay
+              playsinline
+              muted
+              style="border: 2px solid #0d6efd; border-radius: 8px; max-width: 100%; background: #000;"
+            ></video>
+          </div>
+
+          <p class="text-muted small mb-0">{{ 'RestAdmin_AlignImageNotice' | loc }}</p>
+        </div>
+        <div class="modal-footer bg-light">
+          <button class="btn btn-secondary" (click)="cancelScan()" [disabled]="isUploadingScan()">
+            {{ 'RestAdmin_BtnCancel' | loc }}
+          </button>
+          <button class="btn btn-primary fw-bold" (click)="captureAndUploadScan()" [disabled]="isUploadingScan()">
+            @if (isUploadingScan()) {
+              <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              <span>{{ scanStage() === 'processing' ? ('RestAdmin_ProcessingImage' | loc) : ('RestAdmin_UploadingToAzure' | loc) }}</span>
+            } @else {
+              <span><i class="bi bi-cloud-arrow-up me-1"></i> {{ 'RestAdmin_BtnCaptureUploadImage' | loc }}</span>
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Create / Clone Menu Modal (Clone of RestaurantAdmin.razor) -->
+@if (showCreateMenuModal()) {
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1055;" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+        <div class="modal-header bg-success text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+          <h5 class="modal-title font-weight-bold d-flex align-items-center gap-2 text-white">
+            <i class="bi bi-journal-plus"></i> {{ 'RestAdmin_CreateMenuModalTitle' | loc }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="closeCreateMenuModal()" [disabled]="isCreatingMenu()"></button>
+        </div>
+        <div class="modal-body p-4 text-dark">
+          @if (createMenuError()) {
+            <div class="alert alert-danger mb-3">{{ createMenuError() }}</div>
+          }
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">{{ 'RestAdmin_MenuNameLabel' | loc }}</label>
+            <input
+              type="text"
+              class="form-control"
+              [placeholder]="'RestAdmin_MenuNamePlaceholder' | loc"
+              [value]="newMenuNameInput()"
+              (input)="newMenuNameInput.set($any($event.target).value)"
+              [disabled]="isCreatingMenu()"
+            />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">{{ 'RestAdmin_CreationModeLabel' | loc }}</label>
+            <div class="d-flex flex-column gap-2">
+              <div class="form-check border p-2.5 rounded bg-light">
+                <input
+                  class="form-check-input ms-1 me-2"
+                  type="radio"
+                  name="createMenuMode"
+                  id="modeEmptyMenu"
+                  [checked]="!isCloneMenuSelected()"
+                  (change)="isCloneMenuSelected.set(false)"
+                  [disabled]="isCreatingMenu()"
+                />
+                <label class="form-check-label text-dark fw-semibold" for="modeEmptyMenu">
+                  <i class="bi bi-file-earmark-plus me-1 text-primary"></i> {{ 'RestAdmin_ModeEmptyMenuTitle' | loc }}
+                  <div class="text-muted small fw-normal">{{ 'RestAdmin_ModeEmptyMenuSub' | loc }}</div>
+                </label>
+              </div>
+              <div class="form-check border p-2.5 rounded bg-light">
+                <input
+                  class="form-check-input ms-1 me-2"
+                  type="radio"
+                  name="createMenuMode"
+                  id="modeCloneMenu"
+                  [checked]="isCloneMenuSelected()"
+                  (change)="isCloneMenuSelected.set(true)"
+                  [disabled]="isCreatingMenu()"
+                />
+                <label class="form-check-label text-dark fw-semibold" for="modeCloneMenu">
+                  <i class="bi bi-copy me-1 text-success"></i> {{ 'RestAdmin_ModeCloneMenuTitle' | loc : (restaurant()?.currentMenuName || '') }}
+                  <div class="text-muted small fw-normal">{{ 'RestAdmin_ModeCloneMenuSub' | loc }}</div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+          <button type="button" class="btn btn-secondary" (click)="closeCreateMenuModal()" [disabled]="isCreatingMenu()">
+            {{ 'RestAdmin_BtnCancel' | loc }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-success fw-bold"
+            (click)="submitCreateMenu()"
+            [disabled]="isCreatingMenu() || !newMenuNameInput().trim()"
+          >
+            @if (isCreatingMenu()) {
+              <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            {{ (isCloneMenuSelected() ? 'RestAdmin_BtnCloneMenu' : 'RestAdmin_BtnCreateMenu') | loc }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Switch Menu Prompt Modal (Clone of RestaurantAdmin.razor) -->
+@if (showSwitchMenuPromptModal() && createdMenuTuple(); as tuple) {
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1055;" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+        <div class="modal-header bg-primary text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+          <h5 class="modal-title font-weight-bold d-flex align-items-center gap-2 text-white">
+            <i class="bi bi-arrow-repeat"></i> {{ 'RestAdmin_SwitchMenuModalTitle' | loc }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="stayInCurrentMenu()" [disabled]="isSwitchingMenu()"></button>
+        </div>
+        <div class="modal-body p-4 text-dark text-center">
+          @if (switchMenuError()) {
+            <div class="alert alert-danger mb-3">{{ switchMenuError() }}</div>
+          }
+          <i class="bi bi-check-circle-fill text-success fs-1 mb-3 d-block"></i>
+          <p class="fs-5 mb-2">{{ 'RestAdmin_SwitchMenuSuccess' | loc : tuple[1] }}</p>
+          <p class="text-muted">{{ 'RestAdmin_SwitchMenuPrompt' | loc : (restaurant()?.currentMenuName || '') }}</p>
+        </div>
+        <div class="modal-footer justify-content-center bg-light" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+          <button type="button" class="btn btn-outline-secondary px-4" (click)="stayInCurrentMenu()" [disabled]="isSwitchingMenu()">
+            {{ 'RestAdmin_BtnStayInCurrent' | loc }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary px-4 fw-bold"
+            (click)="switchToNewlyCreatedMenu()"
+            [disabled]="isSwitchingMenu() || (restaurant()?.hasActiveOrders ?? false)"
+          >
+            @if (isSwitchingMenu()) {
+              <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            {{ 'RestAdmin_BtnSwitchToNew' | loc }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
 

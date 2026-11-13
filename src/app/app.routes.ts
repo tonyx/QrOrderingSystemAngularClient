@@ -9,6 +9,8 @@ import { RestaurantAdminComponent } from './features/restaurant/restaurant-admin
 import { AdminTablesComponent } from './features/tables/admin-tables/admin-tables.component';
 import { TableDetailComponent } from './features/tables/table-detail/table-detail.component';
 import { ShowQrsComponent } from './features/tables/show-qrs/show-qrs.component';
+import { EditMenuItemComponent } from './features/restaurant/edit-menu-item/edit-menu-item.component';
+import { EditExtraCatalogueComponent } from './features/restaurant/edit-extra-catalogue/edit-extra-catalogue.component';
 import { OrderComponent } from './features/ordering/order/order.component';
 import { WaiterOrderComponent } from './features/ordering/waiter-order/waiter-order.component';
 import { authGuard } from './core/guards/auth.guard';
@@ -60,10 +62,22 @@ export const routes: Routes = [
     component: ShowQrsComponent,
     canActivate: [authGuard],
   },
+  // Extra Catalogue page
+  {
+    path: 'restaurantsAdmin/:restaurantId/extra-catalogue',
+    component: EditExtraCatalogueComponent,
+    canActivate: [authGuard],
+  },
   // Manage Menu page
   {
     path: 'restaurantsAdmin/:restaurantId',
     component: RestaurantAdminComponent,
+    canActivate: [authGuard],
+  },
+  // Edit Menu Item Translations page (matches Blazor /restaurantsAdmin/{id}/editMenuItem/{category}/{index})
+  {
+    path: 'restaurantsAdmin/:restaurantId/editMenuItem/:categoryParam/:index',
+    component: EditMenuItemComponent,
     canActivate: [authGuard],
   },
   // Public Menu routes matching Blazor (/m/:restaurantId and /m)

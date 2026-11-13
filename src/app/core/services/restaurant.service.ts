@@ -10,6 +10,7 @@ import {
   VatDepartmentCodeAndRate,
   TipHintItem,
   ExtraCatalogueSetting,
+  SasResponse,
   TableModel,
   TableSessionModel,
   OrderItemModel,
@@ -196,6 +197,282 @@ export class RestaurantService {
   getExtraCatalogue(restaurantId: string): Observable<any> {
     const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue`;
     return this.http.get<any>(url);
+  }
+
+  getExtraCatalogueDetails(restaurantId: string): Observable<any> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue-details`;
+    return this.http.get<any>(url);
+  }
+
+  resetExtraCatalogue(restaurantId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/reset`;
+    return this.http.post<void>(url, null);
+  }
+
+  addExtraCatalogueItems(restaurantId: string, items: any[]): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/add`;
+    return this.http.post<void>(url, items);
+  }
+
+  renameExtraCatalogueItem(restaurantId: string, menuItemName: string, newName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/rename`;
+    return this.http.post<void>(url, { menuItemName, newName });
+  }
+
+  setExtraCatalogueItemAvailable(restaurantId: string, menuItemName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/set-available`;
+    return this.http.post<void>(url, JSON.stringify(menuItemName), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  setExtraCatalogueItemUnavailable(restaurantId: string, menuItemName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/set-unavailable`;
+    return this.http.post<void>(url, JSON.stringify(menuItemName), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  setCategoryOfExtraCatalogueItem(restaurantId: string, menuItemName: string, category: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/set-category`;
+    return this.http.post<void>(url, { menuItemName, category });
+  }
+
+  setExtraCatalogueItemPrice(restaurantId: string, menuItemName: string, price: number): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/set-ordinary-price`;
+    return this.http.post<void>(url, { menuItemName, price });
+  }
+
+  unsetExtraCatalogueItemPrice(restaurantId: string, menuItemName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/unset-ordinary-price`;
+    return this.http.post<void>(url, JSON.stringify(menuItemName), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  removeExtraCatalogueItem(restaurantId: string, menuItemName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/remove`;
+    return this.http.post<void>(url, JSON.stringify(menuItemName), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  removeExtraCatalogueMultipleItems(restaurantId: string, menuItemNames: string[]): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/remove-multiple`;
+    return this.http.post<void>(url, menuItemNames);
+  }
+
+  removeExtraCatalogueMultipleItemPrices(restaurantId: string, menuItemNames: string[]): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/remove-multiple-prices`;
+    return this.http.post<void>(url, menuItemNames);
+  }
+
+  updateExtraCatalogueMultipleItemPrices(restaurantId: string, menuItemNames: string[], price: number): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-multiple-prices`;
+    return this.http.post<void>(url, { menuItemNames, price });
+  }
+
+  updateExtraCatalogueMultipleItemCategory(restaurantId: string, menuItemNames: string[], category: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-multiple-category`;
+    return this.http.post<void>(url, { menuItemNames, category });
+  }
+
+  updateExtraCatalogueTranslatedName(
+    restaurantId: string,
+    menuItemName: string,
+    languageCode: string,
+    newTranslatedName: string
+  ): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-translated-name`;
+    return this.http.post<void>(url, { menuItemName, languageCode, newTranslatedName });
+  }
+
+  updateExtraCatalogueTranslatedDescription(
+    restaurantId: string,
+    menuItemName: string,
+    languageCode: string,
+    newTranslatedDescription: string
+  ): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-translated-description`;
+    return this.http.post<void>(url, { menuItemName, languageCode, newTranslatedDescription });
+  }
+
+  updateExtraCatalogueTranslatedAllergens(
+    restaurantId: string,
+    menuItemName: string,
+    languageCode: string,
+    newTranslatedAllergens: string
+  ): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-translated-allergens`;
+    return this.http.post<void>(url, { menuItemName, languageCode, newTranslatedAllergens });
+  }
+
+  moveExtraCatalogueItemToMainMenu(restaurantId: string, menuItemName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/move-to-main-menu`;
+    return this.http.post<void>(url, { menuItemName });
+  }
+
+  generateExtraCatalogueMenuFromScratch(shortDescription: string, includeComposition: boolean = false): Observable<any[]> {
+    const url = `${this.baseUrl}/api/ModelAi/generate-extra-catalogue-menu`;
+    return this.http.post<any[]>(url, { shortDescription, includeComposition });
+  }
+
+  generateExtraCatalogueMenuFromNames(names: string[], includeComposition: boolean = false): Observable<any[]> {
+    const url = `${this.baseUrl}/api/ModelAi/generate-extra-catalogue-menu-from-names`;
+    return this.http.post<any[]>(url, { names, includeComposition });
+  }
+
+  // --- Menu Management (Create, Clone, Switch, Drop) ---
+  addNewMenu(restaurantId: string, menuName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/add-new-menu`;
+    return this.http.post<void>(url, { menuName });
+  }
+
+  cloneCurrentMenu(restaurantId: string, clonedName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/clone-current-menu`;
+    return this.http.post<void>(url, { clonedName });
+  }
+
+  dropMenu(restaurantId: string, menuIndex: number): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/drop-menu`;
+    return this.http.post<void>(url, { menuIndex });
+  }
+
+  switchToMenu(restaurantId: string, menuIndex: number): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/switch-to-menu`;
+    return this.http.post<void>(url, { menuIndex });
+  }
+
+  // --- Menu JSON Export & Import ---
+  importMenu(restaurantId: string, jsonText: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/import-menu`;
+    return this.http.post<void>(url, { jsonText });
+  }
+
+  // --- AI Menu Digitization & Capture ---
+  interpretMenu(base64Image: string, mimeType: string): Observable<any[]> {
+    const url = `${this.baseUrl}/api/ModelAi/interpret`;
+    return this.http.post<any[]>(url, { base64Image, mimeType });
+  }
+
+  interpretMenuResolvingComposition(base64Image: string, mimeType: string): Observable<any[]> {
+    const url = `${this.baseUrl}/api/ModelAi/interpret-resolving-composition`;
+    return this.http.post<any[]>(url, { base64Image, mimeType });
+  }
+
+  addMenuItem(restaurantId: string, menuItem: any): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/add`;
+    return this.http.post<void>(url, menuItem);
+  }
+
+  setHumanReviewed(restaurantId: string, isHumanReviewed: boolean): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/human-reviewed`;
+    return this.http.post<void>(url, isHumanReviewed);
+  }
+
+  // --- Menu Item Operations (Catalogue) ---
+  setMenuItemAvailable(restaurantId: string, menuItemName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/set-available`;
+    return this.http.post<void>(url, JSON.stringify(menuItemName), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  setMenuItemUnavailable(restaurantId: string, menuItemName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/set-unavailable`;
+    return this.http.post<void>(url, JSON.stringify(menuItemName), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  removeMenuItem(restaurantId: string, menuItemName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/remove`;
+    return this.http.post<void>(url, JSON.stringify(menuItemName), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  updateMenuItemImageUrl(restaurantId: string, menuItemName: string, imageUrl: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/image/update`;
+    return this.http.post<void>(url, {
+      MenuItemName: menuItemName,
+      ImageUrl: imageUrl,
+    });
+  }
+
+  removeMenuItemImageUrl(restaurantId: string, menuItemName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/image/remove`;
+    return this.http.post<void>(url, JSON.stringify(menuItemName), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  updateMenuItemPrice(restaurantId: string, optCategory: string | null, index: number, newPrice: number): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/price/update`;
+    return this.http.post<void>(url, {
+      OptCategory: optCategory || null,
+      Index: index,
+      NewPrice: newPrice,
+    });
+  }
+
+  updateMenuItemTranslation(
+    restaurantId: string,
+    optCategory: string | null,
+    index: number,
+    langCode: string,
+    name: string,
+    description: string,
+    csAllergens: string
+  ): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/translation2/update`;
+    return this.http.post<void>(url, {
+      OptCategory: optCategory || null,
+      Index: index,
+      LangCode: langCode,
+      MenuItemTranslation: {
+        Name: name,
+        Description: description,
+      },
+      CsAllergens: csAllergens,
+    });
+  }
+
+  moveMenuItem(restaurantId: string, menuItemName: string, currentPos: number, nextPos: number): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/move`;
+    return this.http.post<void>(url, {
+      MenuItemName: menuItemName,
+      CurrentPos: currentPos,
+      NextPos: nextPos,
+    });
+  }
+
+  moveCategory(restaurantId: string, category: string | null, currentPos: number, nextPos: number): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/category/move`;
+    return this.http.post<void>(url, {
+      Category: category || null,
+      CurrentPos: currentPos,
+      NextPos: nextPos,
+    });
+  }
+
+  renameCategory(restaurantId: string, oldName: string, newName: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/category/rename`;
+    return this.http.post<void>(url, {
+      OldName: oldName,
+      NewName: newName,
+    });
+  }
+
+  getUploadSasToken(blobName: string): Observable<SasResponse> {
+    const encoded = encodeURIComponent(blobName);
+    const url = `${this.baseUrl}/api/Restaurant/sas-token?blobName=${encoded}`;
+    return this.http.get<any>(url).pipe(
+      map((res) => ({
+        uploadUrl: res?.uploadUrl ?? res?.UploadUrl ?? '',
+        publicUrl: res?.publicUrl ?? res?.PublicUrl ?? '',
+      }))
+    );
   }
 
   // --- Seating Fee API ---
@@ -528,29 +805,15 @@ export class RestaurantService {
     );
   }
 
-  private normalizePublicRestaurant(raw: any): PublicRestaurantDetails {
-    let restaurantId = '';
-    const rawId = raw?.restaurantId ?? raw?.RestaurantId ?? raw?.id ?? raw?.Id;
-    if (typeof rawId === 'string') {
-      restaurantId = rawId;
-    } else if (rawId && typeof rawId === 'object') {
-      restaurantId = rawId.fields?.[0] || rawId.value || rawId.Value || '';
-    }
-
-    let restaurantName = 'Unnamed Restaurant';
-    const rawName = raw?.restaurantName ?? raw?.RestaurantName ?? raw?.name ?? raw?.Name;
-    if (typeof rawName === 'string') {
-      restaurantName = rawName;
-    } else if (rawName && typeof rawName === 'object') {
-      restaurantName = rawName.fields?.[0] || rawName.value || rawName.Value || restaurantName;
-    }
-
-    const humanReviewed = raw?.humanReviewed ?? raw?.HumanReviewed ?? false;
-
-    // Extract current menu items
+  private extractCurrentMenuItemsAndCategories(raw: any): {
+    currentMenuName: string;
+    items: MenuItemModel[];
+    categoriesOrdering: Record<number, string | null>;
+  } {
     const rawMenus = raw?.menus ?? raw?.Menus;
     let menuName = 'Menu';
     const items: MenuItemModel[] = [];
+    const categoriesOrdering: Record<number, string | null> = {};
 
     let currentMenu: any = null;
     if (rawMenus) {
@@ -559,6 +822,9 @@ export class RestaurantService {
       if (Array.isArray(list) && list.length > 0) {
         currentMenu = list[idx] || list[0];
       }
+    }
+    if (!currentMenu) {
+      currentMenu = raw?.currentMenu ?? raw?.CurrentMenu;
     }
 
     if (currentMenu) {
@@ -584,7 +850,64 @@ export class RestaurantService {
           items.push(this.normalizeMenuItem(rawItems[k], i, k));
         });
       }
+
+      // CategoriesOrdering: Map<int, OptCategory>
+      const rawCategoriesOrdering = currentMenu.categoriesOrdering ?? currentMenu.CategoriesOrdering ?? raw?.categoriesOrdering ?? raw?.CategoriesOrdering;
+      if (Array.isArray(rawCategoriesOrdering)) {
+        rawCategoriesOrdering.forEach((entry: any) => {
+          if (Array.isArray(entry) && entry.length >= 2) {
+            const idx = Number(entry[0]);
+            let catVal: string | null = null;
+            const rawCat = entry[1];
+            if (typeof rawCat === 'string') {
+              catVal = rawCat;
+            } else if (rawCat && typeof rawCat === 'object') {
+              catVal = rawCat.fields?.[0] || rawCat.value || rawCat.Value || null;
+            }
+            categoriesOrdering[idx] = catVal;
+          }
+        });
+      } else if (rawCategoriesOrdering && typeof rawCategoriesOrdering === 'object') {
+        Object.keys(rawCategoriesOrdering).forEach((k) => {
+          const idx = Number(k);
+          const rawCat = rawCategoriesOrdering[k];
+          let catVal: string | null = null;
+          if (typeof rawCat === 'string') {
+            catVal = rawCat;
+          } else if (rawCat && typeof rawCat === 'object') {
+            catVal = rawCat.fields?.[0] || rawCat.value || rawCat.Value || null;
+          }
+          categoriesOrdering[idx] = catVal;
+        });
+      }
     }
+
+    return { currentMenuName: menuName, items, categoriesOrdering };
+  }
+
+  private normalizePublicRestaurant(raw: any): PublicRestaurantDetails {
+    let restaurantId = '';
+    const rawId = raw?.restaurantId ?? raw?.RestaurantId ?? raw?.id ?? raw?.Id;
+    if (typeof rawId === 'string') {
+      restaurantId = rawId;
+    } else if (rawId && typeof rawId === 'object') {
+      restaurantId = rawId.fields?.[0] || rawId.value || rawId.Value || '';
+    }
+
+    let restaurantName = 'Unnamed Restaurant';
+    const rawName = raw?.restaurantName ?? raw?.RestaurantName ?? raw?.name ?? raw?.Name;
+    if (typeof rawName === 'string') {
+      restaurantName = rawName;
+    } else if (rawName && typeof rawName === 'object') {
+      restaurantName = rawName.fields?.[0] || rawName.value || rawName.Value || restaurantName;
+    }
+
+    const humanReviewed = raw?.humanReviewed ?? raw?.HumanReviewed ?? false;
+
+    // Extract current menu items and categories
+    const menuDetails = this.extractCurrentMenuItemsAndCategories(raw);
+    const menuName = menuDetails.currentMenuName;
+    const items: MenuItemModel[] = menuDetails.items;
 
     const rawTables = raw?.tables ?? raw?.Tables;
     const parsedTables = this.normalizeTables(rawTables);
@@ -1120,6 +1443,39 @@ export class RestaurantService {
 
     const humanReviewed = !!(raw?.humanReviewed ?? raw?.HumanReviewed);
     const parsedTables = this.normalizeTables(rawTables);
+    const menuDetails = this.extractCurrentMenuItemsAndCategories(raw);
+
+    // Compute subscription expiration matching Blazor Restaurant.IsExpired
+    let isExpired = false;
+    const subObj = raw?.subscription ?? raw?.Subscription;
+    if (subObj) {
+      const subType = subObj.subscriptionType ?? subObj.SubscriptionType;
+      let caseName = '';
+      let endingStr: string | null = null;
+      if (typeof subType === 'string') {
+        caseName = subType;
+      } else if (subType && typeof subType === 'object') {
+        caseName = (subType.case || subType.Case || '').toString();
+        endingStr = subType.ending || subType.Ending || null;
+        if (!endingStr && Array.isArray(subType.fields) && subType.fields.length > 0) {
+          endingStr = subType.fields[0];
+        }
+        if (!endingStr && Array.isArray(subType.Fields) && subType.Fields.length > 0) {
+          endingStr = subType.Fields[0];
+        }
+      }
+
+      if (caseName === 'PendingPayment') {
+        isExpired = true;
+      } else if (caseName === 'Trial' || caseName === 'Ordinary') {
+        if (endingStr) {
+          const parsedDate = new Date(endingStr);
+          if (!isNaN(parsedDate.getTime())) {
+            isExpired = parsedDate.getTime() < Date.now();
+          }
+        }
+      }
+    }
 
     return {
       restaurantId,
@@ -1135,13 +1491,16 @@ export class RestaurantService {
       extraVatDepartmentCodeAndRate,
       vatDepartmentCodeAndRates,
       extraCatalogueSetting: extraCatSetting,
-      currentMenuName,
+      currentMenuName: menuDetails.currentMenuName || currentMenuName,
       otherAvailableMenus,
       humanReviewed,
       paymentConfig,
       selfOrderingConfig: selfOrderConfig,
-      subscription: raw?.subscription ?? raw?.Subscription,
+      subscription: subObj,
+      isExpired,
       stockInventorySettings: raw?.stockInventorySettings ?? raw?.StockInventorySettings,
+      items: menuDetails.items,
+      categoriesOrdering: menuDetails.categoriesOrdering,
       raw,
     };
   }

@@ -1,0 +1,1077 @@
+<app-main-layout [pageTitle]="'ExtraCat_PageTitle' | loc">
+  <div class="container-fluid px-3 px-md-4 py-4 extra-cat-container">
+    <!-- Header -->
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+      <a [routerLink]="['/restaurantsAdmin', restaurantId()]" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left me-1"></i> {{ 'ExtraCat_BtnBackToAdmin' | loc }}
+      </a>
+      <h3 class="mb-0 fw-bold">{{ 'ExtraCat_PageTitle' | loc }}</h3>
+      @if (restaurant(); as rest) {
+        <span class="text-muted">— {{ rest.restaurantName }}</span>
+      }
+    </div>
+
+    @if (isCatalogueDisabled()) {
+      <div class="alert alert-warning d-flex align-items-center gap-2 mb-3 shadow-sm">
+        <i class="bi bi-exclamation-triangle-fill fs-4 text-warning"></i>
+        <div>
+          <strong>{{ 'ExtraCat_CatalogueDisabledNoticeTitle' | loc }}</strong>
+          <div>{{ 'ExtraCat_CatalogueDisabledNotice' | loc }}</div>
+        </div>
+      </div>
+    }
+
+    @if (errorMessage()) {
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage() }}
+        <button type="button" class="btn-close" (click)="errorMessage.set(null)"></button>
+      </div>
+    }
+    @if (warningMessage()) {
+      <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle-fill me-2"></i>{{ warningMessage() }}
+        <button type="button" class="btn-close" (click)="warningMessage.set(null)"></button>
+      </div>
+    }
+    @if (successMessage()) {
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage() }}
+        <button type="button" class="btn-close" (click)="successMessage.set(null)"></button>
+      </div>
+    }
+
+    <!-- AI Assistants -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-light d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <h5 class="mb-0"><i class="bi bi-magic me-2"></i>{{ 'ExtraCat_AiAssistantsTitle' | loc }}</h5>
+        <button type="button" class="btn btn-sm d-inline-flex align-items-center gap-1"
+                [class.btn-secondary]="showListOfNamesSection()" [class.btn-outline-primary]="!showListOfNamesSection()"
+                (click)="toggleListOfNamesSection()">
+          <i class="bi" [class.bi-chevron-up]="showListOfNamesSection()" [class.bi-card-text]="!showListOfNamesSection()"></i>
+          <span>{{ (showListOfNamesSection() ? 'ExtraCat_BtnHideListOfNames' : 'ExtraCat_BtnIntegrateFromListOfNames') | loc }}</span>
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label for="shortDescriptionInput" class="form-label fw-semibold">{{ 'ExtraCat_PromptLabel' | loc }}</label>
+          <div class="input-group">
+            <input id="shortDescriptionInput" type="text" class="form-control"
+                   [placeholder]="suggestionPlaceholder"
+                   [ngModel]="shortDescription()" (ngModelChange)="shortDescription.set($event)"
+                   (keydown.enter)="fillFromScratch()"
+                   [disabled]="isGenerating() || isGeneratingFromNames()" />
+            <button class="btn btn-primary d-inline-flex align-items-center gap-2" type="button"
+                    [disabled]="isGenerating() || isGeneratingFromNames() || !shortDescription().trim()"
+                    (click)="fillFromScratch()">
+              @if (isGenerating()) {
+                <span class="spinner-border spinner-border-sm" role="status"></span>
+                <span>{{ 'ExtraCat_BtnGenerating' | loc }}</span>
+              } @else {
+                <i class="bi bi-stars"></i>
+                <span>{{ 'ExtraCat_BtnGenerateSuggestions' | loc }}</span>
+              }
+            </button>
+          </div>
+          <div class="form-text mt-2 d-flex align-items-center justify-content-between flex-wrap">
+            <span>
+              {{ 'ExtraCat_SuggestionLabel' | loc }}
+              <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none" (click)="useSuggestion()"
+                      [disabled]="isGenerating() || isGeneratingFromNames()">{{ suggestionPlaceholder }}</button>
+            </span>
+            @if (isGenerating()) {
+              <span class="text-primary"><span class="spinner-border spinner-border-sm me-1"></span>{{ 'ExtraCat_GeneratingNotice' | loc }}</span>
+            }
+          </div>
+          <div class="card p-2 bg-light-subtle border mt-2">
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox" id="includeCompositionScratch"
+                     [ngModel]="includeCompositionScratch()" (ngModelChange)="includeCompositionScratch.set($event)"
+                     [disabled]="isGenerating() || isGeneratingFromNames()" />
+              <label class="form-check-label fw-semibold text-dark d-block" for="includeCompositionScratch">
+                <i class="bi bi-boxes me-1 text-primary"></i>{{ 'ExtraCat_IncludeComposition' | loc }}
+              </label>
+              <div class="form-text text-muted mt-0 small">{{ 'ExtraCat_IncludeCompositionHint' | loc }}</div>
+            </div>
+          </div>
+        </div>
+
+        @if (showListOfNamesSection()) {
+          <hr class="my-3 text-muted" />
+          <div class="p-3 bg-light rounded-3 border">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+              <label for="listOfNamesTextarea" class="form-label fw-semibold mb-0">
+                <i class="bi bi-card-checklist me-1 text-primary"></i>{{ 'ExtraCat_PasteListHeader' | loc }}
+              </label>
+              <span class="badge" [class.bg-warning]="parsedNamesCount() > 20" [class.text-dark]="parsedNamesCount() > 20"
+                    [class.bg-primary]="parsedNamesCount() <= 20">
+                {{ 'ExtraCat_ItemsCounter' | loc: parsedNamesCount() }}
+              </span>
+            </div>
+            <p class="small text-muted mb-2">{{ 'ExtraCat_PasteListDescription' | loc }}</p>
+            <textarea id="listOfNamesTextarea" class="form-control font-monospace mb-2" rows="6"
+                      placeholder="Pizza Margherita&#10;Spaghetti alla Carbonara&#10;Tiramisù"
+                      [ngModel]="listOfNamesText()" (ngModelChange)="listOfNamesText.set($event)"
+                      [disabled]="isGenerating() || isGeneratingFromNames()"></textarea>
+            @if (parsedNamesCount() > 20) {
+              <div class="alert alert-warning py-2 px-3 small mb-2">
+                <i class="bi bi-exclamation-triangle me-1"></i>{{ 'ExtraCat_ListItemsPastedWarning' | loc: parsedNamesCount() }}
+              </div>
+            }
+            <div class="card p-2 bg-light-subtle border mb-3">
+              <div class="form-check mb-0">
+                <input class="form-check-input" type="checkbox" id="includeCompositionNames"
+                       [ngModel]="includeCompositionNames()" (ngModelChange)="includeCompositionNames.set($event)"
+                       [disabled]="isGenerating() || isGeneratingFromNames()" />
+                <label class="form-check-label fw-semibold text-dark d-block" for="includeCompositionNames">
+                  <i class="bi bi-boxes me-1 text-primary"></i>{{ 'ExtraCat_IncludeComposition' | loc }}
+                </label>
+                <div class="form-text text-muted mt-0 small">{{ 'ExtraCat_IncludeCompositionHint' | loc }}</div>
+              </div>
+            </div>
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <button type="button" class="btn btn-outline-secondary btn-sm" (click)="clearListOfNames()"
+                      [disabled]="isGenerating() || isGeneratingFromNames() || !listOfNamesText().trim()">
+                <i class="bi bi-x-circle me-1"></i>{{ 'ExtraCat_BtnClear' | loc }}
+              </button>
+              <button class="btn btn-success d-inline-flex align-items-center gap-2" type="button"
+                      [disabled]="isGenerating() || isGeneratingFromNames() || parsedNamesCount() === 0"
+                      (click)="integrateFromListOfNames()">
+                @if (isGeneratingFromNames()) {
+                  <span class="spinner-border spinner-border-sm" role="status"></span>
+                  <span>{{ 'ExtraCat_BtnGeneratingIntegrating' | loc }}</span>
+                } @else {
+                  <i class="bi bi-plus-circle-fill"></i>
+                  <span>{{ 'ExtraCat_BtnIntegrateItemsWithAi' | loc: (parsedNamesCount() > 20 ? 20 : parsedNamesCount()) }}</span>
+                }
+              </button>
+            </div>
+            @if (isGeneratingFromNames()) {
+              <div class="mt-2 text-success small">
+                <span class="spinner-border spinner-border-sm me-1"></span>{{ 'ExtraCat_IntegratingNotice' | loc }}
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Existing items -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-light d-flex align-items-center justify-content-between">
+        <h5 class="mb-0"><i class="bi bi-card-checklist me-2"></i>{{ 'ExtraCat_ExistingItemsHeader' | loc }}</h5>
+        <span class="badge bg-secondary">{{ 'ExtraCat_ItemsBadge' | loc: items().length }}</span>
+      </div>
+      <div class="card-body">
+        @if (isLoading()) {
+          <div class="text-center py-4">
+            <span class="spinner-border text-primary" role="status"></span>
+            <p class="mt-2 text-muted mb-0">{{ 'ExtraCat_Loading' | loc }}</p>
+          </div>
+        } @else if (!extraCatalogueDetails()?.extraCatalogue?.extraCatalogueId && items().length === 0) {
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-info-circle fs-3 text-secondary d-block mb-2"></i>
+            <p class="mb-2">{{ 'ExtraCat_NotInitializedTitle' | loc }}</p>
+            <p class="small text-muted mb-0">{{ 'ExtraCat_NotInitializedDesc' | loc }}</p>
+          </div>
+        } @else if (items().length === 0) {
+          <div class="text-center py-4 text-muted">
+            <i class="bi bi-inbox fs-3 text-secondary d-block mb-2"></i>
+            <p class="mb-0">{{ 'ExtraCat_EmptyTitle' | loc }}</p>
+            <p class="small text-muted mb-0">{{ 'ExtraCat_EmptyDesc' | loc }}</p>
+          </div>
+        } @else {
+          <!-- Filters -->
+          <div class="row g-2 mb-3 align-items-center">
+            <div class="col-md-5 col-lg-4">
+              <div class="input-group">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                <input type="text" class="form-control border-start-0" [placeholder]="'ExtraCat_SearchPlaceholder' | loc"
+                       [ngModel]="searchFilterText()" (ngModelChange)="searchFilterText.set($event); currentPage.set(1)" />
+                @if (searchFilterText()) {
+                  <button class="btn btn-outline-secondary" type="button" (click)="searchFilterText.set('')"
+                          [title]="'ExtraCat_ClearSearchTooltip' | loc"><i class="bi bi-x-lg"></i></button>
+                }
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <select class="form-select" [ngModel]="selectedCategoryFilter()" (ngModelChange)="selectedCategoryFilter.set($event); currentPage.set(1)">
+                <option value="">{{ 'ExtraCat_AllCategories' | loc }}</option>
+                @for (cat of existingCategories(); track cat) {
+                  <option [value]="cat">{{ cat }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-6 col-md-2">
+              <select class="form-select" [ngModel]="selectedStatusFilter()" (ngModelChange)="selectedStatusFilter.set($event); currentPage.set(1)">
+                <option value="All">{{ 'ExtraCat_AllStatuses' | loc }}</option>
+                <option value="Available">{{ 'ExtraCat_StatusAvailable' | loc }}</option>
+                <option value="Unavailable">{{ 'ExtraCat_StatusUnavailable' | loc }}</option>
+              </select>
+            </div>
+            <div class="col-12 col-md-2 col-lg-3 text-md-end text-muted small">
+              <span>{{ 'ExtraCat_ShowingCount' | loc: totalFilteredCount() : items().length }}</span>
+              @if (hasActiveFilters()) {
+                <button class="btn btn-link btn-sm p-0 ms-1 text-decoration-none" (click)="clearFilters()">{{ 'ExtraCat_BtnResetFilters' | loc }}</button>
+              }
+            </div>
+          </div>
+
+          @if (totalFilteredCount() === 0) {
+            <div class="text-center py-4 text-muted border rounded bg-light">
+              <i class="bi bi-search fs-3 text-secondary d-block mb-2"></i>
+              <p class="mb-1">{{ 'ExtraCat_NoFilterMatch' | loc }}</p>
+              <button class="btn btn-outline-secondary btn-sm mt-1" (click)="clearFilters()">{{ 'ExtraCat_BtnClearFilters' | loc }}</button>
+            </div>
+          } @else {
+            <!-- Bulk toolbar -->
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2 mb-3 rounded border"
+                 [class.bg-primary-subtle]="selectedItemNames().size > 0" [class.bg-light]="selectedItemNames().size === 0">
+              <div class="d-flex align-items-center gap-2">
+                @if (selectedItemNames().size > 0) {
+                  <span class="badge bg-primary fs-6"><i class="bi bi-check2-square me-1"></i>{{ 'ExtraCat_SelectedCount' | loc: selectedItemNames().size }}</span>
+                  <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 ms-1" (click)="clearSelection()">{{ 'ExtraCat_BtnDeselectAll' | loc }}</button>
+                  @if (!isAllFilteredSelected()) {
+                    <span class="text-muted small">|</span>
+                    <button type="button" class="btn btn-link btn-sm text-decoration-none p-0" (click)="selectAllFiltered()">
+                      {{ 'ExtraCat_BtnSelectAllFiltered' | loc: totalFilteredCount() }}
+                    </button>
+                  }
+                } @else {
+                  <span class="text-muted small"><i class="bi bi-check2-square me-1"></i>{{ 'ExtraCat_BulkSelectionHint' | loc }}</span>
+                  <button type="button" class="btn btn-link btn-sm text-decoration-none p-0 ms-1" (click)="selectAllFiltered()">
+                    {{ 'ExtraCat_BtnSelectAll' | loc: totalFilteredCount() }}
+                  </button>
+                }
+              </div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <button class="btn btn-outline-primary btn-sm" type="button" [disabled]="selectedItemNames().size === 0" (click)="openUpdateMultipleCategoryModal()">
+                  <i class="bi bi-folder-fill me-1"></i>{{ 'ExtraCat_BtnSetCategory' | loc }}
+                </button>
+                <button class="btn btn-outline-primary btn-sm" type="button" [disabled]="selectedItemNames().size === 0" (click)="openUpdateMultiplePricesModal()">
+                  <i class="bi bi-cash-coin me-1"></i>{{ 'ExtraCat_BtnUpdatePrices' | loc }}
+                </button>
+                <button class="btn btn-outline-danger btn-sm" type="button" [disabled]="selectedItemsWithPriceCount() === 0" (click)="openRemoveMultiplePricesConfirmation()">
+                  <i class="bi bi-tag me-1"></i>{{ 'ExtraCat_BtnRemovePrices' | loc }}
+                  @if (selectedItemNames().size > 0) {
+                    <span class="badge bg-danger-subtle text-danger ms-1">{{ selectedItemsWithPriceCount() }}</span>
+                  }
+                </button>
+                <button class="btn btn-danger btn-sm" type="button" [disabled]="selectedItemNames().size === 0" (click)="openRemoveMultipleConfirmation()">
+                  <i class="bi bi-trash-fill me-1"></i>{{ 'ExtraCat_BtnRemoveSelected' | loc }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th class="text-center" style="width: 40px;">
+                      <input type="checkbox" class="form-check-input" [checked]="isAllFilteredSelected()" (change)="toggleSelectAllFiltered()" />
+                    </th>
+                    <th>{{ 'ExtraCat_ColName' | loc }}</th>
+                    <th>{{ 'ExtraCat_ColCategory' | loc }}</th>
+                    <th>{{ 'ExtraCat_ColDescription' | loc }}</th>
+                    <th class="text-end">{{ 'ExtraCat_ColPrice' | loc }}</th>
+                    <th class="text-center">{{ 'ExtraCat_ColStatus' | loc }}</th>
+                    <th class="text-center">{{ 'ExtraCat_ColActions' | loc }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (detail of paginatedItems(); track detail.extraCatalogueMenuItem.name) {
+                    @let item = detail.extraCatalogueMenuItem;
+                    @let isExpanded = expandedItemNames().has(item.name);
+                    <tr [class.table-primary]="isExpanded">
+                      <td class="text-center">
+                        <input type="checkbox" class="form-check-input" [checked]="selectedItemNames().has(item.name)" (change)="toggleItemSelection(item.name)" />
+                      </td>
+
+                      <!-- Name -->
+                      <td>
+                        @if (editingItemOriginalName() === item.name) {
+                          <div class="input-group input-group-sm" style="max-width: 280px;">
+                            <input type="text" class="form-control form-control-sm"
+                                   [ngModel]="editingItemNewName()" (ngModelChange)="editingItemNewName.set($event)"
+                                   (keydown.enter)="saveRename(item.name)" (keydown.escape)="cancelRename()"
+                                   [disabled]="isRenaming()" />
+                            <button class="btn btn-success btn-sm" type="button" [disabled]="isRenaming() || !editingItemNewName().trim()" (click)="saveRename(item.name)">
+                              @if (isRenaming()) { <span class="spinner-border spinner-border-sm"></span> } @else { <i class="bi bi-check-lg"></i> }
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" type="button" [disabled]="isRenaming()" (click)="cancelRename()"><i class="bi bi-x-lg"></i></button>
+                          </div>
+                        } @else {
+                          <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none"
+                                    [class.text-primary]="isExpanded" [class.text-secondary]="!isExpanded" (click)="toggleExpand(item.name)">
+                              <i class="bi" [class.bi-chevron-down]="isExpanded" [class.bi-chevron-right]="!isExpanded"></i>
+                            </button>
+                            <span class="fw-semibold">{{ item.name }}</span>
+                            @if (hasAllergens(item)) {
+                              <button type="button" class="btn btn-sm btn-outline-warning p-0 px-1 border-0" style="font-size: 1.1rem; line-height: 1;"
+                                      (click)="showAllergens(item.name, item)">⚠️</button>
+                            }
+                            <button class="btn btn-sm btn-link text-secondary p-0" type="button" [title]="'ExtraCat_RenameItemTooltip' | loc" (click)="startRename(item.name)">
+                              <i class="bi bi-pencil-square"></i>
+                            </button>
+                          </div>
+                        }
+                      </td>
+
+                      <!-- Category -->
+                      <td>
+                        @if (editingCategoryItemName() === item.name) {
+                          <div class="d-flex flex-column gap-1" style="min-width: 230px; max-width: 320px;">
+                            <div class="input-group input-group-sm">
+                              <input type="text" class="form-control form-control-sm" [placeholder]="'ExtraCat_CategoryNamePlaceholder' | loc"
+                                     list="cat-datalist"
+                                     [ngModel]="editingCategoryValue()" (ngModelChange)="editingCategoryValue.set($event)"
+                                     (keydown.enter)="saveCategory(item.name)" (keydown.escape)="cancelEditCategory()"
+                                     [disabled]="isSavingCategory()" />
+                              <button class="btn btn-success btn-sm" type="button" [disabled]="isSavingCategory() || !editingCategoryValue().trim()" (click)="saveCategory(item.name)">
+                                @if (isSavingCategory()) { <span class="spinner-border spinner-border-sm"></span> } @else { <i class="bi bi-check-lg"></i> }
+                              </button>
+                              <button class="btn btn-outline-secondary btn-sm" type="button" [disabled]="isSavingCategory()" (click)="cancelEditCategory()"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                            @if (existingCategories().length > 0) {
+                              <div class="d-flex align-items-center gap-1">
+                                <small class="text-muted text-nowrap" style="font-size: 0.75rem;">{{ 'ExtraCat_OrSelectExistingCategory' | loc }}</small>
+                                <select class="form-select form-select-sm py-0" style="font-size: 0.8rem;" [disabled]="isSavingCategory()"
+                                        [ngModel]="editingCategoryValue()" (ngModelChange)="editingCategoryValue.set($event)">
+                                  <option value="">{{ 'ExtraCat_ExistingCategoriesPrompt' | loc }}</option>
+                                  @for (cat of existingCategories(); track cat) {
+                                    <option [value]="cat">{{ cat }}</option>
+                                  }
+                                </select>
+                              </div>
+                            }
+                          </div>
+                        } @else {
+                          <div class="d-flex align-items-center gap-2">
+                            @if (item.optCategory) {
+                              <span class="badge bg-light text-dark border">{{ item.optCategory }}</span>
+                            } @else {
+                              <span class="text-muted">-</span>
+                            }
+                            <button class="btn btn-sm btn-link text-secondary p-0" type="button" [title]="'ExtraCat_ChangeCategoryTooltip' | loc"
+                                    (click)="startEditCategory(item.name, item.optCategory ?? null)">
+                              <i class="bi bi-pencil-square"></i>
+                            </button>
+                          </div>
+                        }
+                      </td>
+
+                      <!-- Description -->
+                      <td>
+                        @if (item.optDescription) {
+                          <span class="small text-muted">{{ item.optDescription }}</span>
+                        } @else {
+                          <span class="text-muted">-</span>
+                        }
+                      </td>
+
+                      <!-- Price -->
+                      <td class="text-end">
+                        @if (editingPriceItemName() === item.name) {
+                          <div class="d-flex justify-content-end">
+                            <div class="input-group input-group-sm" style="max-width: 190px;">
+                              <span class="input-group-text">€</span>
+                              <input type="text" inputmode="decimal" class="form-control form-control-sm text-end" placeholder="0.00"
+                                     [ngModel]="editingPriceText()" (ngModelChange)="editingPriceText.set($event)"
+                                     (keydown.enter)="savePrice(item.name)" (keydown.escape)="cancelEditPrice()"
+                                     [disabled]="isSavingPrice()" />
+                              <button class="btn btn-success btn-sm" type="button" [disabled]="isSavingPrice() || !isValidPriceInput(editingPriceText())" (click)="savePrice(item.name)">
+                                @if (isSavingPrice()) { <span class="spinner-border spinner-border-sm"></span> } @else { <i class="bi bi-check-lg"></i> }
+                              </button>
+                              <button class="btn btn-outline-secondary btn-sm" type="button" [disabled]="isSavingPrice()" (click)="cancelEditPrice()"><i class="bi bi-x-lg"></i></button>
+                            </div>
+                          </div>
+                        } @else {
+                          <div class="d-flex align-items-center justify-content-end gap-2">
+                            @if (item.optOrdinaryPrice != null) {
+                              <span class="fw-semibold">{{ item.optOrdinaryPrice | number: '1.2-2' }} €</span>
+                            } @else {
+                              <span class="text-muted">-</span>
+                            }
+                            <button class="btn btn-sm btn-link text-secondary p-0" type="button" [title]="'ExtraCat_ChangePriceTooltip' | loc"
+                                    (click)="startEditPrice(item.name, item.optOrdinaryPrice ?? null)">
+                              <i class="bi bi-pencil-square"></i>
+                            </button>
+                            <button class="btn btn-sm btn-link p-0" type="button"
+                                    [class.text-danger]="item.optOrdinaryPrice != null" [class.text-muted]="item.optOrdinaryPrice == null"
+                                    [title]="(item.optOrdinaryPrice != null ? 'ExtraCat_EliminatePriceTooltip' : 'ExtraCat_NoPriceToEliminateTooltip') | loc"
+                                    [disabled]="item.optOrdinaryPrice == null || unsettingPriceItemName() === item.name"
+                                    (click)="unsetPrice(item.name)">
+                              @if (unsettingPriceItemName() === item.name) { <span class="spinner-border spinner-border-sm"></span> } @else { <i class="bi bi-trash"></i> }
+                            </button>
+                          </div>
+                        }
+                      </td>
+
+                      <!-- Status -->
+                      <td class="text-center">
+                        <div class="d-inline-flex align-items-center justify-content-center gap-2">
+                          <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" role="switch" [checked]="item.available"
+                                   [disabled]="updatingAvailabilityItems().has(item.name)"
+                                   [title]="(item.available ? 'ExtraCat_AvailableTooltip' : 'ExtraCat_UnavailableTooltip') | loc"
+                                   (change)="toggleItemAvailability(item)" />
+                          </div>
+                          @if (updatingAvailabilityItems().has(item.name)) {
+                            <span class="spinner-border spinner-border-sm text-secondary"></span>
+                          } @else if (item.available) {
+                            <span class="badge bg-success-subtle text-success border border-success">{{ 'ExtraCat_StatusAvailable' | loc }}</span>
+                          } @else {
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary">{{ 'ExtraCat_StatusUnavailable' | loc }}</span>
+                          }
+                        </div>
+                      </td>
+
+                      <!-- Actions -->
+                      <td class="text-center">
+                        <div class="d-inline-flex align-items-center gap-1">
+                          <button class="btn btn-sm" type="button" [class.btn-primary]="isExpanded" [class.btn-outline-primary]="!isExpanded" (click)="toggleExpand(item.name)">
+                            <i class="bi me-1" [class.bi-chevron-up]="isExpanded" [class.bi-eye]="!isExpanded"></i>
+                            <span>{{ (isExpanded ? 'ExtraCat_BtnHide' : 'ExtraCat_BtnDetails') | loc }}</span>
+                            @if (getTranslationCount(item) > 0) {
+                              <span class="badge ms-1" [class.bg-white]="isExpanded" [class.text-primary]="true" [class.bg-primary-subtle]="!isExpanded">{{ getTranslationCount(item) }}</span>
+                            }
+                            @if (detail.menuItemStockComponentDetails?.length) {
+                              <span class="badge ms-1" [class.bg-white]="isExpanded" [class.text-primary]="isExpanded" [class.bg-info-subtle]="!isExpanded" [class.text-info]="!isExpanded">
+                                <i class="bi bi-boxes"></i> {{ detail.menuItemStockComponentDetails.length }}
+                              </span>
+                            }
+                          </button>
+                          <button class="btn btn-sm btn-outline-danger" type="button" [title]="'ExtraCat_BtnRemoveItem' | loc" [disabled]="isRemovingItem()" (click)="openRemoveConfirmation(item.name)">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="mt-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <span class="text-muted small">{{ 'ExtraCat_ShowingCount' | loc: totalFilteredCount() : items().length }}</span>
+              @if (totalPages() > 1) {
+                <nav>
+                  <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item" [class.disabled]="currentPage() === 1">
+                      <button class="page-link" (click)="goToPage(currentPage() - 1)">&laquo;</button>
+                    </li>
+                    <li class="page-item disabled"><span class="page-link">{{ currentPage() }} / {{ totalPages() }}</span></li>
+                    <li class="page-item" [class.disabled]="currentPage() === totalPages()">
+                      <button class="page-link" (click)="goToPage(currentPage() + 1)">&raquo;</button>
+                    </li>
+                  </ul>
+                </nav>
+              }
+            </div>
+
+            <!-- Drilled down details -->
+            @if (expandedDetails().length > 0) {
+              <div class="mt-4 pt-3 border-top">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-list-nested text-primary fs-5"></i>
+                    <h5 class="mb-0 fw-bold text-dark">{{ 'ExtraCat_DrilledDownTitle' | loc }}</h5>
+                    <span class="badge bg-primary-subtle text-primary">{{ expandedDetails().length }}</span>
+                  </div>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="collapseAll()">
+                    <i class="bi bi-chevron-bar-up me-1"></i>{{ 'ExtraCat_BtnCollapseAll' | loc }}
+                  </button>
+                </div>
+
+                @for (expDetails of expandedDetails(); track expDetails.extraCatalogueMenuItem.name) {
+                  @let expItem = expDetails.extraCatalogueMenuItem;
+                  @let langs = itemLanguages(expItem);
+                  @let comps = expDetails.menuItemStockComponentDetails || [];
+                  <div class="card shadow-sm border border-primary-subtle mb-3" style="border-radius: 0.75rem; overflow: hidden;">
+                    <div class="card-header bg-primary-subtle d-flex justify-content-between align-items-center py-2 px-3 flex-wrap gap-2">
+                      <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <span class="fw-bold text-dark fs-6">{{ expItem.name }}</span>
+                        @if (expItem.optCategory) { <span class="badge bg-light text-dark border">{{ expItem.optCategory }}</span> }
+                        @if (expItem.optOrdinaryPrice != null) { <span class="badge bg-success-subtle text-success border">{{ expItem.optOrdinaryPrice | number: '1.2-2' }} €</span> }
+                        @if (expItem.available) {
+                          <span class="badge bg-success-subtle text-success border border-success">{{ 'ExtraCat_StatusAvailable' | loc }}</span>
+                        } @else {
+                          <span class="badge bg-secondary-subtle text-secondary border border-secondary">{{ 'ExtraCat_StatusUnavailable' | loc }}</span>
+                        }
+                        <span class="badge bg-info-subtle text-info border">{{ 'ExtraCat_LanguagesCount' | loc: langs.length }}</span>
+                        @if (comps.length > 0) {
+                          <span class="badge bg-primary-subtle text-primary border"><i class="bi bi-boxes me-1"></i>{{ 'ExtraCat_ComponentsCount' | loc: comps.length }}</span>
+                        }
+                      </div>
+                      <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-warning d-inline-flex align-items-center gap-1 shadow-sm"
+                                [disabled]="isMovingItemToMainMenu() || isRemovingItem()"
+                                [title]="'ExtraCat_MoveToMainMenuTooltip' | loc"
+                                (click)="openMoveToMainMenuConfirmation(expItem.name)">
+                          <i class="bi bi-box-arrow-right"></i><span>{{ 'ExtraCat_BtnMoveToMainMenu' | loc }}</span>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="toggleExpand(expItem.name)">
+                          <i class="bi bi-chevron-up me-1"></i>{{ 'ExtraCat_BtnClose' | loc }}
+                        </button>
+                      </div>
+                    </div>
+                    <div class="card-body p-3">
+                      @if (expItem.optDescription) {
+                        <div class="p-2 mb-3 bg-light rounded border small">
+                          <span class="text-muted fw-semibold me-1"><i class="bi bi-info-circle me-1"></i>{{ 'ExtraCat_OriginalDescription' | loc }}</span>
+                          <span class="text-dark">{{ expItem.optDescription }}</span>
+                        </div>
+                      }
+                      <div class="p-2 mb-3 bg-light rounded border small">
+                        <div class="text-muted fw-semibold mb-2"><i class="bi bi-boxes me-1 text-primary"></i>{{ 'ExtraCat_StockComposition' | loc }}</div>
+                        @if (comps.length === 0) {
+                          <div class="text-muted fst-italic py-1">{{ 'ExtraCat_NoStockComponents' | loc }}</div>
+                        } @else {
+                          <div class="d-inline-flex flex-wrap gap-1">
+                            @for (comp of comps; track $index) {
+                              @if (isUnresolvedComponent(comp)) {
+                                <span class="badge bg-warning-subtle text-dark border border-warning p-1 px-2">
+                                  <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>{{ formatStockComponent(comp) }}
+                                </span>
+                              } @else {
+                                <span class="badge bg-white text-dark border p-1 px-2">
+                                  <i class="bi bi-box-seam-fill text-success me-1"></i>{{ formatStockComponent(comp) }}
+                                </span>
+                              }
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      @if (langs.length === 0) {
+                        <div class="text-center py-3 text-muted">
+                          <i class="bi bi-globe fs-4 text-secondary d-block mb-1"></i>
+                          <span class="small">{{ 'ExtraCat_NoTranslationsNotice' | loc }}</span>
+                        </div>
+                      } @else {
+                        <div class="table-responsive">
+                          <table class="table table-bordered table-sm align-middle mb-0 bg-white">
+                            <thead class="table-light small">
+                              <tr>
+                                <th style="width: 15%;"><i class="bi bi-globe me-1"></i>{{ 'ExtraCat_ThLanguage' | loc }}</th>
+                                <th style="width: 25%;"><i class="bi bi-fonts me-1"></i>{{ 'ExtraCat_ThTranslatedName' | loc }}</th>
+                                <th style="width: 35%;"><i class="bi bi-card-text me-1"></i>{{ 'ExtraCat_ThTranslatedDescription' | loc }}</th>
+                                <th style="width: 25%;"><i class="bi bi-exclamation-triangle me-1"></i>{{ 'ExtraCat_ThLocalizedAllergens' | loc }}</th>
+                              </tr>
+                            </thead>
+                            <tbody class="small">
+                              @for (lang of langs; track lang) {
+                                <tr>
+                                  <td>
+                                    <div class="d-flex align-items-center gap-1">
+                                      <span>{{ getLanguageFlag(lang) }}</span>
+                                      <span class="fw-semibold">{{ getLanguageDisplayName(lang) }}</span>
+                                      <span class="badge bg-secondary-subtle text-dark border font-monospace ms-auto">{{ lang }}</span>
+                                    </div>
+                                  </td>
+
+                                  <!-- Name -->
+                                  <td>
+                                    @if (isEditingTrans(expItem.name, lang, 'name')) {
+                                      <ng-container *ngTemplateOutlet="transEditor; context: { name: expItem.name, lang: lang, field: 'name' }"></ng-container>
+                                    } @else {
+                                      <div class="d-flex align-items-center justify-content-between gap-1">
+                                        @if (transName(expItem, lang)) { <span class="fw-semibold text-dark">{{ transName(expItem, lang) }}</span> }
+                                        @else { <span class="text-muted fst-italic">-</span> }
+                                        <button class="btn btn-sm btn-link text-secondary p-0 flex-shrink-0" type="button"
+                                                (click)="startEditTranslation(expItem.name, lang, 'name', transName(expItem, lang))">
+                                          <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                      </div>
+                                    }
+                                  </td>
+
+                                  <!-- Description -->
+                                  <td>
+                                    @if (isEditingTrans(expItem.name, lang, 'desc')) {
+                                      <ng-container *ngTemplateOutlet="transEditor; context: { name: expItem.name, lang: lang, field: 'desc' }"></ng-container>
+                                    } @else {
+                                      <div class="d-flex align-items-center justify-content-between gap-1">
+                                        @if (transDesc(expItem, lang)) { <span class="text-secondary text-break">{{ transDesc(expItem, lang) }}</span> }
+                                        @else { <span class="text-muted fst-italic">-</span> }
+                                        <button class="btn btn-sm btn-link text-secondary p-0 flex-shrink-0" type="button"
+                                                (click)="startEditTranslation(expItem.name, lang, 'desc', transDesc(expItem, lang))">
+                                          <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                      </div>
+                                    }
+                                  </td>
+
+                                  <!-- Allergens -->
+                                  <td>
+                                    @if (isEditingTrans(expItem.name, lang, 'allergens')) {
+                                      <ng-container *ngTemplateOutlet="transEditor; context: { name: expItem.name, lang: lang, field: 'allergens' }"></ng-container>
+                                    } @else {
+                                      @let parsed = getAllergensList(rawAllergens(expItem, lang));
+                                      <div class="d-flex align-items-center justify-content-between gap-1">
+                                        <div>
+                                          @if (parsed.length > 0) {
+                                            <div class="d-flex flex-wrap gap-1">
+                                              @for (a of parsed; track a) {
+                                                <span class="badge bg-warning-subtle text-dark border border-warning" style="font-size: 0.75rem;">⚠️ {{ a }}</span>
+                                              }
+                                            </div>
+                                          } @else if (rawAllergens(expItem, lang)) {
+                                            <span class="badge bg-light text-muted border">{{ 'ExtraCat_NoneAllergens' | loc }}</span>
+                                          } @else {
+                                            <span class="text-muted fst-italic">-</span>
+                                          }
+                                        </div>
+                                        <button class="btn btn-sm btn-link text-secondary p-0 ms-1 flex-shrink-0" type="button"
+                                                (click)="startEditTranslation(expItem.name, lang, 'allergens', rawAllergens(expItem, lang))">
+                                          <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                      </div>
+                                    }
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          }
+        }
+      </div>
+    </div>
+
+    <!-- Inline translation editor template -->
+    <ng-template #transEditor let-name="name" let-lang="lang" let-field="field">
+      <div class="input-group input-group-sm">
+        <input type="text" class="form-control form-control-sm"
+               [ngModel]="editingTransValue()" (ngModelChange)="editingTransValue.set($event)"
+               (keydown.enter)="saveTranslation(name, lang, field)" (keydown.escape)="cancelEditTranslation()"
+               [disabled]="isSavingTranslation()" />
+        <button class="btn btn-success btn-sm" type="button"
+                [disabled]="isSavingTranslation() || (field === 'name' && !editingTransValue().trim())"
+                (click)="saveTranslation(name, lang, field)">
+          @if (isSavingTranslation()) { <span class="spinner-border spinner-border-sm"></span> } @else { <i class="bi bi-check-lg"></i> }
+        </button>
+        <button class="btn btn-outline-secondary btn-sm" type="button" [disabled]="isSavingTranslation()" (click)="cancelEditTranslation()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    </ng-template>
+
+    <datalist id="cat-datalist">
+      @for (cat of existingCategories(); track cat) {
+        <option [value]="cat"></option>
+      }
+    </datalist>
+
+    <!-- Move to Main Menu modal -->
+    @if (showMoveToMainMenuConsentModal() && itemToMoveToMainMenuName()) {
+      <div class="modal-backdrop-custom" (click)="cancelMoveToMainMenu()">
+        <div class="modal-dialog modal-dialog-centered" style="min-width: min(500px, 95vw);" (click)="$event.stopPropagation()">
+          <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+            <div class="modal-header bg-warning text-dark" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+              <h5 class="modal-title d-flex align-items-center gap-2 mb-0"><i class="bi bi-box-arrow-right"></i>{{ 'ExtraCat_ModalMoveToMainMenuTitle' | loc }}</h5>
+              <button type="button" class="btn-close" (click)="cancelMoveToMainMenu()" [disabled]="isMovingItemToMainMenu()"></button>
+            </div>
+            <div class="modal-body p-4 text-dark">
+              <p class="mb-0" [innerHTML]="'ExtraCat_ModalMoveToMainMenuConfirm' | loc: itemToMoveToMainMenuName()!"></p>
+            </div>
+            <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+              <button type="button" class="btn btn-secondary px-3" (click)="cancelMoveToMainMenu()" [disabled]="isMovingItemToMainMenu()">{{ 'ExtraCat_BtnCancel' | loc }}</button>
+              <button type="button" class="btn btn-warning px-4 fw-bold" (click)="confirmMoveToMainMenu()" [disabled]="isMovingItemToMainMenu()">
+                @if (isMovingItemToMainMenu()) {
+                  <span class="spinner-border spinner-border-sm me-2"></span>{{ 'ExtraCat_BtnMovingToMainMenu' | loc }}
+                } @else {
+                  <i class="bi bi-box-arrow-right me-1"></i>{{ 'ExtraCat_BtnConfirmMoveToMainMenu' | loc }}
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Remove single item modal -->
+    @if (showRemoveConsentModal() && itemToRemoveName()) {
+      <div class="modal-backdrop-custom">
+        <div class="modal-dialog modal-dialog-centered" style="min-width: min(500px, 95vw);">
+          <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+            <div class="modal-header bg-danger text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+              <h5 class="modal-title d-flex align-items-center gap-2 mb-0"><i class="bi bi-exclamation-triangle-fill"></i>{{ 'ExtraCat_ModalRemoveTitle' | loc }}</h5>
+              <button type="button" class="btn-close btn-close-white" (click)="cancelRemoveItem()"></button>
+            </div>
+            <div class="modal-body p-4 text-dark">
+              <p class="mb-0">{{ 'ExtraCat_ModalRemoveConfirm' | loc: itemToRemoveName()! }}</p>
+            </div>
+            <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+              <button type="button" class="btn btn-secondary px-3" (click)="cancelRemoveItem()" [disabled]="isRemovingItem()">{{ 'ExtraCat_BtnCancel' | loc }}</button>
+              <button type="button" class="btn btn-danger px-4 fw-bold" (click)="confirmRemoveItem()" [disabled]="isRemovingItem()">
+                @if (isRemovingItem()) {
+                  <span class="spinner-border spinner-border-sm me-2"></span>{{ 'ExtraCat_BtnRemoving' | loc }}
+                } @else {
+                  <i class="bi bi-trash-fill me-1"></i>{{ 'ExtraCat_BtnRemove' | loc }}
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Remove multiple items modal -->
+    @if (showRemoveMultipleConsentModal() && selectedItemNames().size > 0) {
+      <div class="modal-backdrop-custom">
+        <div class="modal-dialog modal-dialog-centered" style="min-width: min(500px, 95vw);">
+          <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+            <div class="modal-header bg-danger text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+              <h5 class="modal-title d-flex align-items-center gap-2 mb-0"><i class="bi bi-trash-fill"></i>{{ 'ExtraCat_ModalRemoveMultipleTitle' | loc }}</h5>
+              <button type="button" class="btn-close btn-close-white" (click)="cancelRemoveMultiple()" [disabled]="isRemovingMultiple()"></button>
+            </div>
+            <div class="modal-body p-4 text-dark">
+              <p>{{ 'ExtraCat_ModalRemoveMultipleConfirm' | loc: selectedItemNames().size }}</p>
+              <div class="p-2 border rounded bg-light small" style="max-height: 160px; overflow-y: auto;">
+                <div class="d-flex flex-wrap gap-1">
+                  @for (n of selectedNamesArray(); track n) {
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary">{{ n }}</span>
+                  }
+                </div>
+              </div>
+              <p class="text-danger small mt-2 mb-0"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ 'ExtraCat_ActionCannotBeUndone' | loc }}</p>
+            </div>
+            <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+              <button type="button" class="btn btn-secondary px-3" (click)="cancelRemoveMultiple()" [disabled]="isRemovingMultiple()">{{ 'ExtraCat_BtnCancel' | loc }}</button>
+              <button type="button" class="btn btn-danger px-4 fw-bold" (click)="confirmRemoveMultiple()" [disabled]="isRemovingMultiple()">
+                @if (isRemovingMultiple()) {
+                  <span class="spinner-border spinner-border-sm me-2"></span>{{ 'ExtraCat_BtnRemoving' | loc }}
+                } @else {
+                  <i class="bi bi-trash-fill me-1"></i>{{ 'ExtraCat_BtnRemoveCountItems' | loc: selectedItemNames().size }}
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Remove multiple prices modal -->
+    @if (showRemoveMultiplePricesConsentModal() && selectedItemNames().size > 0) {
+      <div class="modal-backdrop-custom">
+        <div class="modal-dialog modal-dialog-centered" style="min-width: min(500px, 95vw);">
+          <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+            <div class="modal-header bg-warning text-dark" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+              <h5 class="modal-title d-flex align-items-center gap-2 mb-0"><i class="bi bi-tag-fill"></i>{{ 'ExtraCat_ModalRemovePricesTitle' | loc }}</h5>
+              <button type="button" class="btn-close" (click)="cancelRemoveMultiplePrices()" [disabled]="isRemovingMultiplePrices()"></button>
+            </div>
+            <div class="modal-body p-4 text-dark">
+              <p>{{ 'ExtraCat_ModalRemovePricesConfirm' | loc: selectedItemsWithPriceCount() }}</p>
+              <p class="text-muted small mb-0">{{ 'ExtraCat_ModalRemovePricesDesc' | loc }}</p>
+            </div>
+            <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+              <button type="button" class="btn btn-secondary px-3" (click)="cancelRemoveMultiplePrices()" [disabled]="isRemovingMultiplePrices()">{{ 'ExtraCat_BtnCancel' | loc }}</button>
+              <button type="button" class="btn btn-warning px-4 fw-bold" (click)="confirmRemoveMultiplePrices()" [disabled]="isRemovingMultiplePrices()">
+                @if (isRemovingMultiplePrices()) {
+                  <span class="spinner-border spinner-border-sm me-2"></span>{{ 'ExtraCat_BtnRemovingPrices' | loc }}
+                } @else {
+                  <i class="bi bi-tag-fill me-1"></i>{{ 'ExtraCat_BtnRemovePrices' | loc }}
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Update multiple prices modal -->
+    @if (showUpdateMultiplePricesModal() && selectedItemNames().size > 0) {
+      <div class="modal-backdrop-custom">
+        <div class="modal-dialog modal-dialog-centered" style="min-width: min(500px, 95vw);">
+          <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+            <div class="modal-header bg-primary text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+              <h5 class="modal-title d-flex align-items-center gap-2 mb-0"><i class="bi bi-cash-coin"></i>{{ 'ExtraCat_ModalUpdatePricesTitle' | loc }}</h5>
+              <button type="button" class="btn-close btn-close-white" (click)="cancelUpdateMultiplePrices()" [disabled]="isUpdatingMultiplePrices()"></button>
+            </div>
+            <div class="modal-body p-4 text-dark">
+              <p class="mb-3">{{ 'ExtraCat_ModalUpdatePricesDesc' | loc: selectedItemNames().size }}</p>
+              <label class="form-label fw-semibold">{{ 'ExtraCat_NewPriceLabel' | loc }}</label>
+              <div class="input-group">
+                <span class="input-group-text">€</span>
+                <input type="text" inputmode="decimal" class="form-control" placeholder="0.00"
+                       [ngModel]="updateMultiplePricesText()" (ngModelChange)="updateMultiplePricesText.set($event)"
+                       (keydown.enter)="confirmUpdateMultiplePrices()" (keydown.escape)="cancelUpdateMultiplePrices()"
+                       [disabled]="isUpdatingMultiplePrices()" />
+              </div>
+              <div class="form-text mb-3">
+                @if (!updateMultiplePricesText().trim()) {
+                  <span>{{ 'ExtraCat_EnterValidNonNegativePrice' | loc }}</span>
+                } @else if (isValidPriceInput(updateMultiplePricesText())) {
+                  <span class="text-success"><i class="bi bi-check-circle me-1"></i>{{ 'ExtraCat_PriceToSet' | loc: parsePricePreview(updateMultiplePricesText()) }}</span>
+                } @else {
+                  <span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>{{ 'ExtraCat_EnterValidPricePrompt' | loc }}</span>
+                }
+              </div>
+              <div class="mb-1 text-muted small fw-semibold">{{ 'ExtraCat_SelectedItemsLabel' | loc }}</div>
+              <div class="p-2 border rounded bg-light small" style="max-height: 140px; overflow-y: auto;">
+                <div class="d-flex flex-wrap gap-1">
+                  @for (n of selectedNamesArray(); track n) {
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary">{{ n }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+              <button type="button" class="btn btn-secondary px-3" (click)="cancelUpdateMultiplePrices()" [disabled]="isUpdatingMultiplePrices()">{{ 'ExtraCat_BtnCancel' | loc }}</button>
+              <button type="button" class="btn btn-primary px-4 fw-bold" (click)="confirmUpdateMultiplePrices()"
+                      [disabled]="isUpdatingMultiplePrices() || !isValidPriceInput(updateMultiplePricesText())">
+                @if (isUpdatingMultiplePrices()) {
+                  <span class="spinner-border spinner-border-sm me-2"></span>{{ 'ExtraCat_BtnUpdatingPrices' | loc }}
+                } @else {
+                  <i class="bi bi-check-lg me-1"></i>{{ 'ExtraCat_BtnUpdatePrices' | loc }}
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Update multiple category modal -->
+    @if (showUpdateMultipleCategoryModal() && selectedItemNames().size > 0) {
+      <div class="modal-backdrop-custom">
+        <div class="modal-dialog modal-dialog-centered" style="min-width: min(500px, 95vw);">
+          <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+            <div class="modal-header bg-primary text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+              <h5 class="modal-title d-flex align-items-center gap-2 mb-0"><i class="bi bi-folder-fill"></i>{{ 'ExtraCat_ModalUpdateCategoryTitle' | loc }}</h5>
+              <button type="button" class="btn-close btn-close-white" (click)="cancelUpdateMultipleCategory()" [disabled]="isUpdatingMultipleCategory()"></button>
+            </div>
+            <div class="modal-body p-4 text-dark">
+              <p class="mb-3">{{ 'ExtraCat_ModalUpdateCategoryDesc' | loc: selectedItemNames().size }}</p>
+              <label class="form-label fw-semibold">{{ 'ExtraCat_CategoryNameLabel' | loc }}</label>
+              <input type="text" class="form-control" list="cat-datalist" [placeholder]="'ExtraCat_CategoryNameInputPlaceholder' | loc"
+                     [ngModel]="updateMultipleCategoryText()" (ngModelChange)="updateMultipleCategoryText.set($event)"
+                     (keydown.enter)="confirmUpdateMultipleCategory()" (keydown.escape)="cancelUpdateMultipleCategory()"
+                     [disabled]="isUpdatingMultipleCategory()" />
+              @if (existingCategories().length > 0) {
+                <div class="mt-2">
+                  <label class="form-label small text-muted mb-1">{{ 'ExtraCat_OrChooseExistingCategory' | loc }}</label>
+                  <select class="form-select" [disabled]="isUpdatingMultipleCategory()"
+                          [ngModel]="updateMultipleCategoryText()" (ngModelChange)="updateMultipleCategoryText.set($event)">
+                    <option value="">{{ 'ExtraCat_ChooseFromExistingCategories' | loc }}</option>
+                    @for (cat of existingCategories(); track cat) {
+                      <option [value]="cat">{{ cat }}</option>
+                    }
+                  </select>
+                </div>
+              }
+              <div class="form-text mt-2 mb-3">
+                @if (!updateMultipleCategoryText().trim()) {
+                  <span class="text-muted">{{ 'ExtraCat_TypeOrPickCategory' | loc }}</span>
+                } @else {
+                  <span class="text-success"><i class="bi bi-check-circle me-1"></i>{{ 'ExtraCat_CategoryToSet' | loc: updateMultipleCategoryText().trim() }}</span>
+                }
+              </div>
+              <div class="mb-1 text-muted small fw-semibold">{{ 'ExtraCat_SelectedItemsLabel' | loc }}</div>
+              <div class="p-2 border rounded bg-light small" style="max-height: 140px; overflow-y: auto;">
+                <div class="d-flex flex-wrap gap-1">
+                  @for (n of selectedNamesArray(); track n) {
+                    <span class="badge bg-secondary-subtle text-secondary border border-secondary">{{ n }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+              <button type="button" class="btn btn-secondary px-3" (click)="cancelUpdateMultipleCategory()" [disabled]="isUpdatingMultipleCategory()">{{ 'ExtraCat_BtnCancel' | loc }}</button>
+              <button type="button" class="btn btn-primary px-4 fw-bold" (click)="confirmUpdateMultipleCategory()"
+                      [disabled]="isUpdatingMultipleCategory() || !updateMultipleCategoryText().trim()">
+                @if (isUpdatingMultipleCategory()) {
+                  <span class="spinner-border spinner-border-sm me-2"></span>{{ 'ExtraCat_BtnSettingCategory' | loc }}
+                } @else {
+                  <i class="bi bi-check-lg me-1"></i>{{ 'ExtraCat_BtnSetCategory' | loc }}
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Allergens modal -->
+    @if (showAllergensModal()) {
+      <div class="modal-backdrop-custom" style="z-index: 1060;" (click)="closeAllergensModal()">
+        <div class="modal-dialog modal-dialog-centered" style="min-width: min(450px, 95vw);" (click)="$event.stopPropagation()">
+          <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+            <div class="modal-header border-0 pb-0">
+              <h5 class="modal-title fw-bold">{{ 'Menu_AllergensModalTitle' | loc: selectedItemForAllergens() }}</h5>
+              <button type="button" class="btn-close" (click)="closeAllergensModal()"></button>
+            </div>
+            <div class="modal-body py-3">
+              <p class="text-muted small mb-3">{{ 'Menu_AllergensModalBody' | loc }}</p>
+              <div class="d-flex flex-wrap gap-2">
+                @for (a of getAllergensList(selectedItemAllergens().join(',')); track a) {
+                  <span class="badge bg-warning text-dark px-3 py-2" style="font-size: 0.9rem; border-radius: 0.5rem;">{{ a }}</span>
+                }
+              </div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+              <button type="button" class="btn btn-secondary btn-sm px-4" (click)="closeAllergensModal()">{{ 'Menu_BtnClose' | loc }}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- AI suggested items preview modal -->
+    @if (showSuggestedItemsPreviewModal()) {
+      <div class="modal-backdrop-custom">
+        <div class="modal-dialog modal-dialog-centered modal-xl" style="width: min(1140px, 96vw);">
+          <div class="modal-content shadow-lg border-0" style="border-radius: 1rem; max-height: 92vh;">
+            <div class="modal-header bg-primary text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-stars fs-5 text-warning"></i>
+                <h5 class="modal-title text-white mb-0">{{ 'ExtraCat_ModalSuggestedTitle' | loc }}</h5>
+              </div>
+              <button type="button" class="btn-close btn-close-white" (click)="closeSuggestedModal()" [disabled]="isAddingSuggestedItems()"></button>
+            </div>
+            <div class="modal-body p-4 text-dark" style="overflow-y: auto;">
+              @if (previewModalErrorMessage()) {
+                <div class="alert alert-danger alert-dismissible fade show mb-3">
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ previewModalErrorMessage() }}
+                  <button type="button" class="btn-close" (click)="previewModalErrorMessage.set(null)"></button>
+                </div>
+              }
+              @if (suggestedPreviewItems().length === 0) {
+                <div class="text-center text-muted py-4">{{ 'ExtraCat_MsgAiGenNoItems' | loc }}</div>
+              } @else {
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3 pb-3 border-bottom">
+                  <div>
+                    <p class="mb-1 fw-semibold text-secondary">{{ 'ExtraCat_SuggestedCountDesc' | loc: suggestedPreviewItems().length }}</p>
+                    <p class="small text-muted mb-0">{{ 'ExtraCat_SuggestedReviewDesc' | loc }}</p>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" (click)="selectAllSuggested()" [disabled]="isAddingSuggestedItems()">
+                      <i class="bi bi-check-all me-1"></i>{{ 'ExtraCat_BtnSelectAllSuggested' | loc }}
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="deselectAllSuggested()" [disabled]="isAddingSuggestedItems()">
+                      <i class="bi bi-square me-1"></i>{{ 'ExtraCat_BtnDeselectAllSuggested' | loc }}
+                    </button>
+                    <span class="badge bg-primary-subtle text-primary border px-3 py-2 ms-2">
+                      {{ 'ExtraCat_SelectedSuggestedCounter' | loc: selectedSuggestedItemsCount() : selectableSuggestedItemsCount() }}
+                    </span>
+                  </div>
+                </div>
+
+                @if (selectableSuggestedItemsCount() < suggestedPreviewItems().length) {
+                  <div class="alert alert-info py-2 px-3 small d-flex align-items-center gap-2 mb-3">
+                    <i class="bi bi-info-circle-fill"></i><span>{{ 'ExtraCat_AlreadyExistsNotice' | loc }}</span>
+                  </div>
+                }
+
+                <div class="table-responsive rounded border" style="max-height: 55vh;">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light sticky-top">
+                      <tr>
+                        <th class="text-center" style="width: 48px;">
+                          <input type="checkbox" class="form-check-input" [checked]="areAllSuggestedItemsSelected()" (change)="toggleAllSuggested()"
+                                 [disabled]="isAddingSuggestedItems()" [title]="'ExtraCat_ToggleAllSuggestedTooltip' | loc" />
+                        </th>
+                        <th style="min-width: 160px;">{{ 'ExtraCat_ColName' | loc }}</th>
+                        <th style="min-width: 120px;">{{ 'ExtraCat_ColCategory' | loc }}</th>
+                        <th style="min-width: 90px;" class="text-end">{{ 'ExtraCat_ColPrice' | loc }}</th>
+                        <th style="min-width: 180px;">{{ 'ExtraCat_ColDescription' | loc }}</th>
+                        <th style="min-width: 130px;">{{ 'ExtraCat_ThLocalizedAllergens' | loc }}</th>
+                        <th style="min-width: 110px;">{{ 'ExtraCat_ThTranslatedName' | loc }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (preview of suggestedPreviewItems(); track $index; let idx = $index) {
+                        @let it = preview.item;
+                        @let allergens = sugAllergens(it);
+                        @let sLangs = sugLanguages(it);
+                        <tr [class.table-light]="preview.alreadyExists" [class.text-muted]="preview.alreadyExists || !preview.isSelected">
+                          <td class="text-center">
+                            <input type="checkbox" class="form-check-input" [id]="'chk-sug-' + idx"
+                                   [checked]="preview.isSelected && !preview.alreadyExists"
+                                   [disabled]="preview.alreadyExists || isAddingSuggestedItems()"
+                                   (change)="toggleSuggested(idx)" />
+                          </td>
+                          <td>
+                            <label class="form-check-label fw-bold d-block mb-0" [for]="'chk-sug-' + idx" style="cursor: pointer;">{{ sugName(it) }}</label>
+                            @if (preview.alreadyExists) {
+                              <span class="badge bg-secondary mt-1">{{ 'ExtraCat_AlreadyInCatalogueBadge' | loc }}</span>
+                            }
+                            @if (sugComposition(it).length > 0) {
+                              <div class="mt-1 d-flex flex-wrap gap-1">
+                                @for (comp of sugComposition(it); track $index) {
+                                  <span class="badge bg-light text-secondary border small"><i class="bi bi-box-seam me-1"></i>{{ formatStockComponent(comp) }}</span>
+                                }
+                              </div>
+                            }
+                          </td>
+                          <td>
+                            @if (sugCategory(it)) { <span class="badge bg-light text-dark border">{{ sugCategory(it) }}</span> }
+                            @else { <span class="text-muted fst-italic">—</span> }
+                          </td>
+                          <td class="text-end">
+                            @if (sugPrice(it) != null) { <span class="fw-semibold text-success">{{ sugPrice(it) | number: '1.2-2' }} €</span> }
+                            @else { <span class="text-muted fst-italic">{{ 'ExtraCat_Unpriced' | loc }}</span> }
+                          </td>
+                          <td>
+                            @if (sugDescription(it)) {
+                              <span class="small text-truncate d-inline-block" style="max-width: 250px;" [title]="sugDescription(it)">{{ sugDescription(it) }}</span>
+                            } @else { <span class="text-muted fst-italic small">—</span> }
+                          </td>
+                          <td>
+                            @if (allergens.length > 0) {
+                              <div class="d-flex flex-wrap gap-1">
+                                @for (a of allergens.slice(0, 3); track a) {
+                                  <span class="badge bg-warning text-dark small">{{ a }}</span>
+                                }
+                                @if (allergens.length > 3) {
+                                  <span class="badge bg-light text-secondary border small" [title]="allergens.slice(3).join(', ')">+{{ allergens.length - 3 }}</span>
+                                }
+                              </div>
+                            } @else { <span class="text-muted small">—</span> }
+                          </td>
+                          <td>
+                            @if (sLangs.length > 0) {
+                              <div class="d-flex flex-wrap gap-1">
+                                @for (l of sLangs.slice(0, 4); track l) {
+                                  <span class="badge bg-light text-dark border small">{{ getLanguageFlag(l) }} {{ l.toUpperCase() }}</span>
+                                }
+                                @if (sLangs.length > 4) {
+                                  <span class="badge bg-light text-secondary border small">+{{ sLangs.length - 4 }}</span>
+                                }
+                              </div>
+                            } @else { <span class="text-muted small">—</span> }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+            <div class="modal-footer border-0 bg-light p-3 d-flex justify-content-between" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+              <button type="button" class="btn btn-secondary px-3" (click)="closeSuggestedModal()" [disabled]="isAddingSuggestedItems()">{{ 'ExtraCat_BtnCancel' | loc }}</button>
+              <button type="button" class="btn btn-success px-4 fw-bold d-inline-flex align-items-center gap-2"
+                      (click)="confirmAddSuggestedItems()" [disabled]="isAddingSuggestedItems() || selectedSuggestedItemsCount() === 0">
+                @if (isAddingSuggestedItems()) {
+                  <span class="spinner-border spinner-border-sm"></span>{{ 'ExtraCat_BtnAddingItems' | loc }}
+                } @else {
+                  <i class="bi bi-plus-circle-fill"></i>{{ 'ExtraCat_BtnAddSelectedItems' | loc: selectedSuggestedItemsCount() }}
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</app-main-layout>
+
