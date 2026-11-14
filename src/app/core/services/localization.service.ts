@@ -75,5 +75,9 @@ export class LocalizationService {
 
     return text;
   }
+
+  t(key: string, ...args: (string | number)[]): string {
+    return this.translate(key, ...args);
+  }
 }
 

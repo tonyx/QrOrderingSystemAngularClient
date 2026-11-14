@@ -49,6 +49,10 @@ export class RestaurantAdminComponent implements OnInit, OnDestroy {
   itemToRemoveName = signal<string | null>(null);
   isRemovingItem = signal<boolean>(false);
 
+  // Human Reviewed state (matching RestaurantAdmin.razor)
+  showHumanReviewedConsentModal = signal<boolean>(false);
+  isUpdatingHumanReviewed = signal<boolean>(false);
+
   // Menu Item Scan Image Modal state
   scanningItemName = signal<string | null>(null);
   isUploadingScan = signal<boolean>(false);
@@ -316,6 +320,47 @@ export class RestaurantAdminComponent implements OnInit, OnDestroy {
   }
 
   // --- 1. Self-Ordering Mode Actions ---
+  onHumanReviewedSwitchChanged(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const targetState = input.checked;
+
+    if (targetState) {
+      // Revert the checkbox visual state temporarily until confirmed in modal
+      input.checked = false;
+      this.showHumanReviewedConsentModal.set(true);
+    } else {
+      this.updateHumanReviewedState(false);
+    }
+  }
+
+  cancelHumanReviewedEnable(): void {
+    this.showHumanReviewedConsentModal.set(false);
+  }
+
+  confirmEnableHumanReviewed(): void {
+    this.updateHumanReviewedState(true);
+    this.showHumanReviewedConsentModal.set(false);
+  }
+
+  private updateHumanReviewedState(humanReviewed: boolean): void {
+    const rest = this.restaurant();
+    if (!rest || this.isUpdatingHumanReviewed()) return;
+
+    this.isUpdatingHumanReviewed.set(true);
+    this.errorMessage.set(null);
+
+    this.restaurantService.setHumanReviewed(rest.restaurantId, humanReviewed).subscribe({
+      next: () => {
+        this.isUpdatingHumanReviewed.set(false);
+        this.loadRestaurant(rest.restaurantId, true);
+      },
+      error: (err) => {
+        this.isUpdatingHumanReviewed.set(false);
+        this.errorMessage.set(err?.error?.message || err?.message || 'Failed to update human reviewed status.');
+      },
+    });
+  }
+
   selectSelfOrdering(mode: SelfOrderingMode): void {
     const rest = this.restaurant();
     if (!rest || this.isUpdatingSelfOrdering()) return;

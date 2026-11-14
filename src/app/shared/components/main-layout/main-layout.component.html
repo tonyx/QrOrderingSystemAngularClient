@@ -32,6 +32,16 @@
       </a>
 
       <a
+        routerLink="/epayments"
+        routerLinkActive="active"
+        class="nav-link-item"
+        (click)="closeSidebar()"
+      >
+        <i class="bi bi-credit-card"></i>
+        <span>{{ 'RestsAdmin_BtnEPayments' | loc }}</span>
+      </a>
+
+      <a
         routerLink="/restaurantsAdmin"
         class="nav-link-item"
         (click)="closeSidebar()"

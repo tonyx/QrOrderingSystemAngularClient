@@ -373,7 +373,7 @@
                         </div>
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <a href="javascript:void(0)" class="btn btn-sm btn-outline-warning w-100">
+                          <a [routerLink]="['/restaurantsAdmin', restaurant.restaurantId, 'manual-ledger']" class="btn btn-sm btn-outline-warning w-100">
                             <i class="bi bi-journal-bookmark-fill me-1"></i> {{ 'RestsAdmin_BtnManualLedger' | loc }}
                           </a>
                           <div class="custom-tooltip-box">
@@ -426,7 +426,7 @@
                         </div>
 
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <a href="javascript:void(0)" class="btn btn-sm btn-outline-info w-100">
+                          <a [routerLink]="['/restaurantsAdmin', restaurant.restaurantId, 'epayments']" class="btn btn-sm btn-outline-info w-100">
                             <i class="bi bi-credit-card me-1"></i> {{ 'RestsAdmin_BtnEPayments' | loc }}
                           </a>
                           <div class="custom-tooltip-box">
@@ -449,7 +449,7 @@
                       </div>
                       <div class="d-flex flex-wrap gap-2">
                         <div class="custom-tooltip-wrapper flex-grow-1">
-                          <a href="javascript:void(0)" class="btn btn-sm btn-outline-dark w-100">{{ 'RestsAdmin_BtnManageMembers' | loc }}</a>
+                          <a [routerLink]="['/restaurantsAdmin', restaurant.restaurantId, 'members']" class="btn btn-sm btn-outline-dark w-100">{{ 'RestsAdmin_BtnManageMembers' | loc }}</a>
                           <div class="custom-tooltip-box">
                             <span>Assign waiters, cooks, and managers.</span>
                             <div>

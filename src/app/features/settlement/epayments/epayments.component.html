@@ -1,0 +1,795 @@
+<app-main-layout [pageTitle]="'EPay_HeaderTitle' | loc">
+  <div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div>
+        <h3 class="mb-0 text-dark fw-bold">
+          <i class="bi bi-credit-card-2-front me-2 text-primary"></i>{{ 'EPay_HeaderTitle' | loc }}
+        </h3>
+        <p class="text-muted small mb-0">{{ 'EPay_HeaderSubtitle' | loc }}</p>
+      </div>
+      @if (restaurantId) {
+        <a [routerLink]="['/restaurantsAdmin', restaurantId]" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left me-1"></i> {{ 'EPay_BtnBackToAdmin' | loc }}
+        </a>
+      }
+    </div>
+
+    <!-- Filter Card -->
+    <div class="card shadow-sm mb-4 border-0">
+      <div class="card-header bg-white border-bottom py-3">
+        <h5 class="card-title mb-0 fw-semibold">
+          <i class="bi bi-funnel me-2 text-secondary"></i>{{ 'EPay_FilterHeader' | loc }}
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          @if (!restaurantId) {
+            <div class="col-md-3 col-sm-6">
+              <label class="form-label fw-medium small">{{ 'EPay_RestaurantIdLabel' | loc }}</label>
+              <input
+                type="text"
+                class="form-control"
+                [placeholder]="'EPay_RestaurantIdPlaceholder' | loc"
+                [(ngModel)]="inputRestaurantId"
+              />
+            </div>
+          }
+          <div class="col-md-3 col-sm-6">
+            <label class="form-label fw-medium small">{{ 'EPay_StartDateLabel' | loc }}</label>
+            <input type="date" class="form-control" [(ngModel)]="startDateStr" />
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <label class="form-label fw-medium small">{{ 'EPay_EndDateLabel' | loc }}</label>
+            <input type="date" class="form-control" [(ngModel)]="endDateStr" />
+          </div>
+          <div class="col-md-3 col-sm-6 d-flex gap-2">
+            <button class="btn btn-primary w-100 fw-medium" (click)="fetchPayments()" [disabled]="isLoading">
+              @if (isLoading) {
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                <span>{{ 'EPay_BtnLoading' | loc }}</span>
+              } @else {
+                <i class="bi bi-search me-1"></i>
+                <span>{{ 'EPay_BtnSearch' | loc }}</span>
+              }
+            </button>
+            <button class="btn btn-outline-secondary" (click)="setCurrentDay()" title="Reset to Current Day">
+              {{ 'EPay_BtnToday' | loc }}
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-3 d-flex flex-wrap gap-2 align-items-center">
+          <span class="small text-muted me-1">{{ 'EPay_QuickPresetsLabel' | loc }}</span>
+          <button class="btn btn-xs btn-outline-primary py-1 px-2 text-decoration-none" (click)="setCurrentDay()">
+            {{ 'EPay_BtnToday' | loc }}
+          </button>
+          <button class="btn btn-xs btn-outline-secondary py-1 px-2 text-decoration-none" (click)="setYesterday()">
+            {{ 'EPay_PresetYesterday' | loc }}
+          </button>
+          <button class="btn btn-xs btn-outline-secondary py-1 px-2 text-decoration-none" (click)="setLast7Days()">
+            {{ 'EPay_PresetLast7Days' | loc }}
+          </button>
+          <button class="btn btn-xs btn-outline-secondary py-1 px-2 text-decoration-none" (click)="setThisMonth()">
+            {{ 'EPay_PresetThisMonth' | loc }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert Notifications -->
+    @if (errorMessage) {
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+        <button type="button" class="btn-close" (click)="errorMessage = null"></button>
+      </div>
+    }
+
+    @if (successMessage) {
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+        <button type="button" class="btn-close" (click)="successMessage = null"></button>
+      </div>
+    }
+
+    <!-- Summary Stats over Filtered / Visible Items -->
+    @if (hasFetched && payments().length > 0) {
+      <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+          <div class="card border-0 bg-light shadow-sm p-3 h-100">
+            <div class="d-flex align-items-center">
+              <div class="bg-primary text-white rounded-circle p-3 me-3">
+                <i class="bi bi-receipt fs-4"></i>
+              </div>
+              <div>
+                <h6 class="text-muted small mb-1">{{ 'EPay_StatVisibleTransactions' | loc }}</h6>
+                <h4 class="mb-0 fw-bold">{{ filteredPayments().length }} <span class="fs-6 text-muted font-normal">/ {{ payments().length }}</span></h4>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="card border-0 bg-light shadow-sm p-3 h-100">
+            <div class="d-flex align-items-center">
+              <div class="bg-success text-white rounded-circle p-3 me-3">
+                <i class="bi bi-cash-stack fs-4"></i>
+              </div>
+              <div>
+                <h6 class="text-muted small mb-1">{{ 'EPay_StatNetVolume' | loc }}</h6>
+                <h4 class="mb-0 fw-bold">{{ getCurrency() }} {{ filteredNetVolume | number:'1.2-2' }}</h4>
+                <span class="text-muted fs-7">Gross: {{ getCurrency() }} {{ filteredGrossVolume | number:'1.2-2' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="card border-0 bg-light shadow-sm p-3 h-100">
+            <div class="d-flex align-items-center">
+              <div class="bg-info text-white rounded-circle p-3 me-3">
+                <i class="bi bi-heart-fill fs-4"></i>
+              </div>
+              <div>
+                <h6 class="text-muted small mb-1">{{ 'EPay_StatNetTips' | loc }}</h6>
+                <h4 class="mb-0 fw-bold text-success">{{ getCurrency() }} {{ filteredTipsVolume | number:'1.2-2' }}</h4>
+                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">{{ filteredTipCount }} Tip(s)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+          <div class="card border-0 bg-light shadow-sm p-3 h-100">
+            <div class="d-flex align-items-center">
+              <div class="bg-warning text-dark rounded-circle p-3 me-3">
+                <i class="bi bi-arrow-counterclockwise fs-4"></i>
+              </div>
+              <div>
+                <h6 class="text-muted small mb-1">{{ 'EPay_StatRefundAdjustments' | loc }}</h6>
+                <h4 class="mb-0 fw-bold text-danger">{{ getCurrency() }} {{ filteredRefundsVolume | number:'1.2-2' }}</h4>
+                <span class="text-muted fs-7">{{ countPaymentsWithIssues }} Issue(s)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Results Table / Cards -->
+    @if (isLoading) {
+      <div class="card p-5 text-center border-0 shadow-sm">
+        <div class="spinner-border text-primary mx-auto mb-3" role="status">
+          <span class="visually-hidden">{{ 'EPay_BtnLoading' | loc }}</span>
+        </div>
+        <h5 class="text-secondary fw-semibold">{{ 'EPay_LoadingPaymentsTitle' | loc }}</h5>
+        <p class="text-muted small">{{ startDateStr }} to {{ endDateStr }}</p>
+      </div>
+    } @else if (hasFetched && payments().length === 0) {
+      <div class="card p-5 text-center border-0 shadow-sm">
+        <div class="text-muted mb-3">
+          <i class="bi bi-inbox fs-1"></i>
+        </div>
+        <h5 class="text-secondary">{{ 'EPay_NoPaymentsTitle' | loc }}</h5>
+        <p class="text-muted small mb-0">{{ 'EPay_NoPaymentsDesc' | loc }}</p>
+      </div>
+    } @else if (payments().length > 0) {
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <h5 class="card-title mb-0 fw-semibold">{{ 'EPay_RecordsHeader' | loc }}</h5>
+            <span class="badge bg-secondary">{{ filteredPayments().length }} Record(s)</span>
+
+            <div class="btn-group btn-group-sm ms-2" role="group">
+              <button
+                class="btn fw-medium"
+                [ngClass]="activeTab === 'table' ? 'btn-primary' : 'btn-outline-primary'"
+                (click)="setActiveTab('table')"
+              >
+                <i class="bi bi-table me-1"></i> Table View
+              </button>
+              <button
+                class="btn fw-medium"
+                [ngClass]="activeTab === 'analytics' ? 'btn-primary' : 'btn-outline-primary'"
+                (click)="setActiveTab('analytics')"
+              >
+                <i class="bi bi-bar-chart-line me-1"></i> Analytics & Breakdown
+              </button>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2 flex-wrap" style="max-width: 460px; width: 100%;">
+            <div class="input-group input-group-sm flex-grow-1">
+              <span class="input-group-text bg-light border-end-0">
+                <i class="bi bi-search text-muted"></i>
+              </span>
+              <input
+                type="search"
+                class="form-control border-start-0"
+                [placeholder]="'EPay_SearchPlaceholder' | loc"
+                [ngModel]="searchFilter()"
+                (ngModelChange)="searchFilter.set($event)"
+              />
+            </div>
+            <div class="dropdown position-relative">
+              <button
+                class="btn btn-outline-success btn-sm dropdown-toggle fw-semibold"
+                type="button"
+                (click)="toggleExportDropdown()"
+              >
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export CSV
+              </button>
+              @if (isExportDropdownOpen) {
+                <div class="dropdown-menu dropdown-menu-end shadow-sm show" style="position: absolute; right: 0; top: 100%; z-index: 1050; display: block;">
+                  <button type="button" class="dropdown-item py-2" (click)="exportDetailedCsv()">
+                    <div class="fw-semibold small"><i class="bi bi-list-task me-2 text-success"></i>Detailed Transactions</div>
+                    <div class="text-muted fs-7 ms-4">Export all filtered payment records</div>
+                  </button>
+                  <div class="dropdown-divider"></div>
+                  <button type="button" class="dropdown-item py-2" (click)="exportSummaryCsv()">
+                    <div class="fw-semibold small"><i class="bi bi-calendar-range me-2 text-primary"></i>Daily Aggregated Summary</div>
+                    <div class="text-muted fs-7 ms-4">Export daily volume totals & stats</div>
+                  </button>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        @if (activeTab === 'table') {
+          <div class="table-responsive">
+            <table class="table table-hover table-striped align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th scope="col" (click)="setSort('tableNum')" style="cursor: pointer;">
+                    {{ 'EPay_ThTable' | loc }}
+                    @if (sortColumn() === 'tableNum') {
+                      <i class="bi" [ngClass]="sortDirection() === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down'"></i>
+                    }
+                  </th>
+                  <th scope="col" (click)="setSort('createdAt')" style="cursor: pointer;">
+                    {{ 'EPay_ThDateTime' | loc }}
+                    @if (sortColumn() === 'createdAt') {
+                      <i class="bi" [ngClass]="sortDirection() === 'asc' ? 'bi-arrow-up' : 'bi-arrow-down'"></i>
+                    }
+                  </th>
+                  <th scope="col" (click)="setSort('initialAmount')" style="cursor: pointer;">
+                    {{ 'EPay_ThInitialAmount' | loc }}
+                  </th>
+                  <th scope="col" (click)="setSort('currentAmount')" style="cursor: pointer;">
+                    {{ 'EPay_ThCurrentAmount' | loc }}
+                  </th>
+                  <th scope="col" (click)="setSort('currentTipAmount')" style="cursor: pointer;">
+                    {{ 'EPay_ThCurrentTip' | loc }}
+                  </th>
+                  <th scope="col" (click)="setSort('platformFee')" style="cursor: pointer;">
+                    {{ 'EPay_ThPlatformFee' | loc }}
+                  </th>
+                  <th scope="col" (click)="setSort('stripeFee')" style="cursor: pointer;">
+                    {{ 'EPay_ThStripeFee' | loc }}
+                  </th>
+                  <th scope="col" (click)="setSort('netAmount')" style="cursor: pointer;">
+                    {{ 'EPay_ThNetAmount' | loc }}
+                  </th>
+                  <th scope="col" (click)="setSort('merchantNetAmount')" style="cursor: pointer;">
+                    {{ 'EPay_ThMerchantNet' | loc }}
+                  </th>
+                  <th scope="col">{{ 'EPay_ThStatus' | loc }}</th>
+                  <th scope="col">{{ 'EPay_ThPaymentIntent' | loc }}</th>
+                  <th scope="col">{{ 'EPay_ThOrderId' | loc }}</th>
+                  <th scope="col" (click)="setSort('issueCount')" style="cursor: pointer;">
+                    {{ 'EPay_ThIssues' | loc }}
+                  </th>
+                  <th scope="col" class="text-end">{{ 'EPay_ThActions' | loc }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (payment of paginatedPayments(); track payment.paymentId) {
+                  <tr [ngClass]="getRowClass(payment)">
+                    <td>
+                      <button
+                        class="btn btn-sm btn-light border-0 me-1 py-0 px-1"
+                        (click)="toggleExpandRow(payment.paymentId)"
+                        title="Toggle Metadata Details"
+                      >
+                        <i class="bi" [ngClass]="isRowExpanded(payment.paymentId) ? 'bi-chevron-down text-primary' : 'bi-chevron-right text-secondary'"></i>
+                      </button>
+                      @if (payment.tableNum) {
+                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
+                          <i class="bi bi-geo-alt me-1"></i>Table {{ payment.tableNum }}
+                        </span>
+                      } @else {
+                        <span class="text-muted small">-</span>
+                      }
+                    </td>
+                    <td>
+                      <span class="small font-monospace">{{ payment.createdAt | date:'yyyy-MM-dd HH:mm:ss' }}</span>
+                    </td>
+                    <td>
+                      <span class="fw-bold text-dark">{{ payment.currency }} {{ payment.initialAmount | number:'1.2-2' }}</span>
+                    </td>
+                    <td>
+                      <span class="fw-bold text-dark">{{ payment.currency }} {{ payment.currentAmount | number:'1.2-2' }}</span>
+                    </td>
+                    <td>
+                      @if (payment.currentTipAmount > 0) {
+                        <span class="fw-semibold text-success">{{ payment.currency }} {{ payment.currentTipAmount | number:'1.2-2' }}</span>
+                        @if (payment.initialTipAmount > payment.currentTipAmount) {
+                          <span class="text-muted text-decoration-line-through ms-1 small" [title]="'Initial tip: ' + payment.currency + ' ' + (payment.initialTipAmount | number:'1.2-2')">
+                            {{ payment.initialTipAmount | number:'1.2-2' }}
+                          </span>
+                        }
+                      } @else if (payment.initialTipAmount > 0) {
+                        <span class="text-muted text-decoration-line-through small" [title]="'Initial tip: ' + payment.currency + ' ' + (payment.initialTipAmount | number:'1.2-2')">
+                          {{ payment.currency }} {{ payment.initialTipAmount | number:'1.2-2' }}
+                        </span>
+                      } @else {
+                        <span class="text-muted small">-</span>
+                      }
+                    </td>
+                    <td>
+                      @if (payment.platformFee > 0) {
+                        <span class="fw-semibold text-primary">{{ payment.currency }} {{ payment.platformFee | number:'1.2-2' }}</span>
+                      } @else {
+                        <span class="text-muted small">-</span>
+                      }
+                    </td>
+                    <td>
+                      @if (payment.stripeFee > 0) {
+                        <span class="fw-semibold text-secondary">{{ payment.currency }} {{ payment.stripeFee | number:'1.2-2' }}</span>
+                      } @else {
+                        <span class="text-muted small">-</span>
+                      }
+                    </td>
+                    <td>
+                      <span class="fw-bold text-dark">{{ payment.currency }} {{ payment.netAmount | number:'1.2-2' }}</span>
+                    </td>
+                    <td>
+                      <span class="fw-bold text-success">{{ payment.currency }} {{ payment.merchantNetAmount | number:'1.2-2' }}</span>
+                    </td>
+                    <td>
+                      @if (payment.isCaptured && !payment.isPartiallyRefunded && !payment.isFullyRefunded) {
+                        <span class="badge bg-success">Captured</span>
+                      } @else if (payment.isPartiallyRefunded || payment.isFullyRefunded) {
+                        <span class="badge bg-warning text-dark">{{ payment.currentStatus }}</span>
+                      } @else if (payment.isFailed) {
+                        <span class="badge bg-danger">Failed</span>
+                      } @else {
+                        <span class="badge bg-secondary">{{ payment.currentStatus }}</span>
+                      }
+                    </td>
+                    <td>
+                      <span class="font-monospace small text-muted" [title]="payment.paymentIntentId">{{ getShortId(payment.paymentIntentId) }}</span>
+                    </td>
+                    <td>
+                      @if (payment.orderId) {
+                        <span class="badge bg-light text-dark border font-monospace" [title]="payment.orderId">{{ getShortId(payment.orderId) }}</span>
+                      } @else {
+                        <span class="text-muted small">-</span>
+                      }
+                    </td>
+                    <td>
+                      @if (payment.issues.length > 0) {
+                        <span class="badge bg-danger-subtle text-danger border border-danger">
+                          <i class="bi bi-exclamation-circle me-1"></i>{{ payment.issues.length }} Issue(s)
+                        </span>
+                      } @else {
+                        <span class="badge bg-light text-secondary border">{{ 'EPay_BadgeNone' | loc }}</span>
+                      }
+                    </td>
+                    <td class="text-end">
+                      <button
+                        class="btn btn-sm"
+                        [ngClass]="isRowExpanded(payment.paymentId) ? 'btn-info text-white' : 'btn-outline-info'"
+                        (click)="toggleExpandRow(payment.paymentId)"
+                      >
+                        <i class="bi" [ngClass]="isRowExpanded(payment.paymentId) ? 'bi-eye-slash' : 'bi-info-circle'"></i>
+                        {{ isRowExpanded(payment.paymentId) ? ('EPay_BtnHideDetails' | loc) : ('EPay_BtnDetails' | loc) }}
+                      </button>
+                    </td>
+                  </tr>
+
+                  <!-- Expanded details row -->
+                  @if (isRowExpanded(payment.paymentId)) {
+                    <tr>
+                      <td colspan="14" class="p-0 border-0">
+                        <div class="border-top bg-light p-3 my-2 rounded shadow-sm mx-3">
+                          <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                            <div class="fw-bold text-dark d-flex align-items-center gap-2">
+                              <i class="bi bi-list-nested text-primary fs-5"></i>
+                              <span class="fs-6">{{ 'EPay_DetailsTitle' | loc }}</span>
+                              @if (payment.tableNum) {
+                                <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">Table {{ payment.tableNum }}</span>
+                              }
+                              <span class="font-monospace small text-muted">({{ payment.paymentId }})</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                              <button
+                                class="btn btn-sm btn-outline-primary fw-semibold"
+                                (click)="openPrintReceiptModal(payment)"
+                                title="Print Non-Fiscal Receipt"
+                              >
+                                <i class="bi bi-printer-fill me-1"></i>{{ 'EPay_BtnPrintReceipt' | loc }}
+                              </button>
+                              <button
+                                type="button"
+                                class="btn-close"
+                                (click)="toggleExpandRow(payment.paymentId)"
+                                title="Close details"
+                              ></button>
+                            </div>
+                          </div>
+
+                          <div class="bg-white p-3 rounded border mb-3">
+                            <h6 class="text-primary mb-3 small fw-bold d-flex align-items-center">
+                              <i class="bi bi-key-fill me-2"></i>{{ 'EPay_FullIdentifiersTitle' | loc }}
+                            </h6>
+                            <div class="row g-2 mb-3 bg-light p-2 rounded border small">
+                              <div class="col-md-6">
+                                <span class="text-muted fw-semibold me-1">{{ 'EPay_FullPaymentIntentId' | loc }}</span>
+                                <span class="font-monospace text-dark user-select-all">{{ payment.paymentIntentId || '-' }}</span>
+                              </div>
+                              <div class="col-md-6">
+                                <span class="text-muted fw-semibold me-1">{{ 'EPay_FullOrderId' | loc }}</span>
+                                <span class="font-monospace text-dark user-select-all">{{ payment.orderId || '-' }}</span>
+                              </div>
+                              <div class="col-md-4 col-sm-6">
+                                <span class="text-muted me-1">{{ 'EPay_ThInitialAmount' | loc }}:</span>
+                                <span class="fw-semibold">{{ payment.currency }} {{ payment.initialAmount | number:'1.2-2' }}</span>
+                              </div>
+                              <div class="col-md-4 col-sm-6">
+                                <span class="text-muted me-1">{{ 'EPay_ThCurrentTip' | loc }}:</span>
+                                <span class="fw-semibold text-success">{{ payment.currency }} {{ payment.currentTipAmount | number:'1.2-2' }}</span>
+                                @if (payment.initialTipAmount > payment.currentTipAmount) {
+                                  <span class="text-muted text-decoration-line-through small ms-1">(Initial: {{ payment.initialTipAmount | number:'1.2-2' }})</span>
+                                }
+                              </div>
+                              <div class="col-md-4 col-sm-6">
+                                <span class="text-muted me-1">{{ 'EPay_ThPlatformFee' | loc }}:</span>
+                                <span class="fw-semibold text-primary">{{ payment.currency }} {{ payment.platformFee | number:'1.2-2' }}</span>
+                              </div>
+                              <div class="col-md-4 col-sm-6">
+                                <span class="text-muted me-1">{{ 'EPay_ThStripeFee' | loc }}:</span>
+                                <span class="fw-semibold text-secondary">{{ payment.currency }} {{ payment.stripeFee | number:'1.2-2' }}</span>
+                              </div>
+                              <div class="col-md-4 col-sm-6">
+                                <span class="text-muted me-1">{{ 'EPay_ThNetAmount' | loc }}:</span>
+                                <span class="fw-bold text-dark">{{ payment.currency }} {{ payment.netAmount | number:'1.2-2' }}</span>
+                              </div>
+                              <div class="col-md-4 col-sm-6">
+                                <span class="text-muted me-1">{{ 'EPay_ThMerchantNet' | loc }}:</span>
+                                <span class="fw-bold text-success">{{ payment.currency }} {{ payment.merchantNetAmount | number:'1.2-2' }}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="bg-white p-3 rounded border mb-3">
+                            <h6 class="text-primary mb-3 small fw-bold d-flex align-items-center">
+                              <i class="bi bi-hourglass-split me-2"></i>{{ 'EPay_StatusHistoryTitle' | loc }}
+                            </h6>
+                            @if (payment.statuses.length > 0) {
+                              <div class="d-flex flex-wrap gap-2 align-items-center mb-3 p-2 bg-light rounded border">
+                                @for (st of payment.statuses; track $index) {
+                                  <span class="d-inline-flex align-items-center gap-1">
+                                    <span class="badge rounded-pill bg-white text-dark border">
+                                      <span class="text-muted me-1">#{{ $index + 1 }}</span>
+                                      {{ st }}
+                                    </span>
+                                    @if ($index < payment.statuses.length - 1) {
+                                      <i class="bi bi-arrow-right text-muted mx-1"></i>
+                                    }
+                                  </span>
+                                }
+                              </div>
+                            }
+
+                            <h6 class="text-primary mb-3 small fw-bold d-flex align-items-center">
+                              <i class="bi bi-tags-fill me-2"></i>{{ 'EPay_MetadataDetailsTitle' | loc }}
+                            </h6>
+
+                            @if (payment.items) {
+                              <div class="alert alert-primary py-2 px-3 mb-3 small border-start border-4 border-primary">
+                                <div class="fw-bold mb-1"><i class="bi bi-basket me-1"></i>{{ 'EPay_PurchasedItemsLabel' | loc }}</div>
+                                <div>{{ payment.items }}</div>
+                              </div>
+                            }
+
+                            @if (payment.metadata && (payment.metadata | keyvalue).length > 0) {
+                              <div class="table-responsive">
+                                <table class="table table-sm table-bordered mb-0 small">
+                                  <thead class="table-light">
+                                    <tr>
+                                      <th style="width: 30%;">{{ 'EPay_ThMetadataKey' | loc }}</th>
+                                      <th>{{ 'EPay_ThValue' | loc }}</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    @for (item of payment.metadata | keyvalue; track item.key) {
+                                      <tr>
+                                        <td class="font-monospace fw-semibold text-secondary">{{ item.key }}</td>
+                                        <td class="font-monospace text-break">{{ item.value }}</td>
+                                      </tr>
+                                    }
+                                  </tbody>
+                                </table>
+                              </div>
+                            } @else {
+                              <p class="text-muted small mb-0 fs-7">{{ 'EPay_NoMetadataNotice' | loc }}</p>
+                            }
+                          </div>
+
+                          <!-- Audit Issues & Notes Section -->
+                          <div class="bg-white p-3 rounded border">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                              <h6 class="text-danger mb-0 small fw-bold d-flex align-items-center">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ 'EPay_ReportedIssuesTitle' | loc }}
+                              </h6>
+                              <button
+                                class="btn btn-xs py-0 px-2"
+                                [ngClass]="activeIssuePaymentId === payment.paymentId ? 'btn-secondary' : 'btn-outline-warning'"
+                                (click)="toggleAddIssueForm(payment.paymentId)"
+                              >
+                                <i class="bi bi-flag me-1"></i>
+                                {{ activeIssuePaymentId === payment.paymentId ? ('EPay_BtnCancel' | loc) : ('EPay_BtnReportIssue' | loc) }}
+                              </button>
+                            </div>
+
+                            @if (payment.issues.length > 0) {
+                              <ul class="list-group list-group-flush mb-3">
+                                @for (iss of payment.issues; track $index) {
+                                  <li class="list-group-item px-0 py-1 bg-transparent small d-flex justify-content-between align-items-center">
+                                    <span><i class="bi bi-dot text-danger fs-5 me-1"></i>{{ iss.text }}</span>
+                                    <span class="text-muted font-monospace text-nowrap ms-2" style="font-size: 0.75rem;">
+                                      {{ iss.timestamp | date:'yyyy-MM-dd HH:mm' }}
+                                    </span>
+                                  </li>
+                                }
+                              </ul>
+                            } @else {
+                              <p class="text-muted small mb-2 fs-7">{{ 'EPay_NoIssuesNotice' | loc }}</p>
+                            }
+
+                            @if (activeIssuePaymentId === payment.paymentId) {
+                              <div class="border-top pt-2 mt-2">
+                                <label class="form-label small fw-semibold text-secondary">{{ 'EPay_AddIssueLabel' | loc }}</label>
+                                <div class="input-group input-group-sm">
+                                  <input
+                                    type="text"
+                                    class="form-control"
+                                    [placeholder]="'EPay_AddIssuePlaceholder' | loc"
+                                    [(ngModel)]="issueTextInput"
+                                    (keyup)="handleIssueKeyUp($event, payment.paymentId)"
+                                  />
+                                  <button
+                                    class="btn btn-warning fw-semibold"
+                                    (click)="submitIssue(payment.paymentId)"
+                                    [disabled]="isSubmittingIssue"
+                                  >
+                                    @if (isSubmittingIssue) {
+                                      <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    } @else {
+                                      <i class="bi bi-plus-circle me-1"></i>
+                                    }
+                                    {{ 'EPay_BtnSaveIssue' | loc }}
+                                  </button>
+                                </div>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination Bar -->
+          <div class="card-footer bg-white border-top py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <span class="small text-muted">
+              Showing {{ (currentPage() - 1) * pageSize() + 1 }} to {{ Math.min(currentPage() * pageSize(), filteredPayments().length) }} of {{ filteredPayments().length }}
+            </span>
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-secondary" [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+              <button class="btn btn-outline-secondary" disabled>
+                Page {{ currentPage() }} of {{ totalPages() }}
+              </button>
+              <button class="btn btn-outline-secondary" [disabled]="currentPage() >= totalPages()" (click)="goToPage(currentPage() + 1)">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        } @else {
+          <!-- Analytics & Breakdown Subview -->
+          <div class="card-body p-4 bg-light">
+            <div class="row g-4">
+              <!-- Summary breakdown table -->
+              <div class="col-12">
+                <div class="card border-0 shadow-sm p-3">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="fw-bold mb-0 text-dark">
+                      <i class="bi bi-calendar-range me-2 text-primary"></i>Daily Aggregated Totals
+                    </h6>
+                    <span class="badge bg-primary">{{ dailySummary().length }} Days</span>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-striped align-middle mb-0 small">
+                      <thead class="table-light">
+                        <tr>
+                          <th>Date</th>
+                          <th>Tx Count</th>
+                          <th>Gross Volume</th>
+                          <th>Net Volume</th>
+                          <th>Tips Volume</th>
+                          <th>Platform Fees</th>
+                          <th>Stripe Fees</th>
+                          <th>Merchant Net</th>
+                          <th>Issues</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (day of dailySummary(); track day.date) {
+                          <tr>
+                            <td class="font-monospace fw-semibold">{{ day.date }}</td>
+                            <td>{{ day.count }}</td>
+                            <td class="fw-bold">{{ getCurrency() }} {{ day.gross | number:'1.2-2' }}</td>
+                            <td>{{ getCurrency() }} {{ day.net | number:'1.2-2' }}</td>
+                            <td class="text-success">{{ getCurrency() }} {{ day.tips | number:'1.2-2' }}</td>
+                            <td class="text-primary">{{ getCurrency() }} {{ day.platformFees | number:'1.2-2' }}</td>
+                            <td class="text-secondary">{{ getCurrency() }} {{ day.stripeFees | number:'1.2-2' }}</td>
+                            <td class="fw-bold text-success">{{ getCurrency() }} {{ day.merchantNet | number:'1.2-2' }}</td>
+                            <td>
+                              @if (day.issues > 0) {
+                                <span class="badge bg-danger">{{ day.issues }}</span>
+                              } @else {
+                                <span class="text-muted">-</span>
+                              }
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Status Distribution Breakdown -->
+              <div class="col-md-6">
+                <div class="card border-0 shadow-sm p-3 h-100">
+                  <h6 class="fw-bold mb-3 text-dark">
+                    <i class="bi bi-pie-chart-fill me-2 text-success"></i>Payment Status Distribution
+                  </h6>
+                  <div class="list-group list-group-flush small">
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <span><i class="bi bi-check-circle-fill text-success me-2"></i>Captured</span>
+                      <span class="badge bg-success rounded-pill">{{ statusDistribution().captured }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <span><i class="bi bi-exclamation-circle-fill text-warning me-2"></i>Partially Refunded</span>
+                      <span class="badge bg-warning text-dark rounded-pill">{{ statusDistribution().partial }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <span><i class="bi bi-x-circle-fill text-danger me-2"></i>Fully Refunded</span>
+                      <span class="badge bg-danger rounded-pill">{{ statusDistribution().full }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <span><i class="bi bi-question-circle-fill text-secondary me-2"></i>Other / Failed</span>
+                      <span class="badge bg-secondary rounded-pill">{{ statusDistribution().other }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Volume breakdown summary -->
+              <div class="col-md-6">
+                <div class="card border-0 shadow-sm p-3 h-100">
+                  <h6 class="fw-bold mb-3 text-dark">
+                    <i class="bi bi-cash-stack me-2 text-info"></i>Total Financial Summary
+                  </h6>
+                  <div class="list-group list-group-flush small">
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Total Gross Volume</span>
+                      <span class="fw-bold">{{ getCurrency() }} {{ filteredGrossVolume | number:'1.2-2' }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Total Net Volume</span>
+                      <span class="fw-bold">{{ getCurrency() }} {{ filteredNetVolume | number:'1.2-2' }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Tips Collected</span>
+                      <span class="fw-bold text-success">{{ getCurrency() }} {{ filteredTipsVolume | number:'1.2-2' }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                      <span>Refund Adjustments</span>
+                      <span class="fw-bold text-danger">{{ getCurrency() }} {{ filteredRefundsVolume | number:'1.2-2' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Receipt Modal for Printing Non-Fiscal Receipt -->
+  @if (printReceiptPayment) {
+    <div
+      class="modal fade show d-block receipt-modal-container"
+      tabindex="-1"
+      style="background-color: rgba(0,0,0,0.5);"
+      (click)="closeReceiptModal()"
+    >
+      <div class="modal-dialog modal-dialog-centered modal-sm" (click)="$event.stopPropagation()">
+        <div class="modal-content shadow-lg border-0">
+          <div class="modal-header bg-light py-2 no-print">
+            <h6 class="modal-title fw-bold text-dark d-flex align-items-center mb-0">
+              <i class="bi bi-receipt me-2 text-primary"></i>{{ 'EPay_NonFiscalReceiptTitle' | loc }}
+            </h6>
+            <button type="button" class="btn-close" (click)="closeReceiptModal()"></button>
+          </div>
+          <div class="modal-body p-3">
+            <div id="non-fiscal-receipt" class="receipt-box border p-3 rounded bg-white font-monospace text-dark">
+              <div class="text-center border-bottom pb-2 mb-2">
+                <h6 class="fw-bold mb-0 text-uppercase">{{ 'EPay_ReceiptHeaderTitle' | loc }}</h6>
+                <div class="small text-muted">{{ 'EPay_ReceiptHeaderSubtitle' | loc }}</div>
+                @if (printReceiptPayment.tableNum) {
+                  <div class="badge bg-dark text-white fs-6 mt-1 px-3 py-1">
+                    Table {{ printReceiptPayment.tableNum }}
+                  </div>
+                }
+              </div>
+
+              <div class="small mb-2 pb-2 border-bottom">
+                <div><strong>{{ 'EPay_ReceiptDate' | loc }}</strong> {{ printReceiptPayment.createdAt | date:'yyyy-MM-dd HH:mm' }}</div>
+                <div><strong>{{ 'EPay_ReceiptPaymentId' | loc }}</strong> {{ getShortId(printReceiptPayment.paymentId) }}</div>
+                @if (printReceiptPayment.paymentIntentId) {
+                  <div><strong>{{ 'EPay_ReceiptIntent' | loc }}</strong> {{ getShortId(printReceiptPayment.paymentIntentId) }}</div>
+                }
+              </div>
+
+              <div class="mb-2 pb-2 border-bottom">
+                <div class="fw-bold mb-1 border-bottom border-secondary pb-1">
+                  {{ 'EPay_ReceiptItemsHeader' | loc }}
+                </div>
+                @if (printReceiptPayment.items) {
+                  @for (item of printReceiptPayment.items.split(', '); track $index) {
+                    <div class="d-flex justify-content-between text-break py-1 border-bottom border-light">
+                      <span>{{ item }}</span>
+                    </div>
+                  }
+                } @else {
+                  <div class="fst-italic text-muted small">{{ 'EPay_ReceiptStandardItems' | loc }}</div>
+                }
+              </div>
+
+              <div class="small mb-2 pb-2 border-bottom">
+                @if (printReceiptPayment.currentTipAmount > 0) {
+                  <div class="d-flex justify-content-between py-1 fw-semibold text-success">
+                    <span>{{ 'EPay_ReceiptTipLabel' | loc }}</span>
+                    <span>{{ printReceiptPayment.currency }} {{ printReceiptPayment.currentTipAmount | number:'1.2-2' }}</span>
+                  </div>
+                }
+              </div>
+
+              <div class="d-flex justify-content-between align-items-center fw-bold fs-6 pt-1">
+                <span>{{ 'EPay_ReceiptTotalLabel' | loc }}</span>
+                <span>{{ printReceiptPayment.currency }} {{ printReceiptPayment.currentAmount | number:'1.2-2' }}</span>
+              </div>
+
+              <div class="text-center text-muted small mt-3 pt-2 border-top">
+                {{ 'EPay_ReceiptFooterWarning' | loc }}
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-light py-2 no-print d-flex justify-content-between">
+            <button class="btn btn-secondary btn-sm" (click)="closeReceiptModal()">{{ 'EPay_BtnClose' | loc }}</button>
+            <button class="btn btn-primary btn-sm fw-bold" (click)="triggerPrint()">
+              <i class="bi bi-printer-fill me-1"></i>{{ 'EPay_BtnPrintReceipt' | loc }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</app-main-layout>

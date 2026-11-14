@@ -16,6 +16,7 @@ export interface MenuItemModel {
   allergens?: Record<string, string>;
   translations?: Record<string, MenuItemTranslation>;
   isExtra?: boolean;
+  vatDepartmentCode?: string | { Value?: string; value?: string; fields?: string[] } | null;
   fiveStarVotesCount?: number;
   fourStarVotesCount?: number;
   threeStarVotesCount?: number;

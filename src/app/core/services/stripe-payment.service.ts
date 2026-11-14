@@ -8,6 +8,7 @@ import {
   CreateSubscriptionIntentRequest,
   CreateSubscriptionIntentResponse,
 } from '../models/restaurant.models';
+import { PaymentModel } from '../models/payment.models';
 
 export interface ConnectAccountLinkResponse {
   url?: string;
@@ -112,6 +113,34 @@ export class StripePaymentService {
   disableStripeAccountId(restaurantId: string): Observable<void> {
     const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/disable-account`;
     return this.http.post<void>(url, null);
+  }
+
+  /**
+   * Retrieves electronic payments processed for a restaurant within a specific time window.
+   */
+  getPaymentsByTimeInterval(
+    restaurantId: string,
+    startDate: Date,
+    endDate: Date
+  ): Observable<PaymentModel[]> {
+    const startIso = startDate.toISOString();
+    const endIso = endDate.toISOString();
+    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/payments?startDate=${encodeURIComponent(
+      startIso
+    )}&endDate=${encodeURIComponent(endIso)}`;
+    return this.http.get<PaymentModel[]>(url);
+  }
+
+  /**
+   * Records an issue or audit dispute against a payment transaction.
+   */
+  addIssue(
+    restaurantId: string,
+    paymentId: string,
+    issue: string
+  ): Observable<void> {
+    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/payment/${paymentId}/add-issue`;
+    return this.http.post<void>(url, { issue });
   }
 }
 

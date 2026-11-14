@@ -14,6 +14,9 @@ import { EditExtraCatalogueComponent } from './features/restaurant/edit-extra-ca
 import { OrderComponent } from './features/ordering/order/order.component';
 import { WaiterOrderComponent } from './features/ordering/waiter-order/waiter-order.component';
 import { AllOrdersComponent } from './features/settlement/all-orders/all-orders.component';
+import { ManualLedgerComponent } from './features/settlement/manual-ledger/manual-ledger.component';
+import { EpaymentsComponent } from './features/settlement/epayments/epayments.component';
+import { RestaurantMembersComponent } from './features/restaurant/restaurant-members/restaurant-members.component';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -39,6 +42,12 @@ export const routes: Routes = [
   {
     path: 'restaurantsAdmin/:restaurantId/subscription',
     component: ManageRestaurantSubscriptionComponent,
+    canActivate: [authGuard],
+  },
+  // Restaurant Members page matching Blazor (@page "/restaurantsAdmin/{RestaurantId}/members")
+  {
+    path: 'restaurantsAdmin/:restaurantId/members',
+    component: RestaurantMembersComponent,
     canActivate: [authGuard],
   },
   // Menu QR Code page
@@ -72,6 +81,38 @@ export const routes: Routes = [
   {
     path: 'restaurantsAdmin/:restaurantId/extra-catalogue',
     component: EditExtraCatalogueComponent,
+    canActivate: [authGuard],
+  },
+  // Manual Ledger pages matching Blazor (@page "/restaurantsAdmin/{RestaurantId}/manual-ledger", "/manualLedger/{RestaurantId}", "/manualLedger")
+  {
+    path: 'restaurantsAdmin/:restaurantId/manual-ledger',
+    component: ManualLedgerComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'manualLedger/:restaurantId',
+    component: ManualLedgerComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'manualLedger',
+    component: ManualLedgerComponent,
+    canActivate: [authGuard],
+  },
+  // E-Payments pages matching Blazor (@page "/restaurantsAdmin/{RestaurantId}/epayments", "/epayments/{RestaurantId}", "/epayments")
+  {
+    path: 'restaurantsAdmin/:restaurantId/epayments',
+    component: EpaymentsComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'epayments/:restaurantId',
+    component: EpaymentsComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'epayments',
+    component: EpaymentsComponent,
     canActivate: [authGuard],
   },
   // Manage Menu page

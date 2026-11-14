@@ -1,0 +1,153 @@
+<app-main-layout pageTitle="Manage Restaurant Members">
+  <div class="container mt-4">
+    @if (errorMessage()) {
+      <div class="alert alert-danger">{{ errorMessage() }}</div>
+      <a routerLink="/restaurantsAdmin" class="btn btn-secondary">Back to Restaurants</a>
+    } @else if (isLoading() && !restaurant()) {
+      <p><em>Loading...</em></p>
+    } @else if (restaurant()) {
+      <h3>
+        Manage Members for <strong>{{ restaurant()?.restaurantName }}</strong>
+      </h3>
+      <p class="text-muted">
+        Only you, as the restaurant owner, can manage members who have access to the restaurant's admin area.
+      </p>
+
+      <div class="row mt-4">
+        <!-- Add Member Column -->
+        <div class="col-md-4">
+          <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Add New Member</h5>
+            </div>
+            <div class="card-body">
+              @if (actionErrorMessage()) {
+                <div class="alert alert-danger">{{ actionErrorMessage() }}</div>
+              }
+              @if (actionSuccessMessage()) {
+                <div class="alert alert-success">{{ actionSuccessMessage() }}</div>
+              }
+              <div class="mb-3">
+                <label for="memberEmail" class="form-label">User Email Address / User ID</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  id="memberEmail"
+                  placeholder="user@example.com or User GUID"
+                  [value]="newMemberEmail()"
+                  (input)="onEmailInput($event)"
+                />
+              </div>
+              <button class="btn btn-success w-100" (click)="addMember()" [disabled]="isBusy()">
+                @if (isBusy()) {
+                  <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  <span class="ms-1">Adding...</span>
+                } @else {
+                  <span>Add Member</span>
+                }
+              </button>
+              <hr />
+              <div class="mb-3">
+                <label class="form-label d-flex justify-content-between">
+                  <span>Share Subscription Link</span>
+                  @if (showCopiedFeedback()) {
+                    <span class="text-success small">✓ Copied!</span>
+                  }
+                </label>
+                <div class="input-group">
+                  <input type="text" class="form-control form-control-sm" readonly [value]="getRegisterUrl()" />
+                  <button class="btn btn-outline-secondary btn-sm" (click)="copyRegisterUrl()" title="Copy link to clipboard">
+                    <i class="bi bi-clipboard"></i> Copy
+                  </button>
+                </div>
+                <div class="form-text text-muted small">Send this link to the user to register on the application.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Members List Column -->
+        <div class="col-md-8">
+          <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Restaurant Users</h5>
+              <span class="badge bg-secondary">Total: {{ 1 + membersInfo().length }}</span>
+            </div>
+            <div class="card-body p-0">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Admin / Owner -->
+                  <tr class="table-info font-weight-bold">
+                    <td>{{ adminInfo().username }}</td>
+                    <td>{{ adminInfo().email }}</td>
+                    <td><span class="badge bg-info text-dark">Owner / Admin</span></td>
+                    <td class="text-end text-muted"><em>None</em></td>
+                  </tr>
+
+                  <!-- Members -->
+                  @if (membersInfo().length === 0) {
+                    <tr>
+                      <td colspan="4" class="text-center py-4 text-muted">
+                        No other members have been added to this restaurant yet.
+                      </td>
+                    </tr>
+                  } @else {
+                    @for (member of membersInfo(); track member.id) {
+                      <tr>
+                        <td>{{ member.username }}</td>
+                        <td>{{ member.email }}</td>
+                        <td><span class="badge bg-secondary">Member</span></td>
+                        <td class="text-end">
+                          <button
+                            class="btn btn-sm btn-outline-warning me-2"
+                            (click)="requestTransferAdmin(member)"
+                            [disabled]="isBusy()"
+                          >
+                            Transfer Admin
+                          </button>
+                          <button
+                            class="btn btn-sm btn-outline-danger"
+                            (click)="removeMember(member.id)"
+                            [disabled]="isBusy()"
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      @if (confirmTransferAdminMember(); as member) {
+        <div class="confirm-overlay">
+          <div class="confirm-box">
+            <h5>Transfer Restaurant Ownership?</h5>
+            <p>
+              Are you sure you want to transfer ownership of this restaurant to member
+              <strong>{{ member.username }}</strong> ({{ member.email }})? This will remove your administrator status.
+            </p>
+            <div class="confirm-actions">
+              <button class="btn btn-secondary" (click)="cancelTransferAdmin()" [disabled]="isBusy()">Cancel</button>
+              <button class="btn btn-warning" (click)="confirmTransferAdmin()" [disabled]="isBusy()">
+                Confirm Transfer
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</app-main-layout>

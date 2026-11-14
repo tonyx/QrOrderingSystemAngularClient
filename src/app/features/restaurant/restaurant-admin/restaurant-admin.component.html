@@ -78,11 +78,28 @@
         <div class="d-flex flex-column gap-3 bg-light p-3 rounded border w-100 mb-3">
           <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <span class="fw-bold text-dark fs-6 d-flex align-items-center gap-2">
-              <i class="bi bi-sliders"></i> Self-Ordering Options
+              <i class="bi bi-sliders"></i> {{ 'RestAdmin_SelfOrderingSwitch' | loc }}
               @if (isUpdatingSelfOrdering()) {
                 <span class="spinner-border spinner-border-sm text-primary ms-1" role="status"></span>
               }
             </span>
+            <div class="form-check form-switch fs-5 m-0 d-flex align-items-center gap-2">
+              <input
+                class="form-check-input mt-0"
+                type="checkbox"
+                role="switch"
+                id="humanReviewedSwitchAdmin"
+                [checked]="rest.humanReviewed"
+                [disabled]="isUpdatingHumanReviewed() || !!rest.isExpired"
+                (change)="onHumanReviewedSwitchChanged($event)"
+              />
+              <label class="form-check-label fs-6 fw-semibold mb-0 text-nowrap" for="humanReviewedSwitchAdmin">
+                {{ 'RestAdmin_HumanReviewedSwitch' | loc }}
+                @if (isUpdatingHumanReviewed()) {
+                  <span class="spinner-border spinner-border-sm ms-1" role="status"></span>
+                }
+              </label>
+            </div>
           </div>
 
           <!-- 4 Radio Options for Self Ordering -->
@@ -1454,6 +1471,52 @@
               <span class="spinner-border spinner-border-sm me-1" role="status"></span>
             }
             {{ 'RestAdmin_BtnSwitchToNew' | loc }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Human Reviewed Consent Modal (matching RestaurantAdmin.razor) -->
+@if (showHumanReviewedConsentModal()) {
+  <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1055;" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
+        <div class="modal-header bg-primary text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+          <h5 class="modal-title font-weight-bold d-flex align-items-center gap-2 text-white">
+            <i class="bi bi-shield-check"></i>
+            {{ 'RestAdmin_HumanReviewModalTitle' | loc }}
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="cancelHumanReviewedEnable()" [disabled]="isUpdatingHumanReviewed()"></button>
+        </div>
+        <div class="modal-body p-4 text-dark" style="line-height: 1.6;">
+          <p class="mb-3">
+            {{ 'RestAdmin_HumanReviewCertifyPrompt' | loc }}
+          </p>
+          <ul class="mb-3">
+            <li class="mb-2">
+              <strong>{{ 'RestAdmin_HumanReviewAllergensTitle' | loc }}</strong> {{ 'RestAdmin_HumanReviewAllergensDesc' | loc }}
+            </li>
+            <li>
+              <strong>{{ 'RestAdmin_HumanReviewTranslationsTitle' | loc }}</strong> {{ 'RestAdmin_HumanReviewTranslationsDesc' | loc }}
+            </li>
+          </ul>
+          <p class="mb-0 text-muted small">
+            {{ 'RestAdmin_HumanReviewFooterNote' | loc }}
+          </p>
+        </div>
+        <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+          <button type="button" class="btn btn-secondary px-3" (click)="cancelHumanReviewedEnable()" [disabled]="isUpdatingHumanReviewed()">
+            {{ 'RestAdmin_BtnCancel' | loc }}
+          </button>
+          <button type="button" class="btn btn-primary px-4 fw-bold" (click)="confirmEnableHumanReviewed()" [disabled]="isUpdatingHumanReviewed()">
+            @if (isUpdatingHumanReviewed()) {
+              <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+              <span>{{ 'RestAdmin_BtnUpdating' | loc }}</span>
+            } @else {
+              <span><i class="bi bi-check-circle-fill me-1"></i> {{ 'RestAdmin_BtnCertifyConfirm' | loc }}</span>
+            }
           </button>
         </div>
       </div>

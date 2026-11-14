@@ -918,6 +918,27 @@ export class RestaurantService {
     );
   }
 
+  addMember(restaurantId: string, newMemberId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/members/add`;
+    return this.http.post<void>(url, JSON.stringify(newMemberId), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  removeMember(restaurantId: string, memberToRemoveId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/members/remove`;
+    return this.http.post<void>(url, JSON.stringify(memberToRemoveId), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  transferAdmin(restaurantId: string, newAdminId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/admin/transfer`;
+    return this.http.post<void>(url, JSON.stringify(newAdminId), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   private enrichRestaurant(rest: RestaurantItem): Observable<RestaurantItem> {
     if (!rest.restaurantId) {
       return of(rest);
@@ -1341,6 +1362,27 @@ export class RestaurantService {
       restaurantName = rawName.fields?.[0] || rawName.value || rawName.Value || restaurantName;
     }
 
+    let admin = '';
+    const rawAdmin = raw?.admin ?? raw?.Admin;
+    if (typeof rawAdmin === 'string') {
+      admin = rawAdmin;
+    } else if (rawAdmin && typeof rawAdmin === 'object') {
+      admin = rawAdmin.fields?.[0] || rawAdmin.value || rawAdmin.Value || '';
+    }
+
+    const members: string[] = [];
+    const rawMembers = raw?.members ?? raw?.Members;
+    if (Array.isArray(rawMembers)) {
+      rawMembers.forEach((m: any) => {
+        if (typeof m === 'string') {
+          members.push(m);
+        } else if (m && typeof m === 'object') {
+          const val = m.fields?.[0] || m.value || m.Value;
+          if (val) members.push(String(val));
+        }
+      });
+    }
+
     const rawTables = raw?.tables ?? raw?.Tables;
     let tablesCount = 0;
     let hasActiveOrders = false;
@@ -1620,6 +1662,8 @@ export class RestaurantService {
     return {
       restaurantId,
       restaurantName,
+      admin,
+      members,
       tablesCount: parsedTables.length > 0 ? parsedTables.length : tablesCount,
       tables: rawTables,
       parsedTables,

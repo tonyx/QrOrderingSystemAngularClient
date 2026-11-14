@@ -1,0 +1,739 @@
+<app-main-layout>
+  <div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div>
+        <h3 class="mb-0 text-dark fw-bold">
+          <i class="bi bi-journal-bookmark-fill me-2 text-warning"></i>{{ 'ManualLedger_HeaderTitle' | loc }}
+        </h3>
+        <p class="text-muted small mb-0">{{ 'ManualLedger_HeaderSubtitle' | loc }}</p>
+      </div>
+      @if (restaurantId) {
+        <div class="d-flex gap-2">
+          <a [routerLink]="['/restaurantsAdmin', restaurantId, 'reports']" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-pie-chart-fill me-1"></i> {{ 'ManualLedger_BtnViewAnalytics' | loc }}
+          </a>
+          <a [routerLink]="['/restaurantsAdmin', restaurantId]" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> {{ 'UnifiedRep_BtnBackToAdmin' | loc }}
+          </a>
+        </div>
+      }
+    </div>
+
+    @if (errorMessage) {
+      <div class="alert alert-danger alert-dismissible fade show shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+        <button type="button" class="btn-close" (click)="errorMessage = null"></button>
+      </div>
+    }
+    @if (successMessage) {
+      <div class="alert alert-success alert-dismissible fade show shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+        <button type="button" class="btn-close" (click)="successMessage = null"></button>
+      </div>
+    }
+
+    <!-- Unconsumed Local Integration Warning -->
+    @if (unconsumedEntriesCount > 0) {
+      <div class="alert alert-warning border-warning shadow-sm d-flex align-items-center justify-content-between mb-4" role="alert">
+        <div class="d-flex align-items-center">
+          <i class="bi bi-exclamation-triangle-fill fs-4 me-3 text-warning"></i>
+          <div>
+            <strong class="d-block text-dark">
+              {{ 'ManualLedger_UnconsumedWarningTitle' | loc:unconsumedEntriesCount }}
+            </strong>
+            <span class="small text-muted">{{ 'ManualLedger_UnconsumedWarningBody' | loc }}</span>
+          </div>
+        </div>
+        <button class="btn btn-outline-warning btn-sm ms-3" (click)="checkIntegrationStatus()">
+          <i class="bi bi-arrow-clockwise me-1"></i> {{ 'ManualLedger_BtnRefreshStatus' | loc }}
+        </button>
+      </div>
+    }
+
+    <!-- Integration Credentials Card -->
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+      <div class="card-body py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h6 class="fw-bold mb-1 text-dark">
+            <i class="bi bi-key-fill me-2 text-primary"></i>{{ 'ManualLedger_ApiCredsTitle' | loc }}
+          </h6>
+          <p class="text-muted small mb-0">{{ 'ManualLedger_ApiCredsSubtitle' | loc }}</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          @if (integrationAuthHeader) {
+            <code class="user-select-all bg-white px-3 py-2 rounded border small">{{ integrationAuthHeader }}</code>
+            <button class="btn btn-outline-primary btn-sm" (click)="copyAuthHeader()">
+              <i class="bi bi-clipboard me-1"></i> {{ 'ManualLedger_BtnCopyHeader' | loc }}
+            </button>
+            <a [href]="'/spooler/authorize/' + restaurantId" class="btn btn-outline-info btn-sm">
+              <i class="bi bi-hdd-network me-1"></i> {{ 'ManualLedger_BtnSpoolerAuth' | loc }}
+            </a>
+          } @else {
+            <button class="btn btn-primary btn-sm" (click)="loadIntegrationCredentials()">
+              <i class="bi bi-shield-lock me-1"></i> {{ 'ManualLedger_BtnGenerateHeader' | loc }}
+            </button>
+            <a [href]="'/spooler/authorize/' + restaurantId" class="btn btn-outline-info btn-sm">
+              <i class="bi bi-hdd-network me-1"></i> {{ 'ManualLedger_BtnSpoolerAuth' | loc }}
+            </a>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Ledger Card -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+        <h5 class="card-title mb-0 fw-semibold">
+          <i class="bi bi-plus-circle me-2 text-primary"></i>{{ 'ManualLedger_OpenNewShiftHeader' | loc }}
+        </h5>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 align-items-end">
+          @if (!restaurantId) {
+            <div class="col-md-3 col-sm-6">
+              <label class="form-label fw-medium small">{{ 'UnifiedRep_RestaurantIdLabel' | loc }}</label>
+              <input type="text" class="form-control" [placeholder]="'UnifiedRep_RestaurantIdPlaceholder' | loc" [(ngModel)]="inputRestaurantId" />
+            </div>
+          }
+          <div class="col-md-3 col-sm-6">
+            <label class="form-label fw-medium small">{{ 'ManualLedger_StartDateLabel' | loc }}</label>
+            <input type="date" class="form-control" [(ngModel)]="newStartDate" />
+          </div>
+          <div class="col-md-3 col-sm-6">
+            <label class="form-label fw-medium small">{{ 'ManualLedger_EndDateLabel' | loc }}</label>
+            <input type="date" class="form-control" [(ngModel)]="newEndDate" />
+          </div>
+          <div class="col-md-3 col-sm-6 d-flex gap-2">
+            <button class="btn btn-primary w-100 fw-medium" (click)="createLedger()" [disabled]="isLoading()">
+              <i class="bi bi-journal-plus me-1"></i> {{ 'ManualLedger_BtnCreateShift' | loc }}
+            </button>
+            <button class="btn btn-outline-secondary" (click)="setCurrentMonth()">
+              {{ 'ManualLedger_BtnThisMonth' | loc }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Ledgers List -->
+    @if (ledgers && ledgers.length > 0) {
+      <h5 class="fw-bold mb-3">
+        <i class="bi bi-journals me-2 text-primary"></i>{{ 'ManualLedger_RegisterLedgersTitle' | loc }}
+      </h5>
+      @for (ledger of ledgers; track ledger.manualLedgerId) {
+        @let isSelected = selectedLedgerId === ledger.manualLedgerId;
+        <div class="card shadow-sm border-0 mb-4" [ngClass]="{ 'border-start border-primary border-4': isSelected }">
+          <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <h6 class="fw-bold mb-1 text-dark">
+                <i class="bi bi-calendar-range me-2 text-primary"></i>
+                {{ 'ManualLedger_PeriodLabel' | loc: formatDate(ledger.startDate) : formatDate(ledger.endDate) }}
+              </h6>
+              <span class="text-muted small">
+                @if (isSelected) {
+                  {{ 'ManualLedger_TotalVolumeLabel' | loc }} <strong class="text-success">EUR {{ totalVolumeForSelected.toFixed(2) }}</strong> |
+                  @if (totalOmaggioForSelected > 0) {
+                    <span>Omaggi: <strong class="text-secondary">EUR {{ totalOmaggioForSelected.toFixed(2) }}</strong> | </span>
+                    <span>Collected: <strong class="text-primary">EUR {{ totalCollectedForSelected.toFixed(2) }}</strong> | </span>
+                  }
+                  {{ 'ManualLedger_TipsLabel' | loc }} <strong>EUR {{ totalTipsForSelected.toFixed(2) }}</strong> |
+                  {{ 'ManualLedger_EntriesCountLabel' | loc }} <strong>{{ ledger.entries ? ledger.entries.length : 0 }}</strong>
+                } @else {
+                  {{ 'ManualLedger_EntriesCountLabel' | loc }} <strong>{{ ledger.entries ? ledger.entries.length : 0 }}</strong>
+                }
+              </span>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              @if (ledger.isClosed) {
+                <span class="badge bg-secondary px-3 py-2 fs-7">
+                  <i class="bi bi-lock-fill me-1"></i>{{ 'ManualLedger_BadgeClosed' | loc }}
+                </span>
+                <button class="btn btn-sm btn-outline-warning" (click)="reopenLedger(ledger.manualLedgerId)">
+                  <i class="bi bi-unlock-fill me-1"></i> {{ 'ManualLedger_BtnReopen' | loc }}
+                </button>
+              } @else {
+                <span class="badge bg-success px-3 py-2 fs-7">
+                  <i class="bi bi-unlock-fill me-1"></i>{{ 'ManualLedger_BadgeOpen' | loc }}
+                </span>
+                <button class="btn btn-sm btn-outline-danger" (click)="closeLedger(ledger.manualLedgerId)">
+                  <i class="bi bi-lock-fill me-1"></i> {{ 'ManualLedger_BtnCloseShift' | loc }}
+                </button>
+              }
+              @if (!ledger.entries || ledger.entries.length === 0) {
+                <button class="btn btn-sm btn-outline-danger" (click)="removeLedger(ledger.manualLedgerId)" [title]="'ManualLedger_BtnRemoveShift' | loc">
+                  <i class="bi bi-trash3-fill me-1"></i> {{ 'ManualLedger_BtnRemoveShift' | loc }}
+                </button>
+              }
+              <button class="btn btn-sm btn-outline-success" (click)="exportLedgerCsv(ledger)">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> {{ 'ManualLedger_BtnExportCsv' | loc }}
+              </button>
+              <button class="btn btn-sm" [ngClass]="isSelected ? 'btn-primary' : 'btn-outline-primary'" (click)="selectLedger(ledger.manualLedgerId)">
+                <i class="bi bi-pencil-square me-1"></i> {{ isSelected ? ('ManualLedger_BtnSelected' | loc) : ('ManualLedger_BtnManageEntries' | loc) }}
+              </button>
+            </div>
+          </div>
+
+          @if (isSelected) {
+            <div class="card-body bg-light-subtle p-4 border-top">
+              <!-- Add Entry Form (Only if Ledger is Open) -->
+              @if (!ledger.isClosed) {
+                <div class="border rounded p-3 bg-white mb-4 shadow-sm">
+                  <h6 class="fw-bold text-primary mb-3">
+                    <i class="bi bi-plus-circle-fill me-2"></i>{{ 'ManualLedger_AddEntryHeader' | loc }}
+                  </h6>
+                  <div class="row g-3">
+                    <div class="col-md-3 col-sm-6">
+                      <label class="form-label fw-medium small">{{ 'ManualLedger_AmountLabel' | loc }}</label>
+                      <input type="number" step="0.01" class="form-control" placeholder="0.00" [(ngModel)]="entryAmount" />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                      <label class="form-label fw-medium small">{{ 'ManualLedger_TipAmountLabel' | loc }}</label>
+                      <input type="number" step="0.01" class="form-control" placeholder="0.00" [(ngModel)]="entryTipAmount" />
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                      <label class="form-label fw-medium small">{{ 'ManualLedger_PaymentMethodLabel' | loc }}</label>
+                      <select class="form-select" [(ngModel)]="entryPaymentMethodStr">
+                        <option value="Cash">Cash</option>
+                        <option value="ExternalCardTerminal">POS Counter Card</option>
+                        <option value="Voucher">Voucher</option>
+                        <option value="Stripe">Stripe Digital Payment</option>
+                        <option value="DiscountOmaggio">🎁 Omaggio / On the House</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                      <label class="form-label fw-medium small text-primary fw-bold">
+                        <i class="bi bi-receipt me-1"></i>{{ 'ManualLedger_FiscalRefLabel' | loc }}
+                      </label>
+                      <input type="text" class="form-control" placeholder="e.g. SNT-2026-00482" [(ngModel)]="entryReferenceNumber" />
+                    </div>
+
+                    <!-- Itemized Dish Breakdown section -->
+                    <div class="col-12 border-top pt-2 mt-2">
+                      <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-semibold small text-secondary">
+                          <i class="bi bi-tags me-1"></i>Itemized Dishes & VAT Department Breakdown (Optional)
+                        </span>
+                        <div class="d-flex gap-2">
+                          <button class="btn btn-sm btn-outline-info py-0" type="button" (click)="toggleCataloguePicker()">
+                            <i class="bi bi-book me-1"></i>Pick from Menu Catalogue
+                          </button>
+                          <button class="btn btn-sm btn-outline-warning py-0" type="button" (click)="addDiscountLine()">
+                            <i class="bi bi-tag me-1"></i>Add Discount
+                          </button>
+                          <button class="btn btn-sm btn-outline-secondary py-0" type="button" (click)="addDishLine()">
+                            <i class="bi bi-plus-lg me-1"></i>Add Dish Line
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Catalogue Picker Inline Dropdown Panel -->
+                      @if (showCataloguePicker) {
+                        <div class="border rounded p-3 bg-light mb-3">
+                          <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold small text-dark"><i class="bi bi-card-list me-1"></i>Select from Catalogue</span>
+                            <button type="button" class="btn-close" (click)="toggleCataloguePicker()"></button>
+                          </div>
+                          @if (isCatalogueLoading) {
+                            <div class="text-muted small py-2"><span class="spinner-border spinner-border-sm me-1"></span>Loading menu catalogue...</div>
+                          } @else if (!menuItemsList || menuItemsList.length === 0) {
+                            <div class="text-muted small py-2">No menu catalogue items found for this restaurant.</div>
+                          } @else {
+                            <div class="row g-2 mb-2 align-items-center">
+                              <div class="col-md-5 col-sm-12">
+                                <div class="input-group input-group-sm">
+                                  <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                  <input type="text" class="form-control" placeholder="Search dish name..." [(ngModel)]="catalogueFilterText" />
+                                  @if (catalogueFilterText) {
+                                    <button class="btn btn-outline-secondary" type="button" (click)="catalogueFilterText = ''">
+                                      <i class="bi bi-x"></i>
+                                    </button>
+                                  }
+                                </div>
+                              </div>
+                              @if (availableCatalogueCategories.length > 0) {
+                                <div class="col-md-7 col-sm-12 d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
+                                  <span class="small fw-semibold text-secondary"><i class="bi bi-tags me-1"></i>Categories:</span>
+                                  <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-primary small" (click)="selectAllCatalogueCategories()">
+                                    Select All
+                                  </button>
+                                  <span class="text-muted small">|</span>
+                                  <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-secondary small" (click)="selectNoCatalogueCategories()">
+                                    Select None
+                                  </button>
+                                </div>
+                              }
+                            </div>
+
+                            @if (availableCatalogueCategories.length > 0) {
+                              <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 bg-white rounded border">
+                                @for (catKey of availableCatalogueCategories; track catKey) {
+                                  @let isChecked = selectedCatalogueCategories.has(catKey);
+                                  <div class="form-check form-check-inline m-0 d-flex align-items-center me-2">
+                                    <input class="form-check-input me-1" type="checkbox" [id]="'cat-picker-' + catKey" [checked]="isChecked" (change)="toggleCatalogueCategory(catKey, !isChecked)" />
+                                    <label class="form-check-label small user-select-none" [for]="'cat-picker-' + catKey" style="cursor: pointer;">
+                                      @if (catKey === NO_CATEGORY_KEY) {
+                                        <span class="text-muted fst-italic">No category</span>
+                                      } @else {
+                                        <span class="fw-medium text-dark">{{ catKey }}</span>
+                                      }
+                                    </label>
+                                  </div>
+                                }
+                              </div>
+                            }
+
+                            @if (filteredCatalogueItems.length === 0) {
+                              <div class="text-muted small py-2">
+                                <i class="bi bi-info-circle me-1"></i>
+                                @if (selectedCatalogueCategories.size === 0) {
+                                  <span>No categories selected. Please select at least one category above.</span>
+                                } @else if (catalogueFilterText) {
+                                  <span>No catalogue items found matching "<strong>{{ catalogueFilterText }}</strong>" in the selected categories.</span>
+                                } @else {
+                                  <span>No catalogue items available for the selected categories.</span>
+                                }
+                              </div>
+                            } @else {
+                              <div class="d-flex flex-wrap gap-2" style="max-height: 280px; overflow-y: auto;">
+                                @for (item of filteredCatalogueItems; track item.name) {
+                                  @let itemCat = getItemCategory(item);
+                                  <button type="button" class="btn btn-sm btn-white border text-start shadow-sm" (click)="pickCatalogueItem(item)">
+                                    <span class="fw-semibold text-dark d-block">{{ item.name }}</span>
+                                    @if (itemCat) {
+                                      <span class="badge bg-secondary-subtle text-secondary me-1" style="font-size: 0.7rem;">{{ itemCat }}</span>
+                                    }
+                                    <span class="badge bg-primary-subtle text-primary me-1">EUR {{ (item.price ?? 0).toFixed(2) }}</span>
+                                    <span class="badge bg-secondary-subtle text-secondary">
+                                      {{ getItemVatCode(item) }}
+                                    </span>
+                                  </button>
+                                }
+                              </div>
+                            }
+                          }
+                        </div>
+                      }
+
+                      @if (dishLines && dishLines.length > 0) {
+                        <div class="mb-3">
+                          <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted fw-semibold">Entered Lines ({{ dishLines.length }}):</span>
+                            @if (dishLines.length > 1) {
+                              <button type="button" class="btn btn-link btn-sm text-danger text-decoration-none p-0 small" (click)="clearAllDishLines()">
+                                <i class="bi bi-trash3 me-1"></i>Clear all lines
+                              </button>
+                            }
+                          </div>
+                          @for (line of dishLines; track $index) {
+                            <div class="row g-2 mb-2 align-items-center bg-white p-2 border rounded">
+                              <div class="col-md-5 col-12">
+                                <input type="text" class="form-control form-control-sm" placeholder="Dish / Item Name" [(ngModel)]="line.dishName" />
+                              </div>
+                              <div class="col-md-2 col-4">
+                                <div class="input-group input-group-sm">
+                                  <span class="input-group-text">Qty</span>
+                                  <input type="number" min="1" class="form-control" [(ngModel)]="line.quantity" (ngModelChange)="recalculateEntryAmount()" />
+                                </div>
+                              </div>
+                              <div class="col-md-2 col-4">
+                                <div class="input-group input-group-sm">
+                                  <span class="input-group-text">€</span>
+                                  <input type="number" step="0.01" class="form-control" [(ngModel)]="line.unitPrice" (ngModelChange)="recalculateEntryAmount()" />
+                                </div>
+                              </div>
+                              <div class="col-md-2 col-3">
+                                <input type="text" class="form-control form-control-sm" placeholder="Vat (e.g. Rep1)" [(ngModel)]="line.vatCode" />
+                              </div>
+                              <div class="col-md-1 col-1 text-end">
+                                <button type="button" class="btn btn-outline-danger btn-sm p-1" (click)="removeDishLine(line)">
+                                  <i class="bi bi-x-lg"></i>
+                                </button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Fiscal Metadata radio & text -->
+                    <div class="col-12 border-top pt-2 mt-2">
+                      <span class="fw-semibold small text-secondary d-block mb-1">
+                        <i class="bi bi-person-vcard me-1"></i>Italian Fiscal Receipt Data (Optional)
+                      </span>
+                      <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="entryFiscalOpt" id="fiscal_none" value="none" [(ngModel)]="entryFiscalOption" />
+                        <label class="form-check-label small" for="fiscal_none">None</label>
+                      </div>
+                      <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="entryFiscalOpt" id="fiscal_cf" value="cf" [(ngModel)]="entryFiscalOption" />
+                        <label class="form-check-label small fw-bold" for="fiscal_cf">Codice Fiscale</label>
+                      </div>
+                      <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="entryFiscalOpt" id="fiscal_lotteria" value="lotteria" [(ngModel)]="entryFiscalOption" />
+                        <label class="form-check-label small fw-bold" for="fiscal_lotteria">Codice Lotteria</label>
+                      </div>
+
+                      @if (entryFiscalOption !== 'none') {
+                        <div class="mt-2" style="max-width: 400px;">
+                          <input type="text" class="form-control form-control-sm text-uppercase font-monospace"
+                            [placeholder]="entryFiscalOption === 'cf' ? 'Codice Fiscale (16 caratteri)' : 'Codice Lotteria (8 caratteri)'"
+                            [maxLength]="entryFiscalOption === 'cf' ? 16 : 8"
+                            [(ngModel)]="entryFiscalInputText" />
+                        </div>
+                      }
+                    </div>
+
+                    <div class="col-md-8 col-sm-12">
+                      <label class="form-label fw-medium small">{{ 'ManualLedger_NotesLabel' | loc }}</label>
+                      <input type="text" class="form-control" placeholder="e.g. Cash register sale / manual receipt" [(ngModel)]="entryNotes" />
+                    </div>
+                    <div class="col-md-4 col-sm-12 d-flex align-items-end">
+                      <button class="btn btn-success w-100 fw-medium" (click)="addEntry(ledger.manualLedgerId)" [disabled]="isAddingEntry()">
+                        @if (isAddingEntry()) {
+                          <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        } @else {
+                          <i class="bi bi-check-circle me-1"></i>
+                        }
+                        {{ 'ManualLedger_BtnSaveEntry' | loc }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                <div class="alert alert-secondary py-2 small mb-3">
+                  <i class="bi bi-info-circle me-2"></i>{{ 'ManualLedger_ClosedNotice' | loc }}
+                </div>
+              }
+
+              <!-- Ledger Entries List -->
+              <h6 class="fw-bold mb-3"><i class="bi bi-list-stars me-2"></i>{{ 'ManualLedger_ReceiptsHeader' | loc }}</h6>
+              @if (!ledger.entries || ledger.entries.length === 0) {
+                <div class="d-flex align-items-center justify-content-between p-3 bg-white rounded border">
+                  <p class="text-muted small mb-0">{{ 'ManualLedger_NoEntriesYet' | loc }}</p>
+                  <button class="btn btn-sm btn-outline-danger" (click)="removeLedger(ledger.manualLedgerId)">
+                    <i class="bi bi-trash3-fill me-1"></i> {{ 'ManualLedger_BtnRemoveShift' | loc }}
+                  </button>
+                </div>
+              } @else {
+                <!-- Filter Controls & Toolbar -->
+                <div class="card mb-3 border-0 bg-light p-3 rounded shadow-sm">
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-7 col-12 d-flex flex-wrap align-items-center gap-1">
+                      <span class="small font-weight-bold me-2 text-secondary"><i class="bi bi-funnel-fill me-1"></i>Filter Payment:</span>
+                      <button class="btn btn-sm" [ngClass]="filterPaymentMethod === 'All' ? 'btn-dark' : 'btn-outline-secondary bg-white'" (click)="filterPaymentMethod = 'All'">
+                        All (€{{ paymentTotals.all.toFixed(2) }})
+                      </button>
+                      <button class="btn btn-sm" [ngClass]="filterPaymentMethod === 'Cash' ? 'btn-success' : 'btn-outline-success bg-white'" (click)="filterPaymentMethod = 'Cash'">
+                        💵 Cash (€{{ paymentTotals.cash.toFixed(2) }})
+                      </button>
+                      <button class="btn btn-sm" [ngClass]="filterPaymentMethod === 'ExternalCardTerminal' ? 'btn-primary' : 'btn-outline-primary bg-white'" (click)="filterPaymentMethod = 'ExternalCardTerminal'">
+                        💳 POS (€{{ paymentTotals.pos.toFixed(2) }})
+                      </button>
+                      <button class="btn btn-sm" [ngClass]="filterPaymentMethod === 'Stripe' ? 'btn-info text-white' : 'btn-outline-info bg-white'" (click)="filterPaymentMethod = 'Stripe'">
+                        💳 Stripe (€{{ paymentTotals.stripe.toFixed(2) }})
+                      </button>
+                      <button class="btn btn-sm" [ngClass]="filterPaymentMethod === 'Voucher' ? 'btn-warning text-dark' : 'btn-outline-warning bg-white'" (click)="filterPaymentMethod = 'Voucher'">
+                        🎫 Voucher (€{{ paymentTotals.voucher.toFixed(2) }})
+                      </button>
+                      <button class="btn btn-sm" [ngClass]="filterPaymentMethod === 'DiscountOmaggio' ? 'btn-secondary text-white' : 'btn-outline-secondary bg-white'" (click)="filterPaymentMethod = 'DiscountOmaggio'">
+                        🎁 Omaggio (€{{ paymentTotals.omaggio.toFixed(2) }})
+                      </button>
+                      @if (paymentTotals.other > 0) {
+                        <button class="btn btn-sm" [ngClass]="filterPaymentMethod === 'Other' ? 'btn-secondary' : 'btn-outline-secondary bg-white'" (click)="filterPaymentMethod = 'Other'">
+                          🏷️ Other (€{{ paymentTotals.other.toFixed(2) }})
+                        </button>
+                      }
+                    </div>
+                    <div class="col-md-5 col-12 d-flex gap-2">
+                      <div class="input-group input-group-sm flex-grow-1">
+                        <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Search notes or reference..." [(ngModel)]="searchFilterText" />
+                        @if (searchFilterText) {
+                          <button class="btn btn-outline-secondary" type="button" (click)="searchFilterText = ''">
+                            <i class="bi bi-x"></i>
+                          </button>
+                        }
+                      </div>
+                      <button class="btn btn-sm btn-success text-nowrap" (click)="exportFilteredLedgerCsv()" title="Export filtered entries to CSV">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> CSV
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Dynamic Summary Cards -->
+                <div class="row g-2 mb-3">
+                  <div class="col-md col-6">
+                    <div class="card border-0 bg-white shadow-sm p-3 h-100">
+                      <span class="text-muted small fw-semibold">Filtered Items</span>
+                      <h5 class="fw-bold mb-0 text-dark">{{ filteredEntries.length }} <small class="text-muted fs-7">/ {{ ledger.entries.length }}</small></h5>
+                    </div>
+                  </div>
+                  <div class="col-md col-6">
+                    <div class="card border-0 bg-white shadow-sm p-3 h-100">
+                      <span class="text-muted small fw-semibold">Collected Revenue</span>
+                      <h5 class="fw-bold mb-0 text-primary">EUR {{ filteredTotals.collectedAmount.toFixed(2) }}</h5>
+                    </div>
+                  </div>
+                  @if (filteredTotals.compedAmount > 0) {
+                    <div class="col-md col-6">
+                      <div class="card border-0 bg-white shadow-sm p-3 h-100">
+                        <span class="text-muted small fw-semibold">Omaggi (Comped)</span>
+                        <h5 class="fw-bold mb-0 text-secondary">EUR {{ filteredTotals.compedAmount.toFixed(2) }}</h5>
+                      </div>
+                    </div>
+                  }
+                  <div class="col-md col-6">
+                    <div class="card border-0 bg-white shadow-sm p-3 h-100">
+                      <span class="text-muted small fw-semibold">Tips</span>
+                      <h5 class="fw-bold mb-0 text-secondary">EUR {{ filteredTotals.totalTip.toFixed(2) }}</h5>
+                    </div>
+                  </div>
+                  <div class="col-md col-12">
+                    <div class="card border-0 bg-white shadow-sm p-3 h-100 border-start border-success border-3">
+                      <span class="text-muted small fw-semibold">Total Turnout</span>
+                      <h5 class="fw-bold mb-0 text-success">EUR {{ filteredTotals.grandTotal.toFixed(2) }}</h5>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Quick Select & Group Publish Toolbar -->
+                @if (isIntegrationEnabled) {
+                  <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2 p-2 bg-light rounded border">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <span class="small font-weight-bold text-secondary"><i class="bi bi-check2-square me-1"></i>Spool Selection:</span>
+                      <button class="btn btn-sm btn-outline-primary bg-white" (click)="selectAllUnpublished()">Select All Unpublished</button>
+                      <button class="btn btn-sm btn-outline-secondary bg-white" (click)="selectLatestUnpublished(5)">Last 5</button>
+                      <button class="btn btn-sm btn-outline-secondary bg-white" (click)="selectLatestUnpublished(10)">Last 10</button>
+                      @if (selectedEntryIds.size > 0) {
+                        <button class="btn btn-sm btn-link text-danger p-0 ms-2 text-decoration-none" (click)="clearSelection()">Clear Selection</button>
+                      }
+                    </div>
+                    @if (selectedEntryIds.size > 0) {
+                      <div class="d-flex align-items-center gap-2">
+                        <span class="small fw-bold text-primary">Selected: {{ selectedEntryIds.size }} (€{{ selectedSum.toFixed(2) }})</span>
+                        <button class="btn btn-primary btn-sm fw-bold shadow-sm" (click)="openPublishGroupModal()">
+                          <i class="bi bi-receipt-cutoff me-1"></i> Publish Selected as Single Receipt
+                        </button>
+                      </div>
+                    }
+                  </div>
+                }
+
+                <!-- Table -->
+                <div class="table-responsive bg-white rounded border shadow-sm p-2">
+                  <table class="table table-hover align-middle mb-0 small">
+                    <thead>
+                      <tr>
+                        @if (isIntegrationEnabled) {
+                          <th style="width: 40px;" class="text-center">Select</th>
+                        }
+                        <th>Timestamp</th>
+                        @if (isIntegrationEnabled) {
+                          <th>Spool Status</th>
+                        }
+                        <th>Fiscal Ref</th>
+                        <th>Payment Method</th>
+                        <th>Notes</th>
+                        <th class="text-end">Amount (€)</th>
+                        <th class="text-end">Tip (€)</th>
+                        <th class="text-end">Total (€)</th>
+                        <th class="text-center" style="width: 60px;">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (item of paginatedEntries; track item.entryId) {
+                        <tr>
+                          @if (isIntegrationEnabled) {
+                            <td class="text-center">
+                              @if (item.publishStatusDisplay === 'Unpublished') {
+                                <input type="checkbox" class="form-check-input" [checked]="selectedEntryIds.has(item.entryId)" (change)="toggleEntrySelection(item.entryId)" />
+                              } @else {
+                                <input type="checkbox" class="form-check-input" disabled />
+                              }
+                            </td>
+                          }
+                          <td>{{ item.timestampLocalDisplay }}</td>
+                          @if (isIntegrationEnabled) {
+                            <td>
+                              @if (item.publishStatusDisplay === 'Spooled') {
+                                <span class="badge bg-success-subtle text-success border border-success px-2" title="Published to fiscal spooler">
+                                  <i class="bi bi-check-circle-fill me-1"></i>Spooled
+                                </span>
+                              } @else if (item.publishStatusDisplay === 'Unpublished') {
+                                <span class="badge bg-warning-subtle text-dark border border-warning px-2" title="Unpublished - ready for grouping">
+                                  <i class="bi bi-clock-history me-1"></i>Unpublished
+                                </span>
+                              } @else {
+                                <span class="badge bg-light text-muted border px-2">N/A</span>
+                              }
+                            </td>
+                          }
+                          <td>
+                            @if (item.referenceNumberDisplay) {
+                              <span class="badge bg-primary-subtle text-primary border border-primary px-2 me-1">
+                                <i class="bi bi-receipt me-1"></i>{{ item.referenceNumberDisplay }}
+                              </span>
+                            }
+                            @if (item.fiscalType === 'cf') {
+                              <span class="badge bg-primary text-white font-monospace">CF: {{ item.fiscalValue }}</span>
+                            } @else if (item.fiscalType === 'lotteria') {
+                              <span class="badge bg-warning text-dark font-monospace">Lotteria: {{ item.fiscalValue }}</span>
+                            } @else if (!item.referenceNumberDisplay) {
+                              <span class="text-muted fs-7">—</span>
+                            }
+                          </td>
+                          <td>
+                            @if (item.paymentMethodGroup === 'Cash') {
+                              <span class="badge bg-success-subtle text-success border border-success px-2">💵 Cash</span>
+                            } @else if (item.paymentMethodGroup === 'ExternalCardTerminal') {
+                              <span class="badge bg-primary-subtle text-primary border border-primary px-2">💳 POS</span>
+                            } @else if (item.paymentMethodGroup === 'Stripe') {
+                              <span class="badge bg-info-subtle text-info border border-info px-2">💳 Stripe</span>
+                            } @else if (item.paymentMethodGroup === 'Voucher') {
+                              <span class="badge bg-warning-subtle text-dark border border-warning px-2">🎫 Voucher</span>
+                            } @else if (item.paymentMethodGroup === 'DiscountOmaggio') {
+                              <span class="badge bg-secondary-subtle text-secondary border border-secondary px-2">🎁 Omaggio</span>
+                            } @else {
+                              <span class="badge bg-light text-dark border px-2">{{ item.paymentMethodDisplay }}</span>
+                            }
+                          </td>
+                          <td>{{ item.notesDisplay || '—' }}</td>
+                          <td class="text-end">{{ item.amount.toFixed(2) }}</td>
+                          <td class="text-end">{{ item.tipAmount.toFixed(2) }}</td>
+                          <td class="text-end fw-bold">{{ item.totalWithTip.toFixed(2) }}</td>
+                          <td class="text-center">
+                            @if (!ledger.isClosed) {
+                              <button class="btn btn-sm btn-outline-danger py-0 px-2" (click)="removeEntry(ledger.manualLedgerId, item.entryId)">
+                                <i class="bi bi-trash"></i>
+                              </button>
+                            }
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+
+                  <!-- Pagination Controls -->
+                  @if (totalPages > 1) {
+                    <div class="mt-2 d-flex justify-content-between align-items-center px-2">
+                      <span class="text-muted small">
+                        Showing {{ (currentPage - 1) * pageSize + 1 }} to {{ ((currentPage * pageSize) > filteredEntries.length) ? filteredEntries.length : (currentPage * pageSize) }} of {{ filteredEntries.length }} entries
+                      </span>
+                      <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-secondary" [disabled]="currentPage === 1" (click)="currentPage = currentPage - 1">
+                          Previous
+                        </button>
+                        <button class="btn btn-outline-secondary disabled">Page {{ currentPage }} of {{ totalPages }}</button>
+                        <button class="btn btn-outline-secondary" [disabled]="currentPage === totalPages" (click)="currentPage = currentPage + 1">
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    } @else if (hasFetched && (!ledgers || ledgers.length === 0)) {
+      <div class="alert alert-info shadow-sm" role="alert">
+        <i class="bi bi-info-circle me-2"></i>{{ 'ManualLedger_NoLedgersFound' | loc }}
+      </div>
+    }
+
+    <!-- Publish Group Modal -->
+    @if (showPublishGroupModal && selectedLedger) {
+      <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content shadow">
+            <div class="modal-header bg-primary text-white py-2">
+              <h6 class="modal-title fw-bold">
+                <i class="bi bi-receipt-cutoff me-2"></i>Publish Group Receipt to Spooler
+              </h6>
+              <button type="button" class="btn-close btn-close-white" (click)="showPublishGroupModal = false"></button>
+            </div>
+            <div class="modal-body">
+              <p class="small text-muted mb-3">
+                This will combine <strong>{{ selectedEntryIds.size }}</strong> selected register entries into a single aggregated fiscal receipt published to the local print queue.
+              </p>
+
+              <div class="mb-3">
+                <label class="form-label small fw-bold">Custom Receipt Reference / Note</label>
+                <input type="text" class="form-control form-control-sm" [(ngModel)]="customPublishRef" placeholder="e.g. Bulk Morning Sales" />
+              </div>
+
+              <!-- Fiscal Metadata for the entire Receipt -->
+              <div class="mb-3 p-2 border rounded bg-light">
+                <span class="fw-semibold small text-secondary d-block mb-1">
+                  <i class="bi bi-person-vcard me-1"></i>Fiscal Metadata for this Receipt (Optional)
+                </span>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="pubFiscalOpt" id="pubFiscal_none" value="none" [(ngModel)]="publishFiscalOption" />
+                  <label class="form-check-label small" for="pubFiscal_none">None</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="pubFiscalOpt" id="pubFiscal_cf" value="cf" [(ngModel)]="publishFiscalOption" />
+                  <label class="form-check-label small fw-bold" for="pubFiscal_cf">Codice Fiscale</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="pubFiscalOpt" id="pubFiscal_lotteria" value="lotteria" [(ngModel)]="publishFiscalOption" />
+                  <label class="form-check-label small fw-bold" for="pubFiscal_lotteria">Codice Lotteria</label>
+                </div>
+
+                @if (publishFiscalOption !== 'none') {
+                  <div class="mt-2" style="max-width: 400px;">
+                    <input type="text" class="form-control form-control-sm text-uppercase font-monospace"
+                      [placeholder]="publishFiscalOption === 'cf' ? 'Codice Fiscale (16 caratteri)' : 'Codice Lotteria (8 caratteri)'"
+                      [maxLength]="publishFiscalOption === 'cf' ? 16 : 8"
+                      [(ngModel)]="publishFiscalInputText" />
+                  </div>
+                }
+              </div>
+
+              <h6 class="fw-bold small text-secondary mb-2"><i class="bi bi-list-check me-1"></i>Itemized Receipt Breakdown</h6>
+              <div class="table-responsive bg-light p-2 rounded border mb-3" style="max-height: 200px; overflow-y: auto;">
+                <table class="table table-sm table-hover mb-0 small bg-white">
+                  <thead>
+                    <tr>
+                      <th>Ref / Notes</th>
+                      <th>Method</th>
+                      <th class="text-end">Amount (€)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (w of selectedWrappers; track w.entryId) {
+                      <tr>
+                        <td>{{ w.notesDisplay || w.referenceNumberDisplay || 'Incasso' }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ w.paymentMethodDisplay }}</span></td>
+                        <td class="text-end fw-bold">EUR {{ w.totalWithTip.toFixed(2) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="p-3 border rounded bg-light d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Total Receipt Amount:</span>
+                <span class="h5 mb-0 font-weight-bold text-success">EUR {{ selectedSum.toFixed(2) }}</span>
+              </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+              <button class="btn btn-outline-secondary btn-sm" (click)="showPublishGroupModal = false">Cancel</button>
+              <button class="btn btn-success btn-sm fw-bold px-4" (click)="confirmPublishGroup()" [disabled]="isPublishingGroup()">
+                @if (isPublishingGroup()) {
+                  <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                } @else {
+                  <i class="bi bi-send-fill me-1"></i>
+                }
+                Confirm & Push to Spooler
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</app-main-layout>
