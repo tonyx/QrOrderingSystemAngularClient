@@ -1,0 +1,46 @@
+<app-main-layout [pageTitle]="'RestaurantHistory_PageTitle' | loc">
+  <div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h3>{{ 'RestaurantHistory_HeaderTitle' | loc }}</h3>
+      <a routerLink="/restaurantsAdmin" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> {{ 'RestaurantHistory_BackToRestaurants' | loc }}
+      </a>
+    </div>
+
+    @if (isLoading()) {
+      <div class="card p-4 text-center">
+        <div class="spinner-border text-primary mx-auto mb-3" role="status">
+          <span class="visually-hidden">{{ 'RestaurantHistory_GeneratingHistory' | loc }}</span>
+        </div>
+        <h5 class="card-title">{{ 'RestaurantHistory_GeneratingHistory' | loc }}</h5>
+        <p class="text-muted">{{ 'RestaurantHistory_GeneratingHistoryDesc' | loc }}</p>
+      </div>
+    } @else if (errorMessage()) {
+      <div class="alert alert-danger" role="alert">
+        <h5 class="alert-heading">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ 'RestaurantHistory_ErrorLoadingHistory' | loc }}
+        </h5>
+        <p>{{ errorMessage() }}</p>
+        <button class="btn btn-outline-danger mt-2" (click)="retry()">
+          {{ 'RestaurantHistory_BtnRetry' | loc }}
+        </button>
+      </div>
+    } @else if (historyJson()) {
+      <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center bg-light">
+          <h5 class="mb-0">{{ 'RestaurantHistory_HistoryReady' | loc }}</h5>
+          <button class="btn btn-success" (click)="downloadFile()">
+            <i class="bi bi-download me-1"></i> {{ 'RestaurantHistory_BtnDownloadJsonHistory' | loc }}
+          </button>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">{{ 'RestaurantHistory_HistoryLoadedSuccessDesc' | loc }}</p>
+          <div class="mb-3">
+            <label class="form-label font-monospace fw-bold">{{ 'RestaurantHistory_PreviewLabel' | loc }}</label>
+            <pre class="bg-dark text-light p-3 rounded" style="max-height: 400px; overflow-y: auto;"><code>{{ previewText() }}</code></pre>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</app-main-layout>

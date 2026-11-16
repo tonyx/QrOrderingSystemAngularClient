@@ -42,6 +42,16 @@
       </a>
 
       <a
+        routerLink="/inventory-settings"
+        routerLinkActive="active"
+        class="nav-link-item"
+        (click)="closeSidebar()"
+      >
+        <i class="bi bi-boxes"></i>
+        <span>{{ 'RestsAdmin_InventorySettings' | loc }}</span>
+      </a>
+
+      <a
         routerLink="/restaurantsAdmin"
         class="nav-link-item"
         (click)="closeSidebar()"
@@ -141,5 +151,8 @@
       </div>
     </footer>
   </div>
+
+  <!-- Interactive AI Assistant Modal & Floating Action Button -->
+  <app-qr-assistant-modal></app-qr-assistant-modal>
 </div>
 

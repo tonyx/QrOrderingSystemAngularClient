@@ -44,6 +44,8 @@ export interface PublicRestaurantDetails {
     isDisabled: boolean;
     extraCatalogueId?: string | null;
   };
+  geoLocSettings?: import('./restaurant.models').GeoLocSettings | null;
+  optCidrAddresses?: string | null;
   raw?: any;
 }
 

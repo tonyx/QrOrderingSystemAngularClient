@@ -5,6 +5,7 @@ import { LocalizationService } from '../../../core/services/localization.service
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { RestaurantService } from '../../../core/services/restaurant.service';
+import { AssistantService } from '../../../core/services/assistant.service';
 import { RestaurantItem, SelfOrderingMode, SasResponse } from '../../../core/models/restaurant.models';
 import { MenuItemModel } from '../../../core/models/menu.models';
 import { MainLayoutComponent } from '../../../shared/components/main-layout/main-layout.component';
@@ -27,6 +28,7 @@ export class RestaurantAdminComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly restaurantService = inject(RestaurantService);
+  private readonly assistantService = inject(AssistantService);
   private readonly loc = inject(LocalizationService);
 
   restaurantId = signal<string>('');
@@ -172,7 +174,13 @@ export class RestaurantAdminComponent implements OnInit, OnDestroy {
   });
 
   askAssistant(topic: string, restaurantId?: string): void {
-    this.assistantTopic.set(restaurantId ? `${topic} (${restaurantId})` : topic);
+    const lang = this.loc.currentLang();
+    const prompt =
+      lang === 'en'
+        ? `How does ${topic} work in the restaurant system?`
+        : `How does ${topic} work in the restaurant system? Please answer in Italian (Italiano).`;
+
+    this.assistantService.openQuery(prompt, restaurantId);
   }
 
   closeAssistant(): void {

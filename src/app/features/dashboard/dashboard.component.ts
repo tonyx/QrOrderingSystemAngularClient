@@ -7,6 +7,8 @@ import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { RestaurantService } from '../../core/services/restaurant.service';
 import { StripePaymentService } from '../../core/services/stripe-payment.service';
+import { AssistantService } from '../../core/services/assistant.service';
+import { MaintenanceService } from '../../core/services/maintenance.service';
 import { RestaurantItem, SelfOrderingMode } from '../../core/models/restaurant.models';
 import { MainLayoutComponent } from '../../shared/components/main-layout/main-layout.component';
 
@@ -21,6 +23,8 @@ export class DashboardComponent implements OnInit {
   protected readonly authService = inject(AuthService);
   private readonly restaurantService = inject(RestaurantService);
   private readonly stripePaymentService = inject(StripePaymentService);
+  private readonly maintenanceService = inject(MaintenanceService);
+  private readonly assistantService = inject(AssistantService);
   private readonly loc = inject(LocalizationService);
   private readonly router = inject(Router);
 
@@ -34,6 +38,11 @@ export class DashboardComponent implements OnInit {
   // Updating tracking
   protected updatingSelfOrderingIds = signal<Set<string>>(new Set());
   protected disconnectingStripeIds = signal<Set<string>>(new Set());
+
+  // Deep Reset state (matching Blazor)
+  protected restaurantToReset = signal<RestaurantItem | null>(null);
+  protected confirmRestaurantName = signal('');
+  protected isResetting = signal(false);
 
   // Quick Menu QR Modal state (matching Blazor ShowMenuQrModal)
   protected menuQrModalRestaurant = signal<RestaurantItem | null>(null);
@@ -125,6 +134,58 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  // --- Deep Reset Actions (matching Blazor) ---
+  startDeepReset(restaurant: RestaurantItem): void {
+    this.restaurantToReset.set(restaurant);
+    this.confirmRestaurantName.set('');
+  }
+
+  cancelDeepReset(): void {
+    this.restaurantToReset.set(null);
+    this.confirmRestaurantName.set('');
+  }
+
+  confirmDeepReset(): void {
+    const rest = this.restaurantToReset();
+    if (!rest || this.confirmRestaurantName() !== rest.restaurantName) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'WARNING: You are about to initiate a DEEP RESET. This will overwrite and ghost the database entries for this restaurant. ARE YOU ABSOLUTELY SURE?'
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    this.isResetting.set(true);
+    this.errorMessage.set(null);
+    this.successMessage.set(null);
+    this.createSuccessMessage.set(null);
+    this.createErrorMessage.set(null);
+
+    this.maintenanceService.ghostEventsAndSnapshots(rest.restaurantId).subscribe({
+      next: () => {
+        this.isResetting.set(false);
+        this.createSuccessMessage.set(
+          this.loc.translate('RestsAdmin_SuccessDeepReset', rest.restaurantName)
+        );
+        this.restaurantToReset.set(null);
+        this.confirmRestaurantName.set('');
+        this.loadRestaurants();
+      },
+      error: (err) => {
+        this.isResetting.set(false);
+        const errDetail = err?.error?.message || err?.error || err?.message || 'Unknown error';
+        this.errorMessage.set(
+          this.loc.translate('RestsAdmin_ErrFailedDeepReset', errDetail)
+        );
+        this.restaurantToReset.set(null);
+        this.confirmRestaurantName.set('');
+      },
+    });
+  }
+
   // --- Menu QR Modal Actions ---
   openMenuQrModal(restaurant: RestaurantItem): void {
     this.menuQrModalRestaurant.set(restaurant);
@@ -205,7 +266,13 @@ export class DashboardComponent implements OnInit {
   }
 
   askAssistant(topic: string, restaurantId: string): void {
-    this.assistantTopic.set(`${topic} (${restaurantId})`);
+    const lang = this.loc.currentLang();
+    const prompt =
+      lang === 'en'
+        ? `How does ${topic} work in the restaurant system?`
+        : `How does ${topic} work in the restaurant system? Please answer in Italian (Italiano).`;
+
+    this.assistantService.openQuery(prompt, restaurantId);
   }
 
   closeAssistant(): void {
@@ -291,6 +358,195 @@ export class DashboardComponent implements OnInit {
   noopAction(event?: Event): void {
     if (event) {
       event.preventDefault();
+    }
+  }
+
+  protected disablingGeoLocIds = signal<Set<string>>(new Set());
+
+  // Inventory management state
+  protected initializingInventoryIds = signal<Set<string>>(new Set());
+  protected disablingInventoryIds = signal<Set<string>>(new Set());
+  protected switchingInventoryModeIds = signal<Map<string, boolean>>(new Map());
+
+  initializeInventory(restaurant: RestaurantItem): void {
+    const restId = restaurant.restaurantId;
+    if (!restId || this.initializingInventoryIds().has(restId)) return;
+
+    this.initializingInventoryIds.update((set) => {
+      const next = new Set(set);
+      next.add(restId);
+      return next;
+    });
+
+    this.restaurantService.initializeStockInventorySettings(restId).subscribe({
+      next: () => {
+        this.initializingInventoryIds.update((set) => {
+          const next = new Set(set);
+          next.delete(restId);
+          return next;
+        });
+        this.successMessage.set(this.loc.translate('RestsAdmin_InventoryInitSuccess'));
+        this.loadRestaurants();
+      },
+      error: (err) => {
+        this.initializingInventoryIds.update((set) => {
+          const next = new Set(set);
+          next.delete(restId);
+          return next;
+        });
+        const errDetail = err?.error?.message || err?.message || 'Error';
+        this.errorMessage.set(this.loc.translate('RestsAdmin_InventoryInitFailed', errDetail));
+      },
+    });
+  }
+
+  toggleInventory(restaurant: RestaurantItem): void {
+    const restId = restaurant.restaurantId;
+    if (!restId || this.disablingInventoryIds().has(restId) || this.switchingInventoryModeIds().has(restId)) return;
+
+    const inv = restaurant.stockInventorySettings;
+    const isEnabled = inv?.isEnabledOnlyLoad || inv?.isEnabledWithConsumptionTracking || inv?.isEnabledWithAutonomousReplenishment;
+
+    if (isEnabled) {
+      const prompt = this.loc.translate('RestsAdmin_ConfirmDisableInventory', restaurant.restaurantName);
+      if (typeof window !== 'undefined' && !window.confirm(prompt)) {
+        return;
+      }
+
+      this.disablingInventoryIds.update((set) => {
+        const next = new Set(set);
+        next.add(restId);
+        return next;
+      });
+
+      this.restaurantService.disableStockInventorySettings(restId).subscribe({
+        next: () => {
+          this.disablingInventoryIds.update((set) => {
+            const next = new Set(set);
+            next.delete(restId);
+            return next;
+          });
+          this.successMessage.set(this.loc.translate('RestsAdmin_InventoryDisabledSuccess'));
+          this.loadRestaurants();
+        },
+        error: (err) => {
+          this.disablingInventoryIds.update((set) => {
+            const next = new Set(set);
+            next.delete(restId);
+            return next;
+          });
+          const errDetail = err?.error?.message || err?.message || 'Error';
+          this.errorMessage.set(this.loc.translate('RestsAdmin_InventoryDisableFailed', errDetail));
+        },
+      });
+    } else {
+      this.disablingInventoryIds.update((set) => {
+        const next = new Set(set);
+        next.add(restId);
+        return next;
+      });
+
+      this.restaurantService.setStockInventoryOnlyLoad(restId).subscribe({
+        next: () => {
+          this.disablingInventoryIds.update((set) => {
+            const next = new Set(set);
+            next.delete(restId);
+            return next;
+          });
+          this.successMessage.set(this.loc.translate('RestsAdmin_InventoryEnabledSuccess'));
+          this.loadRestaurants();
+        },
+        error: (err) => {
+          this.disablingInventoryIds.update((set) => {
+            const next = new Set(set);
+            next.delete(restId);
+            return next;
+          });
+          const errDetail = err?.error?.message || err?.message || 'Error';
+          this.errorMessage.set(this.loc.translate('RestsAdmin_InventoryEnableFailed', errDetail));
+        },
+      });
+    }
+  }
+
+  setInventoryMode(restaurant: RestaurantItem, isConsumptionTracking: boolean): void {
+    const restId = restaurant.restaurantId;
+    if (!restId || this.disablingInventoryIds().has(restId) || this.switchingInventoryModeIds().has(restId)) return;
+
+    this.switchingInventoryModeIds.update((map) => {
+      const next = new Map(map);
+      next.set(restId, isConsumptionTracking);
+      return next;
+    });
+
+    const action$ = isConsumptionTracking
+      ? this.restaurantService.setStockInventoryConsumptionTracking(restId)
+      : this.restaurantService.setStockInventoryOnlyLoad(restId);
+
+    action$.subscribe({
+      next: () => {
+        this.switchingInventoryModeIds.update((map) => {
+          const next = new Map(map);
+          next.delete(restId);
+          return next;
+        });
+        const msg = isConsumptionTracking
+          ? this.loc.translate('RestsAdmin_InventoryConsumptionTrackingSuccess')
+          : this.loc.translate('RestsAdmin_InventoryOnlyLoadSuccess');
+        this.successMessage.set(msg);
+        this.loadRestaurants();
+      },
+      error: (err) => {
+        this.switchingInventoryModeIds.update((map) => {
+          const next = new Map(map);
+          next.delete(restId);
+          return next;
+        });
+        const errDetail = err?.error?.message || err?.message || 'Error';
+        this.errorMessage.set(this.loc.translate('RestsAdmin_InventoryModeChangeFailed', errDetail));
+      },
+    });
+  }
+
+  toggleGeoLoc(restaurant: RestaurantItem): void {
+    const restId = restaurant.restaurantId;
+    if (!restId) return;
+
+    const isEnabled = restaurant.geoLocSettings?.isEnabled;
+    if (isEnabled) {
+      const prompt = this.loc.translate('RestsAdmin_ConfirmDisableGeoLoc', restaurant.restaurantName);
+      if (typeof window !== 'undefined' && !window.confirm(prompt)) {
+        return;
+      }
+
+      this.disablingGeoLocIds.update((set) => {
+        const next = new Set(set);
+        next.add(restId);
+        return next;
+      });
+
+      this.restaurantService.disableGeoLocSettings(restId).subscribe({
+        next: () => {
+          this.disablingGeoLocIds.update((set) => {
+            const next = new Set(set);
+            next.delete(restId);
+            return next;
+          });
+          this.loadRestaurants();
+        },
+        error: (err) => {
+          this.disablingGeoLocIds.update((set) => {
+            const next = new Set(set);
+            next.delete(restId);
+            return next;
+          });
+          this.errorMessage.set(
+            this.loc.translate('RestsAdmin_GeoLocDisableFailed', err?.error?.message || err?.message || 'Error')
+          );
+        },
+      });
+    } else {
+      this.router.navigate(['/restaurantsAdmin', restId, 'geoloc']);
     }
   }
 

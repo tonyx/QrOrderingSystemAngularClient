@@ -2,7 +2,7 @@
 
 In progress vibe-coded client for the QrOrderingSystem API using the backend of www.restaurantsystem.cloud
 
-Goal: a reference implementation for using the 
+Goal: a reference implementation of a client of the 
 www.restaurantsystem.cloud api for any independent developer or company.
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.6.

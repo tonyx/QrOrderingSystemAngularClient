@@ -1,0 +1,107 @@
+.qr-assistant-fab-container {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 1050;
+}
+
+.qr-assistant-fab {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+  position: relative;
+}
+
+.qr-assistant-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4) !important;
+}
+
+.qr-assistant-fab svg,
+.qr-assistant-fab span {
+  pointer-events: none;
+}
+
+.fab-pulse-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background-color: #10b981;
+  border: 2px solid white;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.qr-assistant-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1060;
+}
+
+.qr-assistant-panel {
+  position: fixed;
+  bottom: 5.5rem;
+  right: 2rem;
+  width: 420px;
+  max-width: calc(100vw - 3rem);
+  background: white;
+  z-index: 1070;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.super-small {
+  font-size: 0.75rem;
+}
+
+/* Modal styling matching Blazor */
+.modal-backdrop-custom {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1085;
+}
+
+@media (max-width: 576px) {
+  .qr-assistant-panel {
+    bottom: 1rem;
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+    max-width: none;
+  }
+  .qr-assistant-fab-container {
+    bottom: 1.5rem;
+    right: 1.5rem;
+  }
+}

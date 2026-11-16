@@ -1755,15 +1755,17 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
       const groupCustomItems: ArbitraryPaymentGroupItemDto[] = this.builderItems
         .filter((i) => i.isCustom && !i.isCommon && i.assignedGroupId === g.id)
         .map((i) => ({
-          MenuItemName: i.menuItemName,
+          SessionId: i.sessionId && i.sessionId !== 'CUSTOM' ? i.sessionId : null,
+          Description: i.menuItemName,
           Quantity: i.quantity,
           UnitPrice: i.unitPrice,
           IsGift: i.isGift,
         }));
 
       return {
+        GroupId: generateGuid(),
         Name: stringOrDefault(g.name, 'Group'),
-        Discount: g.discountAmount > 0 ? g.discountAmount : null,
+        Discount: g.discountAmount > 0 ? g.discountAmount : 0,
         ItemSelections: groupSessionItems,
         CustomItems: groupCustomItems,
       };
@@ -1785,7 +1787,8 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     const commonCustomItemsDto: ArbitraryPaymentGroupItemDto[] = this.builderItems
       .filter((i) => i.isCustom && i.isCommon)
       .map((i) => ({
-        MenuItemName: i.menuItemName,
+        SessionId: i.sessionId && i.sessionId !== 'CUSTOM' ? i.sessionId : null,
+        Description: i.menuItemName,
         Quantity: i.quantity,
         UnitPrice: i.unitPrice,
         IsGift: i.isGift,
@@ -1886,4 +1889,15 @@ function describeErrorObject(obj: any): string {
 
 function stringOrDefault(val: string | undefined | null, fallback: string): string {
   return val && val.trim() ? val.trim() : fallback;
+}
+
+function generateGuid(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }

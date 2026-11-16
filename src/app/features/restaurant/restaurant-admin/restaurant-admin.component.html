@@ -1180,31 +1180,6 @@
   </div>
 </app-main-layout>
 
-<!-- Modal simulation for QrAssistant / action buttons -->
-@if (assistantTopic()) {
-  <div class="modal fade show" style="display: block; background: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-dialog-centered" role="document">
-      <div class="modal-content shadow-lg border-0" style="border-radius: 1rem;">
-        <div class="modal-header bg-primary text-white" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
-          <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
-            <i class="bi bi-robot"></i> QR Assistant
-          </h5>
-          <button type="button" class="btn-close btn-close-white" (click)="closeAssistant()" aria-label="Close"></button>
-        </div>
-        <div class="modal-body p-4">
-          <p class="fw-semibold text-dark">Context: {{ assistantTopic() }}</p>
-          <p class="text-muted small mb-0">
-            This option replicates the interactive assistant and action flow from the original Blazor portal. The underlying feature endpoint is ready to be connected in subsequent migration steps.
-          </p>
-        </div>
-        <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
-          <button type="button" class="btn btn-secondary px-4" (click)="closeAssistant()">{{ 'RestAdmin_BtnClose' | loc }}</button>
-        </div>
-      </div>
-    </div>
-  </div>
-}
-
 <!-- Menu QR Code Modal (matching Blazor ShowMenuQrModal) -->
 @if (showMenuQrModal() && restaurant(); as rest) {
   <div

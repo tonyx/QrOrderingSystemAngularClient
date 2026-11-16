@@ -17,6 +17,10 @@ import { AllOrdersComponent } from './features/settlement/all-orders/all-orders.
 import { ManualLedgerComponent } from './features/settlement/manual-ledger/manual-ledger.component';
 import { EpaymentsComponent } from './features/settlement/epayments/epayments.component';
 import { RestaurantMembersComponent } from './features/restaurant/restaurant-members/restaurant-members.component';
+import { RestaurantCidrComponent } from './features/restaurant/restaurant-cidr/restaurant-cidr.component';
+import { RestaurantHistoryComponent } from './features/restaurant/restaurant-history/restaurant-history.component';
+import { RestaurantGeoLocComponent } from './features/restaurant/restaurant-geoloc/restaurant-geoloc.component';
+import { InventorySettingsComponent } from './features/restaurant/inventory-settings/inventory-settings.component';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -50,6 +54,29 @@ export const routes: Routes = [
     component: RestaurantMembersComponent,
     canActivate: [authGuard],
   },
+  // Restaurant CIDR restriction page matching Blazor (@page "/restaurantsAdmin/{RestaurantId}/cidr")
+  {
+    path: 'restaurantsAdmin/:restaurantId/cidr',
+    component: RestaurantCidrComponent,
+    canActivate: [authGuard],
+  },
+  // Restaurant History page matching Blazor (@page "/restaurantsAdmin/{RestaurantId}/history")
+  {
+    path: 'restaurantsAdmin/:restaurantId/history',
+    component: RestaurantHistoryComponent,
+    canActivate: [authGuard],
+  },
+  // Restaurant Geolocation page matching Blazor (@page "/restaurantsAdmin/{RestaurantId}/geoloc" and "/coordinates")
+  {
+    path: 'restaurantsAdmin/:restaurantId/geoloc',
+    component: RestaurantGeoLocComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'restaurantsAdmin/:restaurantId/coordinates',
+    component: RestaurantGeoLocComponent,
+    canActivate: [authGuard],
+  },
   // Menu QR Code page
   {
     path: 'restaurantsAdmin/:restaurantId/menu-qr',
@@ -75,6 +102,27 @@ export const routes: Routes = [
   {
     path: 'restaurantsAdmin/:restaurantId/qrs',
     component: ShowQrsComponent,
+    canActivate: [authGuard],
+  },
+  // Inventory Settings pages matching Blazor (@page "/restaurantsAdmin/{RestaurantId}/inventory-settings", "/restaurantsAdmin/{RestaurantId}/inventory")
+  {
+    path: 'restaurantsAdmin/:restaurantId/inventory-settings',
+    component: InventorySettingsComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'restaurantsAdmin/:restaurantId/inventory',
+    component: InventorySettingsComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'inventory-settings/:restaurantId',
+    component: InventorySettingsComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'inventory-settings',
+    component: InventorySettingsComponent,
     canActivate: [authGuard],
   },
   // Extra Catalogue page

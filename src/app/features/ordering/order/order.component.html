@@ -30,15 +30,29 @@
 }
 
 <!-- Loading State -->
-@if (isLoading()) {
+@if (isLoading() || isGeoLocVerifying()) {
   <div class="text-center py-5 my-5">
     <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
-    <p class="text-muted mt-3 fw-bold">{{ 'Order_LoadingMenu' | loc }}</p>
+    <p class="text-muted mt-3 fw-bold">
+      @if (isGeoLocVerifying()) {
+        {{ 'Order_GeoLocVerifying' | loc }}
+      } @else {
+        {{ 'Order_LoadingMenu' | loc }}
+      }
+    </p>
   </div>
 } @else {
   <div class="customer-container">
-    <!-- Error Alert -->
-    @if (errorMessage()) {
+    @if (geoLocError()) {
+      <div class="alert alert-danger shadow-sm text-center py-4 my-5" style="border-radius: 1rem;">
+        <i class="bi bi-geo-alt-fill display-4 text-danger mb-3 d-block"></i>
+        <h4 class="fw-bold">{{ 'Order_GeoLocPromptTitle' | loc }}</h4>
+        <p class="mb-3">{{ geoLocError() }}</p>
+        <button class="btn btn-outline-danger px-4 py-2" (click)="retryLocationVerification()" style="border-radius: 0.75rem;">
+          <i class="bi bi-arrow-clockwise me-2"></i>{{ 'Order_GeoLocRetryBtn' | loc }}
+        </button>
+      </div>
+    } @else if (errorMessage()) {
       <div class="alert alert-danger shadow-sm text-center py-4 my-5" style="border-radius: 1rem;">
         <svg style="width: 3rem; height: 3rem; color: #ef4444; margin-bottom: 1rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />

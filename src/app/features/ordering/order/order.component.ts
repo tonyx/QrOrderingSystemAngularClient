@@ -7,7 +7,9 @@ import { LocalizationService } from '../../../core/services/localization.service
 import { LocPipe } from '../../../core/pipes/loc.pipe';
 import { CultureSelectorComponent } from '../../../shared/components/culture-selector/culture-selector.component';
 import { PublicRestaurantDetails, MenuItemModel } from '../../../core/models/menu.models';
-import { TableModel, TableSessionModel, OrderItemModel, AggregatedOrderItem } from '../../../core/models/restaurant.models';
+import { TableModel, TableSessionModel, OrderItemModel, AggregatedOrderItem, Coordinates, DeviceCoordinatesResult } from '../../../core/models/restaurant.models';
+
+declare const window: any;
 
 interface GroupedCategory {
   category: string;
@@ -54,6 +56,13 @@ export class OrderComponent implements OnInit, OnDestroy {
   // Session state
   sessionId = signal<string | null>(null);
   showSessionConsentModal = signal(false);
+
+  // Geolocation state
+  isGeoLocRequired = signal(false);
+  isGeoLocVerifying = signal(false);
+  isGeoLocVerified = signal(true);
+  geoLocCoordinates = signal<Coordinates | null>(null);
+  geoLocError = signal<string | null>(null);
 
   // Orders in active session
   sessionItems = signal<OrderItemModel[]>([]);
@@ -383,6 +392,20 @@ export class OrderComponent implements OnInit, OnDestroy {
           },
         });
 
+        // Check geolocation configuration
+        const geoSettings = rest.geoLocSettings;
+        if (geoSettings && geoSettings.isEnabled && geoSettings.coordinates) {
+          this.isGeoLocRequired.set(true);
+          this.geoLocCoordinates.set(geoSettings.coordinates);
+          this.isGeoLocVerified.set(false);
+          this.isGeoLocVerifying.set(true);
+          this.verifyDeviceLocation();
+        } else {
+          this.isGeoLocRequired.set(false);
+          this.isGeoLocVerified.set(true);
+          this.isGeoLocVerifying.set(false);
+        }
+
         this.isLoading.set(false);
         if (onSuccess) onSuccess();
       },
@@ -669,10 +692,122 @@ export class OrderComponent implements OnInit, OnDestroy {
     this.confirmCountdown.set(0);
   }
 
+  verifyDeviceLocation(): void {
+    const coords = this.geoLocCoordinates();
+    if (!coords) {
+      this.isGeoLocVerified.set(true);
+      this.isGeoLocVerifying.set(false);
+      return;
+    }
+
+    this.isGeoLocVerifying.set(true);
+    this.geoLocError.set(null);
+
+    if (typeof window !== 'undefined' && window.restaurantMap?.getDeviceCoordinates) {
+      window.restaurantMap
+        .getDeviceCoordinates()
+        .then((locResult: DeviceCoordinatesResult) => {
+          if (locResult && locResult.success) {
+            const distance = this.calculateDistanceInMeters(
+              coords.latitude,
+              coords.longitude,
+              locResult.latitude,
+              locResult.longitude
+            );
+            if (distance <= coords.radiusInMeters) {
+              this.isGeoLocVerified.set(true);
+              this.isGeoLocVerifying.set(false);
+              this.geoLocError.set(null);
+            } else {
+              this.isGeoLocVerified.set(false);
+              this.isGeoLocVerifying.set(false);
+              this.geoLocError.set(
+                this.loc.translate('Order_ErrGeoLocRestricted', Math.round(distance), coords.radiusInMeters)
+              );
+            }
+          } else {
+            this.isGeoLocVerified.set(false);
+            this.isGeoLocVerifying.set(false);
+            if (locResult && locResult.errorCode === 1) {
+              this.geoLocError.set(this.loc.translate('Order_ErrGeoLocPermissionDenied'));
+            } else {
+              this.geoLocError.set(this.loc.translate('Order_ErrGeoLocUnavailable'));
+            }
+          }
+        })
+        .catch(() => {
+          this.isGeoLocVerified.set(false);
+          this.isGeoLocVerifying.set(false);
+          this.geoLocError.set(this.loc.translate('Order_ErrGeoLocUnavailable'));
+        });
+    } else {
+      // Fallback to HTML5 Geolocation API directly
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const distance = this.calculateDistanceInMeters(
+              coords.latitude,
+              coords.longitude,
+              pos.coords.latitude,
+              pos.coords.longitude
+            );
+            if (distance <= coords.radiusInMeters) {
+              this.isGeoLocVerified.set(true);
+              this.isGeoLocVerifying.set(false);
+              this.geoLocError.set(null);
+            } else {
+              this.isGeoLocVerified.set(false);
+              this.isGeoLocVerifying.set(false);
+              this.geoLocError.set(
+                this.loc.translate('Order_ErrGeoLocRestricted', Math.round(distance), coords.radiusInMeters)
+              );
+            }
+          },
+          (err) => {
+            this.isGeoLocVerified.set(false);
+            this.isGeoLocVerifying.set(false);
+            if (err.code === 1) {
+              this.geoLocError.set(this.loc.translate('Order_ErrGeoLocPermissionDenied'));
+            } else {
+              this.geoLocError.set(this.loc.translate('Order_ErrGeoLocUnavailable'));
+            }
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      } else {
+        this.isGeoLocVerified.set(false);
+        this.isGeoLocVerifying.set(false);
+        this.geoLocError.set(this.loc.translate('Order_ErrGeoLocUnavailable'));
+      }
+    }
+  }
+
+  retryLocationVerification(): void {
+    this.verifyDeviceLocation();
+  }
+
+  private calculateDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const r = 6371000.0;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180.0;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180.0;
+    const l1 = (lat1 * Math.PI) / 180.0;
+    const l2 = (lat2 * Math.PI) / 180.0;
+    const a =
+      Math.sin(dLat / 2.0) * Math.sin(dLat / 2.0) +
+      Math.cos(l1) * Math.cos(l2) * Math.sin(dLon / 2.0) * Math.sin(dLon / 2.0);
+    const c = 2.0 * Math.atan2(Math.sqrt(a), Math.sqrt(1.0 - a));
+    return r * c;
+  }
+
   private fireConfirmOrder(): void {
     const sess = this.sessionId();
     const tbl = this.matchedTable();
     if (!sess || !tbl || this.tableNumber === null) return;
+
+    if (this.isGeoLocRequired() && !this.isGeoLocVerified()) {
+      this.actionError.set(this.geoLocError() || this.loc.translate('Order_ErrGeoLocUnavailable'));
+      return;
+    }
 
     this.isBusy.set(true);
     this.actionError.set(null);

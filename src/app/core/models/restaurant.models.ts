@@ -66,8 +66,10 @@ export interface SelfOrderingConfig {
 export interface StockInventorySettings {
   isUnavailable?: boolean;
   isEnabledOnlyLoad?: boolean;
+  isEnabledWithAutonomousReplenishment?: boolean;
   isEnabledWithConsumptionTracking?: boolean;
   isDisabled?: boolean;
+  inventoryId?: string | null;
 }
 
 export interface SasResponse {
@@ -83,6 +85,26 @@ export interface VatDepartmentCodeAndRate {
 export interface TipHintItem {
   percentage: number;
   isDefault: boolean;
+}
+
+export interface Coordinates {
+  latitude: number;
+  longitude: number;
+  radiusInMeters: number;
+}
+
+export interface GeoLocSettings {
+  isEnabled: boolean;
+  coordinates?: Coordinates | null;
+}
+
+export interface DeviceCoordinatesResult {
+  success: boolean;
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  errorCode: number;
+  errorMessage?: string | null;
 }
 
 export interface ExtraCatalogueSetting {
@@ -117,6 +139,8 @@ export interface RestaurantItem {
   subscription?: RestaurantSubscription;
   isExpired?: boolean;
   stockInventorySettings?: StockInventorySettings;
+  optCidrAddresses?: string | null;
+  geoLocSettings?: GeoLocSettings | null;
   items?: import('./menu.models').MenuItemModel[];
   categoriesOrdering?: Record<number, string | null>;
   raw?: unknown;
@@ -202,13 +226,15 @@ export interface SettlePayAtCounterItemSelectionDto {
 }
 
 export interface ArbitraryPaymentGroupItemDto {
-  MenuItemName: string;
+  SessionId?: string | null;
+  Description: string;
   Quantity: number;
   UnitPrice: number;
   IsGift: boolean;
 }
 
 export interface CreatePaymentGroupDto {
+  GroupId?: string;
   Name: string;
   Discount?: number | null;
   ItemSelections: SettlePayAtCounterItemSelectionDto[];

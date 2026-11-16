@@ -147,6 +147,80 @@ export class RestaurantService {
     );
   }
 
+  getClientIp(): Observable<string> {
+    const url = `${this.baseUrl}/api/Restaurant/client-ip`;
+    return this.http.get(url, { responseType: 'text' });
+  }
+
+  setCidrAddresses(restaurantId: string, cidrAddress: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/cidr`;
+    return this.http.post<void>(url, JSON.stringify(cidrAddress), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  getHistory(restaurantId: string): Observable<string> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/history`;
+    return this.http.get(url, { responseType: 'text' });
+  }
+
+  unsetCidrAddresses(restaurantId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/cidr/unset`;
+    return this.http.post<void>(url, null);
+  }
+
+  // --- Geolocation Endpoints ---
+  getGeoLocSettings(restaurantId: string): Observable<any> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/geoloc`;
+    return this.http.get<any>(url);
+  }
+
+  setGeoLocSettings(restaurantId: string, latitude: number, longitude: number, radiusInMeters: number): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/geoloc`;
+    const payload = {
+      Case: 'Enabled',
+      Fields: [
+        {
+          Latitude: latitude,
+          Longitude: longitude,
+          RadiusInMeters: radiusInMeters,
+        },
+      ],
+    };
+    return this.http.post<void>(url, payload);
+  }
+
+  disableGeoLocSettings(restaurantId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/geoloc/disable`;
+    return this.http.post<void>(url, null);
+  }
+
+  // --- Stock Inventory Settings Endpoints ---
+  initializeStockInventorySettings(restaurantId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/initialize`;
+    return this.http.post<void>(url, null);
+  }
+
+  setStockInventoryOnlyLoad(restaurantId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/set-only-load`;
+    return this.http.post<void>(url, null);
+  }
+
+  setStockInventoryAutonomousReplenishment(restaurantId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/set-autonomous-replenishment`;
+    return this.http.post<void>(url, null);
+  }
+
+  setStockInventoryConsumptionTracking(restaurantId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/set-consumption-tracking`;
+    return this.http.post<void>(url, null);
+  }
+
+  disableStockInventorySettings(restaurantId: string): Observable<void> {
+    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/disable`;
+    return this.http.post<void>(url, null);
+  }
+
   // --- Self-Ordering Endpoints ---
   setNoSelfOrdering(restaurantId: string): Observable<void> {
     const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/self-ordering/no`;
@@ -1240,6 +1314,45 @@ export class RestaurantService {
       showTips,
       tipsHints,
       extraCatalogueSetting: extraCatSetting,
+      geoLocSettings: (() => {
+        const rawGeo = raw?.geoLocSettings ?? raw?.GeoLocSettings;
+        if (!rawGeo) return null;
+        const geoCase = rawGeo.case || rawGeo.Case;
+        if (geoCase === 'Enabled' || geoCase === 1) {
+          const coordsObj = rawGeo.fields?.[0] || rawGeo.Fields?.[0] || rawGeo.coordinates || rawGeo.Coordinates;
+          if (coordsObj) {
+            const lat = coordsObj.latitude ?? coordsObj.Latitude ?? 0;
+            const lng = coordsObj.longitude ?? coordsObj.Longitude ?? 0;
+            const rad = coordsObj.radiusInMeters ?? coordsObj.RadiusInMeters ?? 50;
+            return {
+              isEnabled: true,
+              coordinates: {
+                latitude: Number(lat),
+                longitude: Number(lng),
+                radiusInMeters: Number(rad),
+              },
+            };
+          }
+        }
+        return {
+          isEnabled: false,
+          coordinates: null,
+        };
+      })(),
+      optCidrAddresses: (() => {
+        const rawCidr = raw?.optCidrAddresses ?? raw?.OptCidrAddresses;
+        if (!rawCidr) return null;
+        if (typeof rawCidr === 'string') return rawCidr;
+        if (typeof rawCidr === 'object') {
+          const val = rawCidr.fields?.[0] || rawCidr.Fields?.[0] || rawCidr.value || rawCidr.Value;
+          if (typeof val === 'string') return val;
+          if (typeof val === 'object' && val !== null) {
+            const inner = val.fields?.[0] || val.Fields?.[0] || val.value || val.Value;
+            if (typeof inner === 'string') return inner;
+          }
+        }
+        return null;
+      })(),
       raw,
     };
   }
@@ -1682,7 +1795,101 @@ export class RestaurantService {
       selfOrderingConfig: selfOrderConfig,
       subscription: subObj,
       isExpired,
-      stockInventorySettings: raw?.stockInventorySettings ?? raw?.StockInventorySettings,
+      optCidrAddresses: (() => {
+        const rawCidr = raw?.optCidrAddresses ?? raw?.OptCidrAddresses;
+        if (!rawCidr) return null;
+        if (typeof rawCidr === 'string') return rawCidr;
+        if (typeof rawCidr === 'object') {
+          // Could be F# Some(CidrAddresses(string)) or Option<string>
+          const val = rawCidr.fields?.[0] || rawCidr.Fields?.[0] || rawCidr.value || rawCidr.Value;
+          if (typeof val === 'string') return val;
+          if (typeof val === 'object' && val !== null) {
+            const inner = val.fields?.[0] || val.Fields?.[0] || val.value || val.Value;
+            if (typeof inner === 'string') return inner;
+          }
+        }
+        return null;
+      })(),
+      geoLocSettings: (() => {
+        const rawGeo = raw?.geoLocSettings ?? raw?.GeoLocSettings;
+        if (!rawGeo) return null;
+        const geoCase = rawGeo.case || rawGeo.Case;
+        if (geoCase === 'Enabled' || geoCase === 1) {
+          const coordsObj = rawGeo.fields?.[0] || rawGeo.Fields?.[0] || rawGeo.coordinates || rawGeo.Coordinates;
+          if (coordsObj) {
+            const lat = coordsObj.latitude ?? coordsObj.Latitude ?? 0;
+            const lng = coordsObj.longitude ?? coordsObj.Longitude ?? 0;
+            const rad = coordsObj.radiusInMeters ?? coordsObj.RadiusInMeters ?? 50;
+            return {
+              isEnabled: true,
+              coordinates: {
+                latitude: Number(lat),
+                longitude: Number(lng),
+                radiusInMeters: Number(rad),
+              },
+            };
+          }
+        }
+        return {
+          isEnabled: false,
+          coordinates: null,
+        };
+      })(),
+      stockInventorySettings: (() => {
+        const rawInv = raw?.stockInventorySettings ?? raw?.StockInventorySettings;
+        if (!rawInv) return { isUnavailable: true };
+        const caseName = (rawInv.case || rawInv.Case || (typeof rawInv === 'string' ? rawInv : '')).toString();
+        const firstField = rawInv.fields?.[0] || rawInv.Fields?.[0];
+        const invId = typeof firstField === 'string'
+          ? firstField
+          : (firstField?.fields?.[0] || firstField?.value || firstField?.Value || null);
+
+        if (caseName === 'EnabledOnlyLoad') {
+          return {
+            isUnavailable: false,
+            isEnabledOnlyLoad: true,
+            isEnabledWithAutonomousReplenishment: false,
+            isEnabledWithConsumptionTracking: false,
+            isDisabled: false,
+            inventoryId: invId,
+          };
+        } else if (caseName === 'EnabledWithAutonomousReplenishment') {
+          return {
+            isUnavailable: false,
+            isEnabledOnlyLoad: false,
+            isEnabledWithAutonomousReplenishment: true,
+            isEnabledWithConsumptionTracking: false,
+            isDisabled: false,
+            inventoryId: invId,
+          };
+        } else if (caseName === 'EnabledWithConsumptionTracking') {
+          return {
+            isUnavailable: false,
+            isEnabledOnlyLoad: false,
+            isEnabledWithAutonomousReplenishment: false,
+            isEnabledWithConsumptionTracking: true,
+            isDisabled: false,
+            inventoryId: invId,
+          };
+        } else if (caseName === 'Disabled') {
+          return {
+            isUnavailable: false,
+            isEnabledOnlyLoad: false,
+            isEnabledWithAutonomousReplenishment: false,
+            isEnabledWithConsumptionTracking: false,
+            isDisabled: true,
+            inventoryId: invId,
+          };
+        }
+        return {
+          isUnavailable: true,
+          isEnabledOnlyLoad: false,
+          isEnabledWithAutonomousReplenishment: false,
+          isEnabledWithConsumptionTracking: false,
+          isDisabled: false,
+          inventoryId: null,
+        };
+      })(),
       items: menuDetails.items,
       categoriesOrdering: menuDetails.categoriesOrdering,
       raw,

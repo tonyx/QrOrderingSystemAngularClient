@@ -1,0 +1,157 @@
+<app-main-layout [pageTitle]="'RestaurantCidr_PageTitle' | loc">
+  @if (isLoading()) {
+    <div class="d-flex justify-content-center my-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">{{ 'RestaurantCidr_PageTitle' | loc }}</span>
+      </div>
+    </div>
+  } @else {
+    <div class="premium-container">
+      <a routerLink="/restaurantsAdmin" class="back-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l-4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/>
+        </svg>
+        {{ 'RestaurantCidr_BackToRestaurants' | loc }}
+      </a>
+
+      @if (!restaurant()) {
+        @if (errorMessage()) {
+          <div class="alert alert-danger shadow-sm">{{ errorMessage() }}</div>
+        } @else {
+          <div class="d-flex justify-content-center my-5">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">{{ 'RestaurantCidr_PageTitle' | loc }}</span>
+            </div>
+          </div>
+        }
+      } @else {
+        <div class="premium-card">
+          <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+            <div>
+              <h3 class="table-title">{{ 'RestaurantCidr_Title' | loc }}</h3>
+              <p class="table-subtitle mb-0">{{ 'RestaurantCidr_Subtitle' | loc }}</p>
+            </div>
+            <div>
+              <span class="badge bg-primary fs-6">{{ restaurant()?.restaurantName }}</span>
+            </div>
+          </div>
+
+          @if (actionErrorMessage()) {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+              {{ actionErrorMessage() }}
+              <button type="button" class="btn-close" (click)="actionErrorMessage.set(null)" aria-label="Close"></button>
+            </div>
+          }
+
+          @if (actionSuccessMessage()) {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+              {{ actionSuccessMessage() }}
+              <button type="button" class="btn-close" (click)="actionSuccessMessage.set(null)" aria-label="Close"></button>
+            </div>
+          }
+
+          @if (validationErrors().length > 0) {
+            <div class="alert alert-warning">
+              <h6 class="alert-heading font-weight-bold">{{ 'RestaurantCidr_ValidationErrorsHeader' | loc }}</h6>
+              <ul class="mb-0 ps-3">
+                @for (error of validationErrors(); track error) {
+                  <li>{{ error }}</li>
+                }
+              </ul>
+            </div>
+          }
+
+          <div class="card mb-4 bg-light border-0">
+            <div class="card-body">
+              <h5 class="card-title text-secondary">{{ 'RestaurantCidr_CurrentStatus' | loc }}</h5>
+              @if (restaurant()?.optCidrAddresses) {
+                <div class="d-flex align-items-center gap-3">
+                  <span class="badge bg-success py-2 px-3 fs-6">{{ 'RestaurantCidr_ActiveRestriction' | loc }}</span>
+                  <code class="fs-5 text-dark">{{ restaurant()?.optCidrAddresses }}</code>
+                </div>
+                <p class="text-muted mt-2 mb-0" style="font-size: 0.875rem;">
+                  {{ 'RestaurantCidr_ActiveRestrictionDesc' | loc }}
+                </p>
+              } @else {
+                <div class="d-flex align-items-center gap-3">
+                  <span class="badge bg-secondary py-2 px-3 fs-6">{{ 'RestaurantCidr_Inactive' | loc }}</span>
+                  <span class="text-muted">{{ 'RestaurantCidr_InactiveDesc' | loc }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <div class="card mb-4 border border-light shadow-sm">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+              <span class="fw-bold text-secondary">{{ 'RestaurantCidr_ConnectionInfoTitle' | loc }}</span>
+              @if (detectedIp() !== 'Detecting...' && !detectedIp().includes('Could not detect')) {
+                <button type="button" class="btn btn-sm btn-outline-primary" (click)="autoFillDetectedIp()">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-plus-circle me-1" viewBox="0 0 16 16">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                    <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 .5-.5"/>
+                  </svg>
+                  {{ 'RestaurantCidr_BtnUseMyIp' | loc }}
+                </button>
+              }
+            </div>
+            <div class="card-body">
+              <div class="row align-items-center">
+                <div class="col-md-6 mb-2 mb-md-0">
+                  <div class="small text-muted">{{ 'RestaurantCidr_DetectedIpLabel' | loc }}</div>
+                  <div class="fw-bold text-primary font-monospace">{{ detectedIp() }}</div>
+                  <div class="small text-secondary mt-1">{{ 'RestaurantCidr_TypeLabel' | loc:ipType() }}</div>
+                </div>
+                <div class="col-md-6">
+                  <div class="small text-muted">{{ 'RestaurantCidr_ProxyHeadersLabel' | loc }}</div>
+                  <div class="bg-light p-2 rounded border font-monospace text-muted small" style="max-height: 80px; overflow-y: auto; white-space: pre-wrap;">{{ rawHeaders() }}</div>
+                </div>
+              </div>
+              <div class="mt-3 p-2 bg-light rounded border-start border-primary border-4 small text-muted">
+                <strong>Note on "Use My IP":</strong> {{ 'RestaurantCidr_UseMyIpNote' | loc }}
+                <br/>
+                <strong>If the address is IPv6 </strong>{{ 'RestaurantCidr_Ipv6Note' | loc }}
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="cidrInput" class="form-label font-weight-bold text-dark">{{ 'RestaurantCidr_InputLabel' | loc }}</label>
+            <textarea
+              id="cidrInput"
+              class="form-control font-monospace"
+              rows="3"
+              [placeholder]="'RestaurantCidr_InputPlaceholder' | loc"
+              [ngModel]="cidrAddressInput()"
+              (ngModelChange)="cidrAddressInput.set($event)"
+            ></textarea>
+            <div class="form-text text-muted">
+              {{ 'RestaurantCidr_InputHelp' | loc }}
+            </div>
+          </div>
+
+          <div class="d-flex gap-3">
+            <button class="btn btn-primary px-4 py-2" (click)="saveCidrAddresses()" [disabled]="isBusy()">
+              @if (isBusy()) {
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span>{{ 'RestaurantCidr_BtnSaving' | loc }}</span>
+              } @else {
+                <span>{{ 'RestaurantCidr_BtnSaveRestrictions' | loc }}</span>
+              }
+            </button>
+
+            @if (restaurant()?.optCidrAddresses) {
+              <button class="btn btn-outline-danger px-4 py-2" (click)="unsetCidrAddresses()" [disabled]="isBusy()">
+                @if (isBusy()) {
+                  <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  <span>{{ 'RestaurantCidr_BtnUnsetting' | loc }}</span>
+                } @else {
+                  <span>{{ 'RestaurantCidr_BtnRemoveRestrictions' | loc }}</span>
+                }
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</app-main-layout>

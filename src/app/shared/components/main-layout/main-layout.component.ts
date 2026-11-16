@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { CultureSelectorComponent } from '../culture-selector/culture-selector.component';
+import { QrAssistantModalComponent } from '../qr-assistant-modal/qr-assistant-modal.component';
 import { LocPipe } from '../../../core/pipes/loc.pipe';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, CultureSelectorComponent, LocPipe],
+  imports: [CommonModule, RouterModule, CultureSelectorComponent, QrAssistantModalComponent, LocPipe],
   templateUrl: './main-layout.component.html',
   styleUrls: ['./main-layout.component.css'],
 })
