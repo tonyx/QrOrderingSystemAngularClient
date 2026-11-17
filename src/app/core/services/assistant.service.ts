@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { HowtoAssistantService } from '../api/endpoints/howto-assistant/howto-assistant.service';
 
 export interface HowToItemRecord {
   id?: string;
@@ -35,8 +34,7 @@ export interface AssistantAnswerResponse {
   providedIn: 'root',
 })
 export class AssistantService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.apiBaseUrl ? environment.apiBaseUrl.replace(/\/$/, '') : '';
+  private readonly howtoApi = inject(HowtoAssistantService);
 
   getOrCreateGuestDeviceId(): string {
     const key = 'qr_assistant_guest_id';
@@ -53,27 +51,24 @@ export class AssistantService {
   }
 
   askAssistant(question: string, topN: number = 5, language?: string): Observable<AssistantAnswerResponse> {
-    const url = `${this.baseUrl}/api/HowTo/ask`;
     const guestDeviceId = this.getOrCreateGuestDeviceId();
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json',
-      'X-Guest-Device-Id': guestDeviceId,
-    });
-
-    const payload: { question: string; topN: number; language?: string } = {
-      question,
-      topN,
-    };
-    if (language) {
-      payload.language = language;
-    }
-
-    return this.http.post<AssistantAnswerResponse>(url, payload, { headers });
+    return this.howtoApi.postApiHowToAsk(
+      {
+        question,
+        topN,
+        language: language || undefined,
+      },
+      'application/json',
+      {
+        headers: {
+          'X-Guest-Device-Id': guestDeviceId,
+        },
+      }
+    ) as unknown as Observable<AssistantAnswerResponse>;
   }
 
   getHowToItem(id: string): Observable<HowToItemRecord> {
-    const url = `${this.baseUrl}/api/HowTo/${id}`;
-    return this.http.get<HowToItemRecord>(url);
+    return this.howtoApi.getApiHowToId(id, 'application/json') as unknown as Observable<HowToItemRecord>;
   }
 
   openQuery(prompt: string, restaurantId?: string | null): void {

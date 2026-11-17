@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { ManualLedgerFiscalSpoolerService } from '../api/endpoints/manual-ledger-fiscal-spooler/manual-ledger-fiscal-spooler.service';
 import {
   ManualLedger,
   ManualLedgerEntry,
@@ -15,45 +15,52 @@ import {
   providedIn: 'root',
 })
 export class ManualLedgerService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = '/api/ManualLedger';
+  private readonly spoolerApi = inject(ManualLedgerFiscalSpoolerService);
 
   getLedgersByRestaurant(restaurantId: string): Observable<ManualLedger[]> {
-    return this.http
-      .get<any[]>(`${this.baseUrl}/restaurant/${restaurantId}/list`)
-      .pipe(map((list) => (Array.isArray(list) ? list.map((l) => this.normalizeLedger(l)) : [])));
+    return this.spoolerApi
+      .getApiManualLedgerRestaurantRestaurantIdList(restaurantId, 'application/json')
+      .pipe(map((list: any) => (Array.isArray(list) ? list.map((l: any) => this.normalizeLedger(l)) : [])));
   }
 
   getLedger(restaurantId: string, ledgerId: string): Observable<ManualLedger> {
-    return this.http
-      .get<any>(`${this.baseUrl}/restaurant/${restaurantId}/ledger/${ledgerId}`)
-      .pipe(map((l) => this.normalizeLedger(l)));
+    return this.spoolerApi
+      .getApiManualLedgerRestaurantRestaurantIdLedgerLedgerId(restaurantId, ledgerId, 'application/json')
+      .pipe(map((l: any) => this.normalizeLedger(l)));
   }
 
   createLedger(restaurantId: string, request: CreateManualLedgerRequest): Observable<ManualLedger> {
-    return this.http
-      .post<any>(`${this.baseUrl}/restaurant/${restaurantId}/create`, request)
-      .pipe(map((l) => this.normalizeLedger(l)));
+    return this.spoolerApi
+      .postApiManualLedgerRestaurantRestaurantIdCreate(restaurantId, request as any, 'application/json')
+      .pipe(map((l: any) => this.normalizeLedger(l)));
   }
 
   addEntry(restaurantId: string, ledgerId: string, entry: Partial<ManualLedgerEntry>): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/restaurant/${restaurantId}/ledger/${ledgerId}/add-entry`, entry);
+    return this.spoolerApi.postApiManualLedgerRestaurantRestaurantIdLedgerLedgerIdAddEntry(
+      restaurantId,
+      ledgerId,
+      entry as any
+    );
   }
 
   removeEntry(restaurantId: string, ledgerId: string, entryId: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/restaurant/${restaurantId}/ledger/${ledgerId}/remove-entry/${entryId}`, null);
+    return this.spoolerApi.postApiManualLedgerRestaurantRestaurantIdLedgerLedgerIdRemoveEntryEntryId(
+      restaurantId,
+      ledgerId,
+      entryId
+    );
   }
 
   closeLedger(restaurantId: string, ledgerId: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/restaurant/${restaurantId}/ledger/${ledgerId}/close`, null);
+    return this.spoolerApi.postApiManualLedgerRestaurantRestaurantIdLedgerLedgerIdClose(restaurantId, ledgerId);
   }
 
   reopenLedger(restaurantId: string, ledgerId: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/restaurant/${restaurantId}/ledger/${ledgerId}/reopen`, null);
+    return this.spoolerApi.postApiManualLedgerRestaurantRestaurantIdLedgerLedgerIdReopen(restaurantId, ledgerId);
   }
 
   removeLedger(restaurantId: string, ledgerId: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/restaurant/${restaurantId}/ledger/${ledgerId}`);
+    return this.spoolerApi.deleteApiManualLedgerRestaurantRestaurantIdLedgerLedgerId(restaurantId, ledgerId);
   }
 
   publishGroupedEntries(
@@ -61,25 +68,33 @@ export class ManualLedgerService {
     ledgerId: string,
     request: PublishGroupRequest
   ): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/restaurant/${restaurantId}/ledger/${ledgerId}/publish-group`, request);
+    return this.spoolerApi.postApiManualLedgerRestaurantRestaurantIdLedgerLedgerIdPublishGroup(
+      restaurantId,
+      ledgerId,
+      request as any
+    );
   }
 
   getApiKey(restaurantId: string): Observable<ApiKeyResponse> {
-    return this.http.get<any>(`${this.baseUrl}/restaurant/${restaurantId}/api-key`).pipe(
-      map((res) => ({
-        apiKey: typeof res === 'string' ? res : res?.apiKey ?? res?.ApiKey ?? '',
-        authorizationHeader: res?.authorizationHeader ?? res?.AuthorizationHeader,
-      }))
-    );
+    return this.spoolerApi
+      .getApiLedgerIntegrationRestaurantIdApiKey(restaurantId, 'application/json')
+      .pipe(
+        map((res: any) => ({
+          apiKey: typeof res === 'string' ? res : res?.apiKey ?? res?.ApiKey ?? '',
+          authorizationHeader: res?.authorizationHeader ?? res?.AuthorizationHeader,
+        }))
+      );
   }
 
   getIntegrationStatus(restaurantId: string): Observable<IntegrationStatusResponse> {
-    return this.http.get<any>(`${this.baseUrl}/restaurant/${restaurantId}/integration-status`).pipe(
-      map((res) => ({
-        enabled: Boolean(res?.enabled ?? res?.Enabled ?? false),
-        unconsumedCount: Number(res?.unconsumedCount ?? res?.UnconsumedCount ?? 0),
-      }))
-    );
+    return this.spoolerApi
+      .getApiLedgerIntegrationRestaurantIdStatus(restaurantId, 'application/json')
+      .pipe(
+        map((res: any) => ({
+          enabled: Boolean(res?.enabled ?? res?.Enabled ?? false),
+          unconsumedCount: Number(res?.unconsumedCount ?? res?.UnconsumedCount ?? 0),
+        }))
+      );
   }
 
   private normalizeDate(val: any): string {

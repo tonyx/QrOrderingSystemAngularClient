@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { StockInventoryService as StockInventoryApiService } from '../api/endpoints/stock-inventory/stock-inventory.service';
 import {
   StockInventory,
   ProductResponse,
@@ -14,23 +14,24 @@ import {
   providedIn: 'root',
 })
 export class StockInventoryService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = '';
+  private readonly stockApi = inject(StockInventoryApiService);
 
   /**
    * Retrieves the active stock inventory for the specified restaurant.
    */
   getStockInventoryByRestaurant(restaurantId: string): Observable<StockInventory> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory`;
-    return this.http.get<StockInventory>(url);
+    return this.stockApi.getApiStockInventoryRestaurantRestaurantIdInventory(restaurantId, 'application/json') as unknown as Observable<StockInventory>;
   }
 
   /**
    * Retrieves a specific stock inventory aggregate by its ID.
    */
   getStockInventory(restaurantId: string, stockInventoryId: string): Observable<StockInventory> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}`;
-    return this.http.get<StockInventory>(url);
+    return this.stockApi.getApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryId(
+      restaurantId,
+      stockInventoryId,
+      'application/json'
+    ) as unknown as Observable<StockInventory>;
   }
 
   /**
@@ -38,19 +39,25 @@ export class StockInventoryService {
    */
   getProductInfoByBarcode(restaurantId: string, barcode: string): Observable<ProductResponse> {
     const enc = encodeURIComponent(barcode || '');
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/product-info/${enc}`;
-    return this.http.get<ProductResponse>(url);
+    return this.stockApi.getApiStockInventoryRestaurantRestaurantIdProductInfoBarcode(
+      restaurantId,
+      enc,
+      'application/json'
+    ) as unknown as Observable<ProductResponse>;
   }
 
   /**
    * Searches products by name/query.
    */
   searchProductsByName(restaurantId: string, query: string, pageSize?: number): Observable<ProductResponse[]> {
-    let url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/search-products?query=${encodeURIComponent(query || '')}`;
-    if (pageSize) {
-      url += `&pageSize=${pageSize}`;
-    }
-    return this.http.get<ProductResponse[]>(url);
+    return this.stockApi.getApiStockInventoryRestaurantRestaurantIdSearchProducts(
+      restaurantId,
+      'application/json',
+      {
+        query: query || '',
+        pageSize,
+      }
+    ) as unknown as Observable<ProductResponse[]>;
   }
 
   /**
@@ -62,11 +69,14 @@ export class StockInventoryService {
     item: StockInventoryItem,
     stockLevel: StockLevel
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/add-with-initial-stock-level`;
-    return this.http.post<void>(url, {
-      Item: item,
-      StockLevel: stockLevel,
-    });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemAddWithInitialStockLevel(
+      restaurantId,
+      stockInventoryId,
+      {
+        item: item as any,
+        stockLevel: stockLevel as any,
+      }
+    );
   }
 
   /**
@@ -78,8 +88,12 @@ export class StockInventoryService {
     itemId: string,
     quantity: any
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/quantity/add`;
-    return this.http.post<void>(url, quantity);
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdQuantityAdd(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      quantity
+    );
   }
 
   /**
@@ -92,11 +106,15 @@ export class StockInventoryService {
     quantity: any,
     inboundReference: InboundReference2
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/quantity/add-with-inbound-reference`;
-    return this.http.post<void>(url, {
-      Quantity: quantity,
-      InboundReference: inboundReference,
-    });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdQuantityAddWithInboundReference(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      {
+        quantity,
+        inboundReference: inboundReference as any,
+      }
+    );
   }
 
   /**
@@ -108,8 +126,12 @@ export class StockInventoryService {
     itemId: string,
     barcode: any
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/barcode/attach`;
-    return this.http.post<void>(url, barcode);
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdBarcodeAttach(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      barcode
+    );
   }
 
   /**
@@ -121,8 +143,12 @@ export class StockInventoryService {
     itemId: string,
     barcode: any
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/barcode/detach`;
-    return this.http.post<void>(url, barcode);
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdBarcodeDetach(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      barcode
+    );
   }
 
   /**
@@ -134,8 +160,12 @@ export class StockInventoryService {
     itemId: string,
     stockLevel: StockLevel
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/stock-level/add`;
-    return this.http.post<void>(url, stockLevel);
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdStockLevelAdd(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      stockLevel as any
+    );
   }
 
   /**
@@ -147,16 +177,24 @@ export class StockInventoryService {
     itemId: string,
     openContent: any
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/open-container/adjust`;
-    return this.http.post<void>(url, { OpenContent: openContent });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdOpenContainerAdjust(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      { openContent }
+    );
   }
 
   /**
    * Unseals a package into the active open container.
    */
   unsealPackage(restaurantId: string, stockInventoryId: string, itemId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/package/unseal`;
-    return this.http.post<void>(url, {});
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdPackageUnseal(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      {}
+    );
   }
 
   /**
@@ -170,12 +208,16 @@ export class StockInventoryService {
     brand: string | null,
     trackingMode: any
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/update-with-mode`;
-    return this.http.post<void>(url, {
-      Name: name,
-      Brand: brand || null,
-      TrackingMode: trackingMode,
-    });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdUpdateWithMode(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      {
+        name,
+        brand: brand || null,
+        trackingMode,
+      }
+    );
   }
 
   /**
@@ -187,8 +229,12 @@ export class StockInventoryService {
     itemId: string,
     tag: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/category-tag/attach`;
-    return this.http.post<void>(url, { Tag: tag });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdCategoryTagAttach(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      { tag }
+    );
   }
 
   /**
@@ -200,16 +246,29 @@ export class StockInventoryService {
     itemId: string,
     tag: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/item/${itemId}/category-tag/detach`;
-    return this.http.post<void>(url, { Tag: tag });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdCategoryTagDetach(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      { tag }
+    );
   }
 
   /**
    * Removes (soft deletes) an inventory item.
    */
-  removeStockInventoryItem(restaurantId: string, itemId: string, name: string): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/item/${itemId}/remove`;
-    return this.http.post<void>(url, { Name: name });
+  removeStockInventoryItem(
+    restaurantId: string,
+    stockInventoryId: string,
+    itemId: string,
+    name: string
+  ): Observable<void> {
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdItemItemIdRemove(
+      restaurantId,
+      stockInventoryId,
+      itemId,
+      { name }
+    );
   }
 
   // --- Equivalence Classes ---
@@ -218,8 +277,11 @@ export class StockInventoryService {
     stockInventoryId: string,
     eqClass: StockEquivalenceClass
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/equivalence-classes`;
-    return this.http.post<void>(url, eqClass);
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdEquivalenceClasses(
+      restaurantId,
+      stockInventoryId,
+      eqClass as any
+    );
   }
 
   removeEquivalenceClass(
@@ -227,8 +289,12 @@ export class StockInventoryService {
     stockInventoryId: string,
     classId: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/equivalence-classes/${classId}/remove`;
-    return this.http.post<void>(url, {});
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdEquivalenceClassesClassIdRemove(
+      restaurantId,
+      stockInventoryId,
+      classId,
+      {}
+    );
   }
 
   renameEquivalenceClass(
@@ -237,8 +303,12 @@ export class StockInventoryService {
     classId: string,
     name: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/equivalence-classes/${classId}/rename`;
-    return this.http.post<void>(url, { Name: name });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdEquivalenceClassesClassIdRename(
+      restaurantId,
+      stockInventoryId,
+      classId,
+      { name }
+    );
   }
 
   addItemToEquivalenceClass(
@@ -247,8 +317,13 @@ export class StockInventoryService {
     classId: string,
     itemId: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/equivalence-classes/${classId}/items/${itemId}`;
-    return this.http.post<void>(url, {});
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdEquivalenceClassesClassIdItemsItemId(
+      restaurantId,
+      stockInventoryId,
+      classId,
+      itemId,
+      {}
+    );
   }
 
   removeItemFromEquivalenceClass(
@@ -257,8 +332,13 @@ export class StockInventoryService {
     classId: string,
     itemId: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/equivalence-classes/${classId}/items/${itemId}/remove`;
-    return this.http.post<void>(url, {});
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdEquivalenceClassesClassIdItemsItemIdRemove(
+      restaurantId,
+      stockInventoryId,
+      classId,
+      itemId,
+      {}
+    );
   }
 
   setEquivalenceClassDefaultItem(
@@ -267,8 +347,13 @@ export class StockInventoryService {
     classId: string,
     itemId: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/equivalence-classes/${classId}/default-item/${itemId}`;
-    return this.http.post<void>(url, {});
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdEquivalenceClassesClassIdDefaultItemItemId(
+      restaurantId,
+      stockInventoryId,
+      classId,
+      itemId,
+      {}
+    );
   }
 
   moveItemBetweenEquivalenceClasses(
@@ -278,8 +363,14 @@ export class StockInventoryService {
     toClassId: string,
     itemId: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/equivalence-classes/${fromClassId}/move-item/${itemId}/to/${toClassId}`;
-    return this.http.post<void>(url, {});
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdEquivalenceClassesFromClassIdMoveItemItemIdToToClassId(
+      restaurantId,
+      stockInventoryId,
+      fromClassId,
+      itemId,
+      toClassId,
+      {}
+    );
   }
 
   // --- Consumptions Management ---
@@ -288,8 +379,12 @@ export class StockInventoryService {
     stockInventoryId: string,
     consumptionId: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/consumptions/${consumptionId}/remove`;
-    return this.http.post<void>(url, {});
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdConsumptionsConsumptionIdRemove(
+      restaurantId,
+      stockInventoryId,
+      consumptionId,
+      {}
+    );
   }
 
   reconcileTrackedConsumption(
@@ -299,11 +394,19 @@ export class StockInventoryService {
     assignedItemId: string,
     deductStock: boolean
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/consumptions/${consumptionId}/reconcile`;
-    return this.http.post<void>(url, {
-      AssignedItemId: assignedItemId,
-      DeductStock: deductStock,
-    });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdConsumptionsConsumptionIdReconcileAdvanced(
+      restaurantId,
+      stockInventoryId,
+      consumptionId,
+      {
+        deductions: [
+          {
+            assignedItemId,
+            deductStock,
+          },
+        ],
+      } as any
+    );
   }
 
   reconcileConsumptionAdvanced(
@@ -312,8 +415,12 @@ export class StockInventoryService {
     consumptionId: string,
     deductions: any[]
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/consumptions/${consumptionId}/reconcile-advanced`;
-    return this.http.post<void>(url, { Deductions: deductions });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdConsumptionsConsumptionIdReconcileAdvanced(
+      restaurantId,
+      stockInventoryId,
+      consumptionId,
+      { deductions } as any
+    );
   }
 
   removeMultipleTrackedConsumptions(
@@ -321,8 +428,11 @@ export class StockInventoryService {
     stockInventoryId: string,
     consumptionIds: string[]
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/consumptions/bulk-remove`;
-    return this.http.post<void>(url, { ConsumptionIds: consumptionIds });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdConsumptionsBulkRemove(
+      restaurantId,
+      stockInventoryId,
+      { consumptionIds }
+    );
   }
 
   resolveDirectlyResolvableConsumptions(
@@ -330,7 +440,10 @@ export class StockInventoryService {
     stockInventoryId: string,
     consumptionIds: string[]
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StockInventory/restaurant/${restaurantId}/inventory/${stockInventoryId}/consumptions/resolve-direct`;
-    return this.http.post<void>(url, { ConsumptionIds: consumptionIds });
+    return this.stockApi.postApiStockInventoryRestaurantRestaurantIdInventoryStockInventoryIdConsumptionsResolveDirect(
+      restaurantId,
+      stockInventoryId,
+      { consumptionIds }
+    );
   }
 }

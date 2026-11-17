@@ -1,6 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, forkJoin, of, catchError, switchMap } from 'rxjs';
+import { RestaurantTableOrderingService } from '../api/endpoints/restaurant-table-ordering/restaurant-table-ordering.service';
+import { CatalogueService } from '../api/endpoints/catalogue/catalogue.service';
+import { AiMenuDigitizationService } from '../api/endpoints/ai-menu-digitization/ai-menu-digitization.service';
+import { StripePaymentsService } from '../api/endpoints/stripe-payments/stripe-payments.service';
+import { VotingService } from '../api/endpoints/voting/voting.service';
 import { environment } from '../../../environments/environment';
 import {
   RestaurantItem,
@@ -89,6 +94,11 @@ export function parseAllergensMap(rawAllergens: any): Record<string, string> {
 })
 export class RestaurantService {
   private readonly http = inject(HttpClient);
+  private readonly restaurantOrderingApi = inject(RestaurantTableOrderingService);
+  private readonly catalogueApi = inject(CatalogueService);
+  private readonly aiDigitizationApi = inject(AiMenuDigitizationService);
+  private readonly stripePaymentsApi = inject(StripePaymentsService);
+  private readonly votingApi = inject(VotingService);
   private readonly baseUrl = environment.apiBaseUrl ? environment.apiBaseUrl.replace(/\/$/, '') : '';
 
   /**
@@ -96,9 +106,8 @@ export class RestaurantService {
    * Enriches each restaurant with individual detail and Stripe account status if connected.
    */
   getMyRestaurants(): Observable<RestaurantItem[]> {
-    const url = `${this.baseUrl}/api/Restaurant/my-restaurants`;
-    return this.http.get<unknown[]>(url).pipe(
-      map((items) => (Array.isArray(items) ? items.map((raw) => this.normalizeRestaurant(raw)) : [])),
+    return this.restaurantOrderingApi.getApiRestaurantMyRestaurants('application/json').pipe(
+      map((items: any) => (Array.isArray(items) ? items.map((raw: any) => this.normalizeRestaurant(raw)) : [])),
       switchMap((restaurants) => {
         if (!restaurants.length) {
           return of([]);
@@ -111,8 +120,7 @@ export class RestaurantService {
   }
 
   getRestaurant(id: string): Observable<RestaurantItem> {
-    const url = `${this.baseUrl}/api/Restaurant/${id}`;
-    return this.http.get<unknown>(url).pipe(
+    return this.restaurantOrderingApi.getApiRestaurantId(id, 'application/json').pipe(
       map((raw) => this.normalizeRestaurant(raw)),
       switchMap((rest) => this.enrichRestaurant(rest))
     );
@@ -123,16 +131,14 @@ export class RestaurantService {
    * Calls GET /api/Restaurant/public/{id}
    */
   getRestaurantPublic(id: string): Observable<PublicRestaurantDetails> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${id}`;
-    return this.http.get<any>(url).pipe(
+    return this.restaurantOrderingApi.getApiRestaurantPublicId(id, 'application/json').pipe(
       map((raw) => this.normalizePublicRestaurant(raw))
     );
   }
 
   getConnectAccountStatus(restaurantId: string): Observable<StripeAccountStatus | null> {
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/account-status`;
-    return this.http.get<any>(url).pipe(
-      map((res) => {
+    return this.stripePaymentsApi.getApiStripePaymentRestaurantRestaurantIdAccountStatus(restaurantId, 'application/json').pipe(
+      map((res: any) => {
         if (!res) return null;
         return {
           isConnected: res.isConnected ?? res.IsConnected ?? false,
@@ -148,35 +154,27 @@ export class RestaurantService {
   }
 
   getClientIp(): Observable<string> {
-    const url = `${this.baseUrl}/api/Restaurant/client-ip`;
-    return this.http.get(url, { responseType: 'text' });
+    return this.restaurantOrderingApi.getApiRestaurantClientIp('text/plain');
   }
 
   setCidrAddresses(restaurantId: string, cidrAddress: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/cidr`;
-    return this.http.post<void>(url, JSON.stringify(cidrAddress), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.restaurantOrderingApi.postApiRestaurantIdCidr(restaurantId, cidrAddress);
   }
 
   getHistory(restaurantId: string): Observable<string> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/history`;
-    return this.http.get(url, { responseType: 'text' });
+    return this.restaurantOrderingApi.getApiRestaurantIdHistory(restaurantId, 'text/plain');
   }
 
   unsetCidrAddresses(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/cidr/unset`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdCidrUnset(restaurantId);
   }
 
   // --- Geolocation Endpoints ---
   getGeoLocSettings(restaurantId: string): Observable<any> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/geoloc`;
-    return this.http.get<any>(url);
+    return this.restaurantOrderingApi.getApiRestaurantIdGeoloc(restaurantId, 'application/json');
   }
 
   setGeoLocSettings(restaurantId: string, latitude: number, longitude: number, radiusInMeters: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/geoloc`;
     const payload = {
       Case: 'Enabled',
       Fields: [
@@ -187,59 +185,49 @@ export class RestaurantService {
         },
       ],
     };
-    return this.http.post<void>(url, payload);
+    return this.restaurantOrderingApi.postApiRestaurantIdGeoloc(restaurantId, payload as any);
   }
 
   disableGeoLocSettings(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/geoloc/disable`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdGeolocDisable(restaurantId);
   }
 
   // --- Stock Inventory Settings Endpoints ---
   initializeStockInventorySettings(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/initialize`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdStockInventoryInitialize(restaurantId);
   }
 
   setStockInventoryOnlyLoad(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/set-only-load`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdStockInventorySetOnlyLoad(restaurantId);
   }
 
   setStockInventoryAutonomousReplenishment(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/set-autonomous-replenishment`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdStockInventorySetAutonomousReplenishment(restaurantId);
   }
 
   setStockInventoryConsumptionTracking(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/set-consumption-tracking`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdStockInventorySetConsumptionTracking(restaurantId);
   }
 
   disableStockInventorySettings(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/stock-inventory/disable`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdStockInventoryDisable(restaurantId);
   }
 
   // --- Self-Ordering Endpoints ---
   setNoSelfOrdering(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/self-ordering/no`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdSelfOrderingNo(restaurantId);
   }
 
   setCashOnlySelfOrdering(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/self-ordering/cash-only`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdSelfOrderingCashOnly(restaurantId);
   }
 
   setCacheAndStripeSelfOrdering(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/self-ordering/cache-and-stripe`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdSelfOrderingCacheAndStripe(restaurantId);
   }
 
   setOnlyStripeSelfOrdering(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/self-ordering/only-stripe`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdSelfOrderingOnlyStripe(restaurantId);
   }
 
   setSelfOrderingMode(restaurantId: string, mode: SelfOrderingMode): Observable<void> {
@@ -259,101 +247,75 @@ export class RestaurantService {
 
   // --- Extra Catalogue API ---
   initializeExtraCatalogue(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/initialize`;
-    return this.http.post<void>(url, null);
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueInitialize(restaurantId);
   }
 
   enableExtraCatalogue(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/enable`;
-    return this.http.post<void>(url, null);
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueEnable(restaurantId);
   }
 
   disableExtraCatalogue(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/disable`;
-    return this.http.post<void>(url, null);
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueDisable(restaurantId);
   }
 
   getExtraCatalogue(restaurantId: string): Observable<any> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue`;
-    return this.http.get<any>(url);
+    return this.catalogueApi.getApiCatalogueIdExtraCatalogue(restaurantId, 'application/json');
   }
 
   getExtraCatalogueDetails(restaurantId: string): Observable<any> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue-details`;
-    return this.http.get<any>(url);
+    return this.catalogueApi.getApiCatalogueIdExtraCatalogueDetails(restaurantId, 'application/json');
   }
 
   resetExtraCatalogue(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/reset`;
-    return this.http.post<void>(url, null);
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueReset(restaurantId);
   }
 
   addExtraCatalogueItems(restaurantId: string, items: any[]): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/add`;
-    return this.http.post<void>(url, items);
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsAdd(restaurantId, items);
   }
 
   renameExtraCatalogueItem(restaurantId: string, menuItemName: string, newName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/rename`;
-    return this.http.post<void>(url, { menuItemName, newName });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsRename(restaurantId, { menuItemName, newName });
   }
 
   setExtraCatalogueItemAvailable(restaurantId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/set-available`;
-    return this.http.post<void>(url, JSON.stringify(menuItemName), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsSetAvailable(restaurantId, menuItemName);
   }
 
   setExtraCatalogueItemUnavailable(restaurantId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/set-unavailable`;
-    return this.http.post<void>(url, JSON.stringify(menuItemName), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsSetUnavailable(restaurantId, menuItemName);
   }
 
   setCategoryOfExtraCatalogueItem(restaurantId: string, menuItemName: string, category: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/set-category`;
-    return this.http.post<void>(url, { menuItemName, category });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsSetCategory(restaurantId, { menuItemName, category });
   }
 
   setExtraCatalogueItemPrice(restaurantId: string, menuItemName: string, price: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/set-ordinary-price`;
-    return this.http.post<void>(url, { menuItemName, price });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsSetOrdinaryPrice(restaurantId, { menuItemName, price });
   }
 
   unsetExtraCatalogueItemPrice(restaurantId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/unset-ordinary-price`;
-    return this.http.post<void>(url, JSON.stringify(menuItemName), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsUnsetOrdinaryPrice(restaurantId, menuItemName);
   }
 
   removeExtraCatalogueItem(restaurantId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/remove`;
-    return this.http.post<void>(url, JSON.stringify(menuItemName), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsRemove(restaurantId, menuItemName);
   }
 
   removeExtraCatalogueMultipleItems(restaurantId: string, menuItemNames: string[]): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/remove-multiple`;
-    return this.http.post<void>(url, menuItemNames);
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsRemoveMultiple(restaurantId, menuItemNames);
   }
 
   removeExtraCatalogueMultipleItemPrices(restaurantId: string, menuItemNames: string[]): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/remove-multiple-prices`;
-    return this.http.post<void>(url, menuItemNames);
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsRemoveMultiplePrices(restaurantId, menuItemNames);
   }
 
   updateExtraCatalogueMultipleItemPrices(restaurantId: string, menuItemNames: string[], price: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-multiple-prices`;
-    return this.http.post<void>(url, { menuItemNames, price });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsUpdateMultiplePrices(restaurantId, { menuItemNames, price });
   }
 
   updateExtraCatalogueMultipleItemCategory(restaurantId: string, menuItemNames: string[], category: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-multiple-category`;
-    return this.http.post<void>(url, { menuItemNames, category });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsUpdateMultipleCategory(restaurantId, { menuItemNames, category });
   }
 
   updateExtraCatalogueTranslatedName(
@@ -362,8 +324,11 @@ export class RestaurantService {
     languageCode: string,
     newTranslatedName: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-translated-name`;
-    return this.http.post<void>(url, { menuItemName, languageCode, newTranslatedName });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsUpdateTranslatedName(restaurantId, {
+      menuItemName,
+      languageCode,
+      newTranslatedName,
+    });
   }
 
   updateExtraCatalogueTranslatedDescription(
@@ -372,8 +337,11 @@ export class RestaurantService {
     languageCode: string,
     newTranslatedDescription: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-translated-description`;
-    return this.http.post<void>(url, { menuItemName, languageCode, newTranslatedDescription });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsUpdateTranslatedDescription(restaurantId, {
+      menuItemName,
+      languageCode,
+      newTranslatedDescription,
+    });
   }
 
   updateExtraCatalogueTranslatedAllergens(
@@ -382,116 +350,105 @@ export class RestaurantService {
     languageCode: string,
     newTranslatedAllergens: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/update-translated-allergens`;
-    return this.http.post<void>(url, { menuItemName, languageCode, newTranslatedAllergens });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsUpdateTranslatedAllergens(restaurantId, {
+      menuItemName,
+      languageCode,
+      newTranslatedAllergens,
+    });
   }
 
   moveExtraCatalogueItemToMainMenu(restaurantId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/extra-catalogue/items/move-to-main-menu`;
-    return this.http.post<void>(url, { menuItemName });
+    return this.catalogueApi.postApiCatalogueIdExtraCatalogueItemsMoveToMainMenu(restaurantId, { menuItemName });
   }
 
   generateExtraCatalogueMenuFromScratch(shortDescription: string, includeComposition: boolean = false): Observable<any[]> {
-    const url = `${this.baseUrl}/api/ModelAi/generate-extra-catalogue-menu`;
-    return this.http.post<any[]>(url, { shortDescription, includeComposition });
+    return this.aiDigitizationApi.postApiModelAiGenerateExtraCatalogueMenu(
+      { shortDescription, includeComposition },
+      'application/json'
+    ) as unknown as Observable<any[]>;
   }
 
   generateExtraCatalogueMenuFromNames(names: string[], includeComposition: boolean = false): Observable<any[]> {
-    const url = `${this.baseUrl}/api/ModelAi/generate-extra-catalogue-menu-from-names`;
-    return this.http.post<any[]>(url, { names, includeComposition });
+    return this.aiDigitizationApi.postApiModelAiGenerateExtraCatalogueMenuFromNames(
+      { names, includeComposition },
+      'application/json'
+    ) as unknown as Observable<any[]>;
   }
 
   // --- Menu Management (Create, Clone, Switch, Drop) ---
   addNewMenu(restaurantId: string, menuName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/add-new-menu`;
-    return this.http.post<void>(url, { menuName });
+    return this.catalogueApi.postApiCatalogueIdAddNewMenu(restaurantId, { menuName });
   }
 
   cloneCurrentMenu(restaurantId: string, clonedName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/clone-current-menu`;
-    return this.http.post<void>(url, { clonedName });
+    return this.catalogueApi.postApiCatalogueIdCloneCurrentMenu(restaurantId, { clonedName });
   }
 
   dropMenu(restaurantId: string, menuIndex: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/drop-menu`;
-    return this.http.post<void>(url, { menuIndex });
+    return this.catalogueApi.postApiCatalogueIdDropMenu(restaurantId, { menuIndex });
   }
 
   switchToMenu(restaurantId: string, menuIndex: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/switch-to-menu`;
-    return this.http.post<void>(url, { menuIndex });
+    return this.catalogueApi.postApiCatalogueIdSwitchToMenu(restaurantId, { menuIndex });
   }
 
   // --- Menu JSON Export & Import ---
   importMenu(restaurantId: string, jsonText: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/import-menu`;
-    return this.http.post<void>(url, { jsonText });
+    return this.catalogueApi.postApiCatalogueIdImportMenu(restaurantId, { jsonText });
   }
 
   // --- AI Menu Digitization & Capture ---
   interpretMenu(base64Image: string, mimeType: string): Observable<any[]> {
-    const url = `${this.baseUrl}/api/ModelAi/interpret`;
-    return this.http.post<any[]>(url, { base64Image, mimeType });
+    return this.aiDigitizationApi.postApiModelAiInterpret(
+      { base64Image, mimeType },
+      'application/json'
+    ) as unknown as Observable<any[]>;
   }
 
   interpretMenuResolvingComposition(base64Image: string, mimeType: string): Observable<any[]> {
-    const url = `${this.baseUrl}/api/ModelAi/interpret-resolving-composition`;
-    return this.http.post<any[]>(url, { base64Image, mimeType });
+    return this.aiDigitizationApi.postApiModelAiInterpretResolvingComposition(
+      { base64Image, mimeType },
+      'application/json'
+    ) as unknown as Observable<any[]>;
   }
 
   addMenuItem(restaurantId: string, menuItem: any): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/add`;
-    return this.http.post<void>(url, menuItem);
+    return this.catalogueApi.postApiCatalogueIdMenuAdd(restaurantId, menuItem);
   }
 
   setHumanReviewed(restaurantId: string, isHumanReviewed: boolean): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/human-reviewed`;
-    return this.http.post<void>(url, isHumanReviewed);
+    return this.restaurantOrderingApi.postApiRestaurantIdHumanReviewed(restaurantId, isHumanReviewed);
   }
 
   // --- Menu Item Operations (Catalogue) ---
   setMenuItemAvailable(restaurantId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/set-available`;
-    return this.http.post<void>(url, JSON.stringify(menuItemName), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.catalogueApi.postApiCatalogueIdMenuSetAvailable(restaurantId, menuItemName);
   }
 
   setMenuItemUnavailable(restaurantId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/set-unavailable`;
-    return this.http.post<void>(url, JSON.stringify(menuItemName), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.catalogueApi.postApiCatalogueIdMenuSetUnavailable(restaurantId, menuItemName);
   }
 
   removeMenuItem(restaurantId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/remove`;
-    return this.http.post<void>(url, JSON.stringify(menuItemName), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.catalogueApi.postApiCatalogueIdMenuRemove(restaurantId, menuItemName);
   }
 
   updateMenuItemImageUrl(restaurantId: string, menuItemName: string, imageUrl: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/image/update`;
-    return this.http.post<void>(url, {
-      MenuItemName: menuItemName,
-      ImageUrl: imageUrl,
+    return this.catalogueApi.postApiCatalogueIdMenuImageUpdate(restaurantId, {
+      menuItemName,
+      imageUrl,
     });
   }
 
   removeMenuItemImageUrl(restaurantId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/image/remove`;
-    return this.http.post<void>(url, JSON.stringify(menuItemName), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.catalogueApi.postApiCatalogueIdMenuImageRemove(restaurantId, menuItemName);
   }
 
   updateMenuItemPrice(restaurantId: string, optCategory: string | null, index: number, newPrice: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/price/update`;
-    return this.http.post<void>(url, {
-      OptCategory: optCategory || null,
-      Index: index,
-      NewPrice: newPrice,
+    return this.catalogueApi.postApiCatalogueIdMenuPriceUpdate(restaurantId, {
+      optCategory: optCategory || null,
+      index,
+      newPrice,
     });
   }
 
@@ -504,206 +461,189 @@ export class RestaurantService {
     description: string,
     csAllergens: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/translation2/update`;
-    return this.http.post<void>(url, {
-      OptCategory: optCategory || null,
-      Index: index,
-      LangCode: langCode,
-      MenuItemTranslation: {
-        Name: name,
-        Description: description,
+    return this.catalogueApi.postApiCatalogueIdMenuTranslation2Update(restaurantId, {
+      optCategory: optCategory || null,
+      index,
+      langCode,
+      menuItemTranslation: {
+        name,
+        description,
       },
-      CsAllergens: csAllergens,
+      csAllergens,
     });
   }
 
   moveMenuItem(restaurantId: string, menuItemName: string, currentPos: number, nextPos: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/menu/move`;
-    return this.http.post<void>(url, {
-      MenuItemName: menuItemName,
-      CurrentPos: currentPos,
-      NextPos: nextPos,
+    return this.catalogueApi.postApiCatalogueIdMenuMove(restaurantId, {
+      menuItemName,
+      currentPos,
+      nextPos,
     });
   }
 
   moveCategory(restaurantId: string, category: string | null, currentPos: number, nextPos: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/category/move`;
-    return this.http.post<void>(url, {
-      Category: category || null,
-      CurrentPos: currentPos,
-      NextPos: nextPos,
+    return this.catalogueApi.postApiCatalogueIdCategoryMove(restaurantId, {
+      category: category || undefined,
+      currentPos,
+      nextPos,
     });
   }
 
   renameCategory(restaurantId: string, oldName: string, newName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Catalogue/${restaurantId}/category/rename`;
-    return this.http.post<void>(url, {
-      OldName: oldName,
-      NewName: newName,
+    return this.catalogueApi.postApiCatalogueIdCategoryRename(restaurantId, {
+      oldName,
+      newName,
     });
   }
 
   getUploadSasToken(blobName: string): Observable<SasResponse> {
-    const encoded = encodeURIComponent(blobName);
-    const url = `${this.baseUrl}/api/Restaurant/sas-token?blobName=${encoded}`;
-    return this.http.get<any>(url).pipe(
-      map((res) => ({
-        uploadUrl: res?.uploadUrl ?? res?.UploadUrl ?? '',
-        publicUrl: res?.publicUrl ?? res?.PublicUrl ?? '',
-      }))
-    );
+    return this.restaurantOrderingApi
+      .getApiRestaurantSasToken('application/json', { blobName })
+      .pipe(
+        map((res: any) => ({
+          uploadUrl: res?.uploadUrl ?? res?.UploadUrl ?? '',
+          publicUrl: res?.publicUrl ?? res?.PublicUrl ?? '',
+        }))
+      );
   }
 
   // --- Seating Fee API ---
   setSeatingFee(restaurantId: string, seatingFee: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/seating-fee`;
-    return this.http.post<void>(url, seatingFee);
+    return this.restaurantOrderingApi.postApiRestaurantIdSeatingFee(restaurantId, seatingFee);
   }
 
   // --- Tips Hints API ---
   setShowTips(restaurantId: string, showTips: boolean): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/show-tips`;
-    return this.http.post<void>(url, showTips);
+    return this.restaurantOrderingApi.postApiRestaurantIdShowTips(restaurantId, showTips);
   }
 
   addTipHint(restaurantId: string, tipHint: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/tips-hints/add`;
-    return this.http.post<void>(url, tipHint);
+    return this.restaurantOrderingApi.postApiRestaurantIdTipsHintsAdd(restaurantId, tipHint);
   }
 
   removeTipHint(restaurantId: string, tipHint: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/tips-hints/${tipHint}`;
-    return this.http.delete<void>(url);
+    return this.restaurantOrderingApi.deleteApiRestaurantIdTipsHintsTipHint(restaurantId, tipHint);
   }
 
   setDefaultTipHint(restaurantId: string, tipHint: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/tips-hints/set-default`;
-    return this.http.post<void>(url, tipHint);
+    return this.restaurantOrderingApi.postApiRestaurantIdTipsHintsSetDefault(restaurantId, tipHint);
   }
 
   setNoDefaultTipHint(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/tips-hints/set-no-default`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdTipsHintsSetNoDefault(restaurantId);
   }
 
   resetTipsHints(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/tips-hints/reset`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdTipsHintsReset(restaurantId);
   }
 
   // --- VAT Department Codes & Rates API ---
   addExtraVatDepartment(restaurantId: string, vat: { code: string; rate: number }): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/vat-department/add`;
-    return this.http.post<void>(url, { Code: vat.code, Rate: vat.rate });
+    return this.restaurantOrderingApi.postApiRestaurantIdVatDepartmentAdd(restaurantId, {
+      code: vat.code,
+      rate: vat.rate,
+    });
   }
 
   removeExtraVatDepartment(restaurantId: string, code: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/vat-department/remove`;
-    return this.http.post<void>(url, JSON.stringify(code), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.restaurantOrderingApi.postApiRestaurantIdVatDepartmentRemove(restaurantId, code);
   }
 
   // --- Table Operations API ---
   addTable(restaurantId: string, table: { additionalInfo?: string | null; maxSessions: number }): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/add`;
     const tableGuid = crypto.randomUUID ? crypto.randomUUID() : '00000000-0000-0000-0000-000000000000';
     const payload = {
-      Id: tableGuid,
-      OptAdditionalInfo: table.additionalInfo ? table.additionalInfo : null,
-      MaxSessions: table.maxSessions,
-      Orders: {},
-      OverWriteSelfOrderingConfig: null,
-      SkipSeatFee: false,
-      SeatingFeePaidSessions: [],
+      id: tableGuid,
+      optAdditionalInfo: table.additionalInfo ? table.additionalInfo : undefined,
+      maxSessions: table.maxSessions,
+      orders: {},
+      overWriteSelfOrderingConfig: undefined,
+      skipSeatFee: false,
+      seatingFeePaidSessions: [],
     };
-    return this.http.post<void>(url, payload);
+    return this.restaurantOrderingApi.postApiRestaurantIdTableAdd(restaurantId, payload as any);
   }
 
   removeTopTable(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/remove-top`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdTableRemoveTop(restaurantId);
   }
 
   regenerateTableId(restaurantId: string, tableNumber: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/${tableNumber}/regenerate`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdTableIndexRegenerate(restaurantId, tableNumber);
   }
 
   changeMaxSessions(restaurantId: string, tableNumber: number, maxSessions: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/${tableNumber}/max-sessions/${maxSessions}`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdTableTableNumMaxSessionsMaxSessions(restaurantId, tableNumber, maxSessions);
   }
 
   setSkipSeatFee(restaurantId: string, tableNumber: number, skip: boolean): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/${tableNumber}/skip-seat-fee/${skip}`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdTableTableNumSkipSeatFeeSkip(restaurantId, tableNumber, skip);
   }
 
   setTableSelfOrdering(restaurantId: string, tableNumber: number, option: 'reset' | 'no' | 'cash-only' | 'cache-and-stripe' | 'only-stripe'): Observable<void> {
-    let endpoint = 'reset';
-    if (option === 'no') endpoint = 'no';
-    else if (option === 'cash-only') endpoint = 'cash-only';
-    else if (option === 'cache-and-stripe') endpoint = 'cache-and-stripe';
-    else if (option === 'only-stripe') endpoint = 'only-stripe';
-
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/tables/${tableNumber}/self-ordering/${endpoint}`;
-    return this.http.post<void>(url, null);
+    switch (option) {
+      case 'reset':
+        return this.restaurantOrderingApi.postApiRestaurantIdTablesTableIndexSelfOrderingReset(restaurantId, tableNumber);
+      case 'no':
+        return this.restaurantOrderingApi.postApiRestaurantIdTablesTableIndexSelfOrderingNo(restaurantId, tableNumber);
+      case 'cash-only':
+        return this.restaurantOrderingApi.postApiRestaurantIdTablesTableIndexSelfOrderingCashOnly(restaurantId, tableNumber);
+      case 'cache-and-stripe':
+        return this.restaurantOrderingApi.postApiRestaurantIdTablesTableIndexSelfOrderingCacheAndStripe(restaurantId, tableNumber);
+      case 'only-stripe':
+        return this.restaurantOrderingApi.postApiRestaurantIdTablesTableIndexSelfOrderingOnlyStripe(restaurantId, tableNumber);
+      default:
+        return this.restaurantOrderingApi.postApiRestaurantIdTablesTableIndexSelfOrderingReset(restaurantId, tableNumber);
+    }
   }
 
   resetActiveOrdersOfTable(restaurantId: string, tableNumber: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/tables/${tableNumber}/orders/reset-active`;
-    return this.http.post<void>(url, null);
+    return this.restaurantOrderingApi.postApiRestaurantIdTablesTableNumOrdersResetActive(restaurantId, tableNumber);
   }
 
   makeOrderItemDone(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/session/menu/done`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      MenuItemName: menuItemName,
+    return this.restaurantOrderingApi.postApiRestaurantIdTableSessionMenuDone(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      menuItemName,
     });
   }
 
   rejectOrderItem(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, menuItemName: string, reason?: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/session/menu/reject`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      MenuItemName: menuItemName,
-      Reason: reason || null,
+    return this.restaurantOrderingApi.postApiRestaurantIdTableSessionMenuReject(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      menuItemName,
+      reason: reason || undefined,
     });
   }
 
   makeOrderItemDoneById(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/session/item/done`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      OrderItemId: orderItemId,
+    return this.restaurantOrderingApi.postApiRestaurantIdTableSessionItemDone(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      orderItemId,
     });
   }
 
   rejectOrderItemById(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string, reason?: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/session/item/reject`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      OrderItemId: orderItemId,
-      Reason: reason || null,
+    return this.restaurantOrderingApi.postApiRestaurantIdTableSessionItemReject(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      orderItemId,
+      reason: reason || undefined,
     });
   }
 
   // --- Settlement, Stripe Capture & Payment Groups ---
 
   capturePaymentIntent(restaurantId: string, secret: string): Observable<void> {
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/capture-payment-intent`;
-    return this.http.post<void>(url, {
-      Secret: secret,
+    return this.stripePaymentsApi.postApiStripePaymentRestaurantRestaurantIdCapturePaymentIntent(restaurantId, {
+      secret,
     });
   }
 
@@ -714,19 +654,17 @@ export class RestaurantService {
     sessionId: string,
     paymentIntentId: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/table/session/register-stripe-ledger`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      PaymentIntentId: paymentIntentId,
+    return this.restaurantOrderingApi.postApiRestaurantIdTableSessionRegisterStripeLedger(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      paymentIntentId,
     });
   }
 
   markPayAtCounterItemsWithoutLedger(restaurantId: string, items: SettlePayAtCounterItemSelectionDto[]): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/mark-pay-at-counter-no-ledger`;
-    return this.http.post<void>(url, {
-      Items: items,
+    return this.restaurantOrderingApi.postApiRestaurantIdMarkPayAtCounterNoLedger(restaurantId, {
+      items: items as any,
     });
   }
 
@@ -736,18 +674,16 @@ export class RestaurantService {
     ordinaryPaymentMethod: 'Cash' | 'ExternalCardTerminal' | 'Voucher',
     discountAmount?: number | null
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/settle-pay-at-counter-with-ledger`;
-    return this.http.post<void>(url, {
-      Items: items,
-      OrdinaryPaymentMethod: { Case: ordinaryPaymentMethod },
-      DiscountAmount: discountAmount && discountAmount > 0 ? discountAmount : null,
-    });
+    return this.restaurantOrderingApi.postApiRestaurantIdSettlePayAtCounterWithLedger(restaurantId, {
+      items: items as any,
+      ordinaryPaymentMethod: { case: ordinaryPaymentMethod } as any,
+      discountAmount: discountAmount && discountAmount > 0 ? discountAmount : undefined,
+    } as any);
   }
 
   publishPaymentGroupSet(restaurantId: string, request: PublishPaymentGroupSetRequestDto): Observable<PaymentGroupSetModel> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/payment-groups`;
-    return this.http.post<any>(url, request).pipe(
-      map((raw) => this.normalizePaymentGroupSet(raw))
+    return this.restaurantOrderingApi.postApiRestaurantIdPaymentGroups(restaurantId, request as any, 'application/json').pipe(
+      map((raw: any) => this.normalizePaymentGroupSet(raw))
     );
   }
 
@@ -815,99 +751,89 @@ export class RestaurantService {
   // --- Customer / Diner Public Ordering Endpoints ---
 
   attachSessionToTable(restaurantId: string, tableNumber: number, tableId: string, sessionId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/attach`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionAttach(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
     });
   }
 
   detachSessionFromTable(restaurantId: string, sessionId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/detach`;
-    return this.http.post<void>(url, {
-      SessionId: sessionId,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionDetach(restaurantId, {
+      sessionId,
     });
   }
 
   addMenuItemPerSession(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/menu/add`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      MenuItemName: menuItemName,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionMenuAdd(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      menuItemName,
     });
   }
 
   addOrderItem(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string, menuItemName: string, comment?: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/item/add`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      OrderItemId: orderItemId,
-      MenuItemName: menuItemName,
-      Comment: comment || null,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionItemAdd(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      orderItemId,
+      menuItemName,
+      comment: comment || undefined,
     });
   }
 
   setOrderItemComment(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string, comment: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/item/comment/set`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      OrderItemId: orderItemId,
-      Comment: comment,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionItemCommentSet(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      orderItemId,
+      comment,
     });
   }
 
   unsetOrderItemComment(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/item/comment/unset`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      OrderItemId: orderItemId,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionItemCommentUnset(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      orderItemId,
     });
   }
 
   removeOrderItemById(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, orderItemId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/item/remove`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      OrderItemId: orderItemId,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionItemRemove(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      orderItemId,
     });
   }
 
   removeMenuItemPerSession(restaurantId: string, tableNumber: number, tableId: string, sessionId: string, menuItemName: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/menu/remove`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      MenuItemName: menuItemName,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionMenuRemove(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      menuItemName,
     });
   }
 
   confirmOrdersPerSession(restaurantId: string, tableNumber: number, tableId: string, sessionId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/confirm-all`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionConfirmAll(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
     });
   }
 
   confirmOrdersPerSession2(restaurantId: string, tableNumber: number, tableId: string, sessionId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/confirm-all-2`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionConfirmAll2(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
     });
   }
 
@@ -919,32 +845,29 @@ export class RestaurantService {
     codiceFiscale?: string,
     codiceLotteria?: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/fiscal-metadata/set`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
-      CodiceFiscale: codiceFiscale || null,
-      CodiceLotteria: codiceLotteria || null,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionFiscalMetadataSet(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
+      codiceFiscale: codiceFiscale || undefined,
+      codiceLotteria: codiceLotteria || undefined,
     });
   }
 
   unsetFiscalMetadataPerSession(restaurantId: string, tableNumber: number, tableId: string, sessionId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/public/${restaurantId}/table/session/fiscal-metadata/unset`;
-    return this.http.post<void>(url, {
-      TableNum: tableNumber,
-      TableId: tableId,
-      SessionId: sessionId,
+    return this.restaurantOrderingApi.postApiRestaurantPublicIdTableSessionFiscalMetadataUnset(restaurantId, {
+      tableNum: tableNumber,
+      tableId,
+      sessionId,
     });
   }
 
   voteMenuItem(restaurantId: string, menuItemName: string, sessionId: string, stars: number): Observable<void> {
-    const url = `${this.baseUrl}/api/Voting/vote`;
-    return this.http.post<void>(url, {
-      RestaurantId: restaurantId,
-      MenuItemName: menuItemName,
-      SessionId: sessionId,
-      Stars: stars,
+    return this.votingApi.postApiVotingVote({
+      restaurantId,
+      menuItemName,
+      sessionId,
+      stars,
     });
   }
 
@@ -958,19 +881,22 @@ export class RestaurantService {
     items?: string,
     tipAmountCents?: number
   ): Observable<string> {
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/create-payment-intent`;
-    return this.http
-      .post<any>(url, {
-        TableNum: tableNumber,
-        TableId: tableId,
-        Amount: amountCents,
-        Currency: currency,
-        SessionId: sessionId,
-        Items: items || null,
-        TipAmount: tipAmountCents || null,
-      })
+    return this.stripePaymentsApi
+      .postApiStripePaymentRestaurantRestaurantIdCreatePaymentIntent(
+        restaurantId,
+        {
+          tableNum: tableNumber,
+          tableId,
+          amount: amountCents,
+          currency,
+          sessionId,
+          items: items || undefined,
+          tipAmount: tipAmountCents || undefined,
+        },
+        'application/json'
+      )
       .pipe(
-        map((res) => {
+        map((res: any) => {
           if (typeof res === 'string') return res;
           return res?.clientSecret || res?.ClientSecret || res?.secret || res?.Secret || '';
         })
@@ -978,39 +904,28 @@ export class RestaurantService {
   }
 
   getStripePublishableKey(): Observable<string> {
-    const url = `${this.baseUrl}/api/StripePayment/publishable-key`;
-    return this.http.get<any>(url).pipe(
-      map((res) => res?.publishableKey || res?.PublishableKey || '')
+    return this.stripePaymentsApi.getApiStripePaymentPublishableKey('application/json').pipe(
+      map((res: any) => (typeof res === 'string' ? res : res?.publishableKey || res?.PublishableKey || ''))
     );
   }
 
   getStripeEnabled(): Observable<boolean> {
-    const url = `${this.baseUrl}/api/StripePayment/stripe-enabled`;
-    return this.http.get<any>(url).pipe(
-      map((res) => !!(res?.stripeEnabled ?? res?.StripeEnabled ?? true)),
+    return this.stripePaymentsApi.getApiStripePaymentStripeEnabled('application/json').pipe(
+      map((res: any) => !!(res?.stripeEnabled ?? res?.StripeEnabled ?? true)),
       catchError(() => of(true))
     );
   }
 
   addMember(restaurantId: string, newMemberId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/members/add`;
-    return this.http.post<void>(url, JSON.stringify(newMemberId), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.restaurantOrderingApi.postApiRestaurantIdMembersAdd(restaurantId, newMemberId);
   }
 
   removeMember(restaurantId: string, memberToRemoveId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/members/remove`;
-    return this.http.post<void>(url, JSON.stringify(memberToRemoveId), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.restaurantOrderingApi.postApiRestaurantIdMembersRemove(restaurantId, memberToRemoveId);
   }
 
   transferAdmin(restaurantId: string, newAdminId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/Restaurant/${restaurantId}/admin/transfer`;
-    return this.http.post<void>(url, JSON.stringify(newAdminId), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.restaurantOrderingApi.postApiRestaurantIdAdminTransfer(restaurantId, newAdminId);
   }
 
   private enrichRestaurant(rest: RestaurantItem): Observable<RestaurantItem> {

@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { StripePaymentsService } from '../api/endpoints/stripe-payments/stripe-payments.service';
 import {
   StripeAccountStatus,
   SubscriptionSettingsConfig,
@@ -20,16 +19,14 @@ export interface ConnectAccountLinkResponse {
   providedIn: 'root',
 })
 export class StripePaymentService {
-  private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.apiBaseUrl ? environment.apiBaseUrl.replace(/\/$/, '') : '';
+  private readonly stripeApi = inject(StripePaymentsService);
 
   /**
    * Retrieves platform SaaS subscription pricing tiers, currency, and multi-month discount percentage configuration.
    */
   getSubscriptionConfig(): Observable<SubscriptionSettingsConfig> {
-    const url = `${this.baseUrl}/api/StripePayment/subscription-config`;
-    return this.http.get<any>(url).pipe(
-      map((res) => ({
+    return this.stripeApi.getApiStripePaymentSubscriptionConfig('application/json').pipe(
+      map((res: any) => ({
         monthlyFeeCents: Number(res?.monthlyFeeCents ?? res?.MonthlyFeeCents ?? 2990),
         monthlyFeeCurrency: String(res?.monthlyFeeCurrency ?? res?.MonthlyFeeCurrency ?? 'EUR'),
         discount3MonthsPercent: Number(res?.discount3MonthsPercent ?? res?.Discount3MonthsPercent ?? 10.0),
@@ -46,22 +43,26 @@ export class StripePaymentService {
     restaurantId: string,
     payload: CreateSubscriptionIntentRequest
   ): Observable<CreateSubscriptionIntentResponse> {
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/create-subscription-intent`;
-    return this.http.post<any>(url, payload).pipe(
-      map((res) => ({
-        checkoutUrl: res?.checkoutUrl ?? res?.CheckoutUrl ?? '',
-        isRealStripe: Boolean(res?.isRealStripe ?? res?.IsRealStripe ?? false),
-      }))
-    );
+    return this.stripeApi
+      .postApiStripePaymentRestaurantRestaurantIdCreateSubscriptionIntent(
+        restaurantId,
+        payload as any,
+        'application/json'
+      )
+      .pipe(
+        map((res: any) => ({
+          checkoutUrl: res?.checkoutUrl ?? res?.CheckoutUrl ?? '',
+          isRealStripe: Boolean(res?.isRealStripe ?? res?.IsRealStripe ?? false),
+        }))
+      );
   }
 
   /**
    * Retrieves Stripe Connect account status and verification requirements.
    */
   getConnectAccountStatus(restaurantId: string): Observable<StripeAccountStatus> {
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/account-status`;
-    return this.http.get<any>(url).pipe(
-      map((res) => ({
+    return this.stripeApi.getApiStripePaymentRestaurantRestaurantIdAccountStatus(restaurantId, 'application/json').pipe(
+      map((res: any) => ({
         isConnected: res?.isConnected ?? res?.IsConnected ?? false,
         detailsSubmitted: res?.detailsSubmitted ?? res?.DetailsSubmitted ?? false,
         chargesEnabled: res?.chargesEnabled ?? res?.ChargesEnabled ?? false,
@@ -80,14 +81,14 @@ export class StripePaymentService {
     refreshUrl: string,
     returnUrl: string
   ): Observable<string> {
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/create-connect-link`;
-    return this.http
-      .post<ConnectAccountLinkResponse | string>(url, {
-        refreshUrl,
-        returnUrl,
-      })
+    return this.stripeApi
+      .postApiStripePaymentRestaurantRestaurantIdCreateConnectLink(
+        restaurantId,
+        { refreshUrl, returnUrl },
+        'application/json'
+      )
       .pipe(
-        map((res) => {
+        map((res: any) => {
           if (typeof res === 'string') return res;
           return res?.url || res?.Url || res?.URL || '';
         })
@@ -98,21 +99,21 @@ export class StripePaymentService {
    * Generates a single-sign-on login link into the Stripe Express Dashboard for the restaurant merchant.
    */
   createConnectAccountLoginLink(restaurantId: string): Observable<string> {
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/create-login-link`;
-    return this.http.post<ConnectAccountLinkResponse | string>(url, null).pipe(
-      map((res) => {
-        if (typeof res === 'string') return res;
-        return res?.url || res?.Url || res?.URL || '';
-      })
-    );
+    return this.stripeApi
+      .postApiStripePaymentRestaurantRestaurantIdCreateLoginLink(restaurantId, 'application/json')
+      .pipe(
+        map((res: any) => {
+          if (typeof res === 'string') return res;
+          return res?.url || res?.Url || res?.URL || '';
+        })
+      );
   }
 
   /**
    * Disables and unbinds Stripe account connection for this restaurant.
    */
   disableStripeAccountId(restaurantId: string): Observable<void> {
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/disable-account`;
-    return this.http.post<void>(url, null);
+    return this.stripeApi.postApiStripePaymentRestaurantRestaurantIdDisableAccount(restaurantId);
   }
 
   /**
@@ -123,12 +124,14 @@ export class StripePaymentService {
     startDate: Date,
     endDate: Date
   ): Observable<PaymentModel[]> {
-    const startIso = startDate.toISOString();
-    const endIso = endDate.toISOString();
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/payments?startDate=${encodeURIComponent(
-      startIso
-    )}&endDate=${encodeURIComponent(endIso)}`;
-    return this.http.get<PaymentModel[]>(url);
+    return this.stripeApi.getApiStripePaymentRestaurantRestaurantIdPayments(
+      restaurantId,
+      'application/json',
+      {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      }
+    ) as unknown as Observable<PaymentModel[]>;
   }
 
   /**
@@ -139,8 +142,11 @@ export class StripePaymentService {
     paymentId: string,
     issue: string
   ): Observable<void> {
-    const url = `${this.baseUrl}/api/StripePayment/restaurant/${restaurantId}/payment/${paymentId}/add-issue`;
-    return this.http.post<void>(url, { issue });
+    return this.stripeApi.postApiStripePaymentRestaurantRestaurantIdPaymentPaymentIdAddIssue(
+      restaurantId,
+      paymentId,
+      { issue }
+    );
   }
 }
 

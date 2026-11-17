@@ -1238,11 +1238,19 @@ export class InventorySettingsComponent implements OnInit, OnDestroy, AfterViewI
     }
 
     const restId = this.restaurantId();
+    const inv = this.stockInventory();
+    const rawInvId = inv?.stockInventoryId || inv?.StockInventoryId;
+    const invId = typeof rawInvId === 'string' ? rawInvId : (rawInvId?.value || rawInvId?.Value || '');
     const itemId = this.editingProductItem.itemId;
     const prodName = this.editingProductItem.name;
 
+    if (!invId) {
+      this.editModalError = 'Active stock inventory ID not found.';
+      return;
+    }
+
     this.isDeletingItem = true;
-    this.stockInventoryService.removeStockInventoryItem(restId, itemId, prodName).subscribe({
+    this.stockInventoryService.removeStockInventoryItem(restId, invId, itemId, prodName).subscribe({
       next: () => {
         this.isDeletingItem = false;
         this.closeEditProductModal();

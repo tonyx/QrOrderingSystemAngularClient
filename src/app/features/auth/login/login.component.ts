@@ -105,7 +105,8 @@ export class LoginComponent implements OnInit {
 
     this.authService.login({ email: emailVal, password: passwordVal }).subscribe({
       next: (res) => {
-        const userEmail = res?.email || res?.Email || this.authService.currentUser()?.email || emailVal;
+        const tokenResp = typeof res === 'object' ? res : null;
+        const userEmail = tokenResp?.email || this.authService.currentUser()?.email || emailVal;
         this.isLoading.set(false);
         this.successMessage.set(`Welcome back, ${userEmail}!`);
 

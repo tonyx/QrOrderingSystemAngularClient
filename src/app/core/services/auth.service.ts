@@ -1,8 +1,12 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, tap, catchError, throwError } from 'rxjs';
-import { TokenRequest, TokenResponse, CurrentUserResponse, ExternalAuthProvider } from '../models/auth.models';
+import { AuthenticationService } from '../api/endpoints/authentication/authentication.service';
+import type { TokenRequest, TokenResponse, CurrentUserResponse } from '../api/models';
+import { ExternalAuthProvider } from '../models/auth.models';
 import { environment } from '../../../environments/environment';
+
+export type { ExternalAuthProvider };
 
 const TOKEN_STORAGE_KEY = 'qr_auth_token';
 const USER_STORAGE_KEY = 'qr_auth_user';
@@ -12,7 +16,7 @@ const RETURN_URL_STORAGE_KEY = 'qr_auth_return_url';
   providedIn: 'root',
 })
 export class AuthService {
-  private readonly http = inject(HttpClient);
+  private readonly authApi = inject(AuthenticationService);
   private readonly baseUrl = environment.apiBaseUrl
     ? environment.apiBaseUrl.replace(/\/$/, '').replace(/\/api$/, '')
     : '';
@@ -25,14 +29,17 @@ export class AuthService {
     return !!t && t.trim().length > 0;
   });
 
-  login(credentials: TokenRequest): Observable<TokenResponse> {
-    const url = `${this.baseUrl}/api/Auth/token`;
-    return this.http.post<TokenResponse>(url, credentials).pipe(
+  login(credentials: TokenRequest): Observable<TokenResponse | string> {
+    return this.authApi.postApiAuthToken(credentials).pipe(
       tap((res) => {
-        // Robust extraction supporting PascalCase, camelCase, or plain token string
-        const extractedToken = res?.token || res?.Token || (typeof res === 'string' ? res : '');
+        // Robust extraction supporting token response or plain string
+        const extractedToken =
+          typeof res === 'string'
+            ? res
+            : (res as TokenResponse)?.token || '';
         if (extractedToken) {
-          this.setSession(res, extractedToken);
+          const authResult: TokenResponse = typeof res === 'string' ? { token: res } : res;
+          this.setSession(authResult, extractedToken);
         }
       }),
       catchError((error: HttpErrorResponse) => {
@@ -105,14 +112,13 @@ export class AuthService {
   }
 
   fetchCurrentUser(): Observable<CurrentUserResponse> {
-    const url = `${this.baseUrl}/api/Auth/me`;
-    return this.http.get<CurrentUserResponse>(url).pipe(
+    return this.authApi.getApiAuthMe('application/json').pipe(
       tap((user) => {
         const normalized: CurrentUserResponse = {
-          userId: user.userId ?? user.UserId ?? null,
-          email: user.email ?? user.Email ?? null,
-          isPlatformAdmin: user.isPlatformAdmin ?? user.IsPlatformAdmin ?? false,
-          userContext: user.userContext ?? user.UserContext ?? null,
+          userId: user.userId ?? null,
+          email: user.email ?? null,
+          isPlatformAdmin: user.isPlatformAdmin ?? false,
+          userContext: user.userContext ?? null,
         };
         this.currentUser.set(normalized);
         this.persistUser(normalized);
@@ -156,9 +162,9 @@ export class AuthService {
       // Ignore JWT parse failures
     }
 
-    const email = authResult?.email ?? authResult?.Email ?? emailFromJwt ?? '';
-    const userId = authResult?.userId ?? authResult?.UserId ?? '';
-    const roles = authResult?.roles ?? authResult?.Roles ?? rolesFromJwt;
+    const email = authResult?.email ?? emailFromJwt ?? '';
+    const userId = authResult?.userId ?? '';
+    const roles = authResult?.roles ?? rolesFromJwt;
     const isPlatformAdmin = roles.includes('PlatformAdmin');
 
     const initialUser: CurrentUserResponse = {
