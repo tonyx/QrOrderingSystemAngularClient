@@ -1,0 +1,108 @@
+<div class="print-wrapper">
+  @if (isLoading()) {
+    <div class="text-center py-5 no-print">
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+      <p class="text-muted mt-3 fw-bold">{{ 'PrintReceipts_Loading' | loc }}</p>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="alert alert-danger text-center my-4 no-print shadow-sm" style="border-radius: 1rem;">
+      <h5>{{ 'CustomerGroupPay_AlertTitle' | loc }}</h5>
+      <p class="mb-0">{{ errorMessage() }}</p>
+    </div>
+  } @else if (groupSet() && groupSet()!.groups.length > 0) {
+    @let set = groupSet()!;
+    <div class="toolbar-header no-print d-flex justify-content-between align-items-center">
+      <div>
+        <h4 class="fw-bold mb-1">
+          <i class="bi bi-printer me-2 text-info"></i>
+          {{ formatText('PrintReceipts_HeaderTitle', tableNum()) }}
+        </h4>
+        <small class="opacity-75">{{ 'PrintReceipts_HeaderSubtitle' | loc }}</small>
+      </div>
+      <div class="d-flex gap-2">
+        <a [routerLink]="['/restaurantsAdmin', restaurantId(), 'orders']" class="btn btn-outline-light btn-sm">
+          <i class="bi bi-arrow-left me-1"></i>{{ 'PrintReceipts_BtnBackToOrders' | loc }}
+        </a>
+        <button type="button" class="btn btn-info text-dark font-weight-bold btn-sm px-3" (click)="triggerPrint()">
+          <i class="bi bi-printer-fill me-1"></i>{{ 'PrintReceipts_BtnPrint' | loc }}
+        </button>
+      </div>
+    </div>
+
+    <div class="receipts-grid">
+      @for (grp of set.groups; track grp.groupId) {
+        @let groupPayUrl = getGroupPayUrl(grp.groupId);
+        @let groupQrUrl = getQrCodeUrl(groupPayUrl);
+        <div class="thermal-receipt">
+          <div class="text-center mb-2">
+            <h5 class="fw-bold mb-0 text-uppercase">
+              {{ restaurant()?.restaurantName || ('CustomerGroupPay_RestaurantFallback' | loc) }}
+            </h5>
+            <small class="text-muted d-block">{{ 'PrintReceipts_ThermalReceiptTitle' | loc }}</small>
+          </div>
+
+          <div class="thermal-divider"></div>
+
+          <div class="d-flex justify-content-between small mb-1">
+            <span>{{ 'CustomerGroupPay_LabelTable' | loc }}</span>
+            <strong>{{ tableNum() }}</strong>
+          </div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span>{{ 'CustomerGroupPay_LabelGroup' | loc }}</span>
+            <strong>{{ grp.name }}</strong>
+          </div>
+
+          <div class="thermal-divider"></div>
+
+          <div class="items-summary mb-2">
+            @for (item of grp.items; track $index) {
+              @let displayName = item.isCommonShared ? (item.menuItemName + ' ' + ('CustomerGroupPay_SharedQuotaTag' | loc)) : item.menuItemName;
+              <div class="d-flex justify-content-between small mb-1">
+                <span>{{ item.quantity }}x {{ displayName }}</span>
+                @if (item.isGift) {
+                  <span class="text-success">{{ 'CustomerGroupPay_GiftBadge' | loc }}</span>
+                } @else {
+                  <span>€{{ item.total.toFixed(2) }}</span>
+                }
+              </div>
+            }
+          </div>
+
+          <div class="thermal-divider"></div>
+
+          <div class="d-flex justify-content-between small mb-1">
+            <span>{{ 'CustomerGroupPay_SubtotalLabel' | loc }}</span>
+            <span>€{{ grp.subtotal.toFixed(2) }}</span>
+          </div>
+          @if (grp.discount > 0) {
+            <div class="d-flex justify-content-between small mb-1 text-danger">
+              <span>{{ 'PrintReceipts_CashDiscount' | loc }}</span>
+              <span>-€{{ grp.discount.toFixed(2) }}</span>
+            </div>
+          }
+          @if (grp.giftTotal > 0) {
+            <div class="d-flex justify-content-between small mb-1 text-success">
+              <span>{{ 'PrintReceipts_GiftsValue' | loc }}</span>
+              <span>€{{ grp.giftTotal.toFixed(2) }}</span>
+            </div>
+          }
+          <div class="d-flex justify-content-between fw-bold fs-5 mt-2">
+            <span>{{ 'PrintReceipts_Total' | loc }}</span>
+            <span>€{{ grp.totalAmount.toFixed(2) }}</span>
+          </div>
+
+          <div class="thermal-divider"></div>
+
+          <div class="text-center my-3">
+            <img [src]="groupQrUrl" [alt]="'QR ' + grp.name" style="width: 140px; height: 140px;" class="border p-1" />
+            <small class="text-muted d-block mt-2">{{ 'PrintReceipts_QrScanHint' | loc }}</small>
+          </div>
+
+          <div class="text-center text-muted small mt-2" style="font-size: 0.72rem;">
+            {{ 'PrintReceipts_NonFiscalNotice' | loc }}
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -21,6 +21,9 @@ import { RestaurantCidrComponent } from './features/restaurant/restaurant-cidr/r
 import { RestaurantHistoryComponent } from './features/restaurant/restaurant-history/restaurant-history.component';
 import { RestaurantGeoLocComponent } from './features/restaurant/restaurant-geoloc/restaurant-geoloc.component';
 import { InventorySettingsComponent } from './features/restaurant/inventory-settings/inventory-settings.component';
+import { CustomerGroupPaymentComponent } from './features/settlement/customer-group-payment/customer-group-payment.component';
+import { WaiterViewPaymentQrsComponent } from './features/settlement/waiter-view-payment-qrs/waiter-view-payment-qrs.component';
+import { PrintPaymentReceiptsComponent } from './features/settlement/print-payment-receipts/print-payment-receipts.component';
 import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -188,6 +191,23 @@ export const routes: Routes = [
   {
     path: 'order',
     component: OrderComponent,
+  },
+  // Split bill payment group checkout matching Blazor (@page "/pay/group/{GroupId}")
+  {
+    path: 'pay/group/:groupId',
+    component: CustomerGroupPaymentComponent,
+  },
+  // Waiter Showcase of group payment QRs matching Blazor (@page "/waiter/table/{TableNum:int}/payment-groups/{SetId}")
+  {
+    path: 'waiter/table/:tableNum/payment-groups/:setId',
+    component: WaiterViewPaymentQrsComponent,
+    canActivate: [authGuard],
+  },
+  // Thermal print pre-bills and payment QRs matching Blazor (@page "/restaurantsAdmin/{RestaurantId}/table/{TableNum:int}/payment-groups/{SetId}/print")
+  {
+    path: 'restaurantsAdmin/:restaurantId/table/:tableNum/payment-groups/:setId/print',
+    component: PrintPaymentReceiptsComponent,
+    canActivate: [authGuard],
   },
   // Waiter Table Ordering route matching Blazor (/waiter-order)
   {

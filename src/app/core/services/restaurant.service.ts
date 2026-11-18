@@ -25,6 +25,8 @@ import {
   PaymentGroupSetModel,
   PaymentGroupModel,
   PaymentGroupItemModel,
+  PaymentGroupStatus,
+  FiscalMetadataModel,
 } from '../models/restaurant.models';
 import { PublicRestaurantDetails, MenuItemModel, MenuItemTranslation } from '../models/menu.models';
 
@@ -676,7 +678,7 @@ export class RestaurantService {
   ): Observable<void> {
     return this.restaurantOrderingApi.postApiRestaurantIdSettlePayAtCounterWithLedger(restaurantId, {
       items: items as any,
-      ordinaryPaymentMethod: { case: ordinaryPaymentMethod } as any,
+      ordinaryPaymentMethod: { Case: ordinaryPaymentMethod } as any,
       discountAmount: discountAmount && discountAmount > 0 ? discountAmount : undefined,
     } as any);
   }
@@ -685,6 +687,277 @@ export class RestaurantService {
     return this.restaurantOrderingApi.postApiRestaurantIdPaymentGroups(restaurantId, request as any, 'application/json').pipe(
       map((raw: any) => this.normalizePaymentGroupSet(raw))
     );
+  }
+
+  getPaymentGroup(setId: string, groupId: string): Observable<{ set: PaymentGroupSetModel; group: PaymentGroupModel }> {
+    return this.restaurantOrderingApi
+      .getApiRestaurantPublicPaymentGroupsSetIdGroupGroupId(setId, groupId, 'application/json')
+      .pipe(
+        map((raw: any) => {
+          // If the backend returns an F# tuple (serialized as array [set, group]):
+          const rawSet = Array.isArray(raw) ? raw[0] : (raw?.item1 ?? raw?.Item1 ?? raw);
+          const rawGroup = Array.isArray(raw) ? raw[1] : (raw?.item2 ?? raw?.Item2 ?? raw);
+          const setModel = this.normalizePaymentGroupSet(rawSet);
+          const groupModel =
+            setModel.groups.find((g) => g.groupId.toLowerCase() === groupId.toLowerCase()) ||
+            this.normalizePaymentGroup(rawGroup);
+          return { set: setModel, group: groupModel };
+        })
+      );
+  }
+
+  getPaymentGroupSet(restaurantId: string, setId: string): Observable<PaymentGroupSetModel> {
+    return this.restaurantOrderingApi
+      .getApiRestaurantIdPaymentGroupsSetId(restaurantId, setId, 'application/json')
+      .pipe(map((raw: any) => this.normalizePaymentGroupSet(raw)));
+  }
+
+  adoptPaymentGroupItem(request: {
+    setId: string;
+    targetGroupId: string;
+    sourceGroupId: string;
+    sessionId: string;
+    menuItemName: string;
+  }): Observable<PaymentGroupSetModel> {
+    const payload: any = {
+      SetId: request.setId,
+      TargetGroupId: request.targetGroupId,
+      SourceGroupId: request.sourceGroupId,
+      SessionId: request.sessionId,
+      MenuItemName: request.menuItemName,
+      // camelCase aliases just in case
+      setId: request.setId,
+      targetGroupId: request.targetGroupId,
+      sourceGroupId: request.sourceGroupId,
+      sessionId: request.sessionId,
+      menuItemName: request.menuItemName,
+    };
+    return this.restaurantOrderingApi
+      .postApiRestaurantPublicPaymentGroupsAdoptItem(payload, 'application/json')
+      .pipe(map((raw: any) => this.normalizePaymentGroupSet(raw)));
+  }
+
+  removeAdoptedPaymentGroupItem(request: {
+    setId: string;
+    groupId: string;
+    sessionId: string;
+    menuItemName: string;
+  }): Observable<PaymentGroupSetModel> {
+    const payload: any = {
+      SetId: request.setId,
+      GroupId: request.groupId,
+      SessionId: request.sessionId,
+      MenuItemName: request.menuItemName,
+      // camelCase aliases just in case
+      setId: request.setId,
+      groupId: request.groupId,
+      sessionId: request.sessionId,
+      menuItemName: request.menuItemName,
+    };
+    return this.restaurantOrderingApi
+      .postApiRestaurantPublicPaymentGroupsRemoveAdoptedItem(payload, 'application/json')
+      .pipe(map((raw: any) => this.normalizePaymentGroupSet(raw)));
+  }
+
+  settlePaymentGroupWithStripe(request: {
+    setId: string;
+    groupId: string;
+    paymentIntentId: string;
+    codiceFiscale?: string | null;
+    codiceLotteria?: string | null;
+    tipAmount?: number | null;
+  }): Observable<void> {
+    const payload: any = {
+      SetId: request.setId,
+      GroupId: request.groupId,
+      PaymentIntentId: request.paymentIntentId,
+      CodiceFiscale: request.codiceFiscale || undefined,
+      CodiceLotteria: request.codiceLotteria || undefined,
+      TipAmount: request.tipAmount !== undefined && request.tipAmount !== null ? request.tipAmount : undefined,
+      // camelCase aliases just in case
+      setId: request.setId,
+      groupId: request.groupId,
+      paymentIntentId: request.paymentIntentId,
+      codiceFiscale: request.codiceFiscale || undefined,
+      codiceLotteria: request.codiceLotteria || undefined,
+      tipAmount: request.tipAmount !== undefined && request.tipAmount !== null ? request.tipAmount : undefined,
+    };
+    return this.restaurantOrderingApi.postApiRestaurantPublicPaymentGroupsSettle(payload);
+  }
+
+  createPaymentIntentForGroup(
+    restaurantId: string,
+    payload: {
+      tableNum: number;
+      tableId: string;
+      amount: number;
+      currency: string;
+      setId: string;
+      groupId: string;
+      items?: string | null;
+      tipAmount?: number | null;
+    }
+  ): Observable<{ clientSecret: string; paymentIntentId: string }> {
+    const body: any = {
+      TableNum: payload.tableNum,
+      TableId: payload.tableId,
+      Amount: payload.amount,
+      Currency: payload.currency,
+      SetId: payload.setId,
+      GroupId: payload.groupId,
+      Items: payload.items || undefined,
+      TipAmount: payload.tipAmount !== undefined && payload.tipAmount !== null ? payload.tipAmount : undefined,
+      // camelCase aliases just in case
+      tableNum: payload.tableNum,
+      tableId: payload.tableId,
+      amount: payload.amount,
+      currency: payload.currency,
+      setId: payload.setId,
+      groupId: payload.groupId,
+      items: payload.items || undefined,
+      tipAmount: payload.tipAmount !== undefined && payload.tipAmount !== null ? payload.tipAmount : undefined,
+    };
+    return this.stripePaymentsApi
+      .postApiStripePaymentRestaurantRestaurantIdCreatePaymentIntentForGroup(
+        restaurantId,
+        body as any,
+        'application/json'
+      )
+      .pipe(
+        map((res: any) => {
+          const clientSecret = String(res?.clientSecret ?? res?.ClientSecret ?? res?.secret ?? res ?? '');
+          const paymentIntentId =
+            res?.paymentIntentId ??
+            res?.PaymentIntentId ??
+            (clientSecret.includes('_secret_') ? clientSecret.split('_secret_')[0] : clientSecret);
+          return { clientSecret, paymentIntentId };
+        })
+      );
+  }
+
+  private normalizeFiscalMetadata(raw: any): FiscalMetadataModel | null {
+    if (!raw) return null;
+    if (raw.case === 'CodiceFiscale' || raw.Case === 'CodiceFiscale' || raw.isCodiceFiscale || raw.IsCodiceFiscale) {
+      const code = String(raw.fields?.[0] ?? raw.Fields?.[0] ?? raw.item ?? raw.Item ?? raw.value ?? raw.Value ?? '');
+      return { type: 'CodiceFiscale', code };
+    }
+    if (raw.case === 'CodiceLotteria' || raw.Case === 'CodiceLotteria' || raw.isCodiceLotteria || raw.IsCodiceLotteria) {
+      const code = String(raw.fields?.[0] ?? raw.Fields?.[0] ?? raw.item ?? raw.Item ?? raw.value ?? raw.Value ?? '');
+      return { type: 'CodiceLotteria', code };
+    }
+    return null;
+  }
+
+  private normalizePaymentGroup(g: any): PaymentGroupModel {
+    const unwrapId = (val: any): string => {
+      if (typeof val === 'string') return val;
+      if (val && typeof val === 'object') {
+        return String(val.fields?.[0] ?? val.Fields?.[0] ?? val.value ?? val.Value ?? '');
+      }
+      return '';
+    };
+
+    const rawItems = g?.items ?? g?.Items ?? [];
+    const items: PaymentGroupItemModel[] = Array.isArray(rawItems)
+      ? rawItems.map((it: any) => {
+          const quantity = Number(it?.quantity ?? it?.Quantity ?? 1);
+          const unitPrice = Number(it?.unitPrice ?? it?.UnitPrice ?? 0);
+          const shareRatio = Number(it?.shareRatio ?? it?.ShareRatio ?? 1.0);
+          const isGift = Boolean(it?.isGift ?? it?.IsGift ?? false);
+          const nominalTotal = Number(
+            it?.nominalTotal ?? it?.NominalTotal ?? Math.round(quantity * unitPrice * shareRatio * 100) / 100
+          );
+          const total = isGift
+            ? 0
+            : Number(it?.total ?? it?.Total ?? Math.round(quantity * unitPrice * shareRatio * 100) / 100);
+
+          let originalGroupId: string | null = null;
+          const rawOrig = it?.originalGroupId ?? it?.OriginalGroupId;
+          if (typeof rawOrig === 'string') originalGroupId = rawOrig;
+          else if (rawOrig && typeof rawOrig === 'object') {
+            const v = rawOrig.fields?.[0] ?? rawOrig.Fields?.[0] ?? rawOrig.value ?? rawOrig.Value;
+            if (v) originalGroupId = String(v);
+          }
+
+          return {
+            sessionId: String(it?.sessionId ?? it?.SessionId ?? ''),
+            menuItemName: String(it?.menuItemName ?? it?.MenuItemName ?? ''),
+            quantity,
+            unitPrice,
+            orderItemIds: Array.isArray(it?.orderItemIds ?? it?.OrderItemIds)
+              ? (it?.orderItemIds ?? it?.OrderItemIds).map((oid: any) => unwrapId(oid))
+              : [],
+            isGift,
+            isCommonShared: Boolean(it?.isCommonShared ?? it?.IsCommonShared ?? it?.isCommonQuota ?? it?.IsCommonQuota ?? false),
+            shareRatio,
+            originalGroupId,
+            isCustom: Boolean(it?.isCustom ?? it?.IsCustom ?? false),
+            total,
+            nominalTotal,
+          };
+        })
+      : [];
+
+    let discount = 0;
+    const rawDiscount = g?.discount ?? g?.Discount;
+    if (typeof rawDiscount === 'number') {
+      discount = rawDiscount;
+    } else if (rawDiscount && typeof rawDiscount === 'object') {
+      const dVal = rawDiscount.fields?.[0] ?? rawDiscount.Fields?.[0] ?? rawDiscount.value ?? rawDiscount.Value;
+      if (dVal !== undefined && dVal !== null) discount = Number(dVal);
+    }
+
+    const calculatedSubtotal = items.reduce((acc, i) => acc + (i.isGift ? 0 : i.total), 0);
+    const subtotal = Number(g?.subtotal ?? g?.Subtotal ?? Math.round(calculatedSubtotal * 100) / 100);
+    const totalAmount = Number(
+      g?.totalAmount ?? g?.TotalAmount ?? Math.max(0, Math.round((subtotal - discount) * 100) / 100)
+    );
+    const giftTotal = Number(
+      g?.giftTotal ??
+        g?.GiftTotal ??
+        Math.round(items.filter((i) => i.isGift).reduce((acc, i) => acc + i.nominalTotal, 0) * 100) / 100
+    );
+
+    let statusStr = 'Pending';
+    const rawStatus = g?.status ?? g?.Status;
+    if (typeof rawStatus === 'string') statusStr = rawStatus;
+    else if (rawStatus && typeof rawStatus === 'object') {
+      statusStr = rawStatus.case ?? rawStatus.Case ?? 'Pending';
+    }
+    const status: PaymentGroupStatus =
+      statusStr === 'Paid' || statusStr === '2' ? 'Paid' : statusStr === 'InProgress' || statusStr === '1' ? 'InProgress' : 'Pending';
+
+    let paymentIntentId: string | null = null;
+    const rawPid = g?.paymentIntentId ?? g?.PaymentIntentId;
+    if (typeof rawPid === 'string') paymentIntentId = rawPid;
+    else if (rawPid && typeof rawPid === 'object') {
+      const v = rawPid.fields?.[0] ?? rawPid.Fields?.[0] ?? rawPid.value ?? rawPid.Value;
+      if (v) paymentIntentId = String(v);
+    }
+
+    let paidAt: string | null = null;
+    const rawPaidAt = g?.paidAt ?? g?.PaidAt;
+    if (typeof rawPaidAt === 'string') paidAt = rawPaidAt;
+    else if (rawPaidAt && typeof rawPaidAt === 'object') {
+      const v = rawPaidAt.fields?.[0] ?? rawPaidAt.Fields?.[0] ?? rawPaidAt.value ?? rawPaidAt.Value;
+      if (v) paidAt = String(v);
+    }
+
+    const fiscalMetadata = this.normalizeFiscalMetadata(g?.fiscalMetadata ?? g?.FiscalMetadata);
+
+    return {
+      groupId: unwrapId(g?.groupId ?? g?.GroupId),
+      name: String(g?.name ?? g?.Name ?? ''),
+      items,
+      discount,
+      status,
+      paymentIntentId,
+      paidAt,
+      fiscalMetadata,
+      subtotal,
+      totalAmount,
+      giftTotal,
+    };
   }
 
   private normalizePaymentGroupSet(raw: any): PaymentGroupSetModel {
@@ -698,53 +971,32 @@ export class RestaurantService {
 
     const rawGroups = raw?.groups ?? raw?.Groups ?? [];
     const groups: PaymentGroupModel[] = Array.isArray(rawGroups)
-      ? rawGroups.map((g: any) => {
-          const rawItems = g?.items ?? g?.Items ?? [];
-          const items: PaymentGroupItemModel[] = Array.isArray(rawItems)
-            ? rawItems.map((it: any) => ({
-                sessionId: String(it?.sessionId ?? it?.SessionId ?? ''),
-                menuItemName: String(it?.menuItemName ?? it?.MenuItemName ?? ''),
-                quantity: Number(it?.quantity ?? it?.Quantity ?? 1),
-                unitPrice: Number(it?.unitPrice ?? it?.UnitPrice ?? 0),
-                orderItemIds: Array.isArray(it?.orderItemIds ?? it?.OrderItemIds)
-                  ? (it?.orderItemIds ?? it?.OrderItemIds).map((oid: any) => unwrapId(oid))
-                  : [],
-                isGift: Boolean(it?.isGift ?? it?.IsGift ?? false),
-                isCommonQuota: Boolean(it?.isCommonQuota ?? it?.IsCommonQuota ?? false),
-              }))
-            : [];
-
-          let discount: number | null = null;
-          const rawDiscount = g?.discount ?? g?.Discount;
-          if (typeof rawDiscount === 'number') {
-            discount = rawDiscount;
-          } else if (rawDiscount && typeof rawDiscount === 'object') {
-            const dVal = rawDiscount.fields?.[0] ?? rawDiscount.Fields?.[0] ?? rawDiscount.value ?? rawDiscount.Value;
-            if (dVal !== undefined && dVal !== null) discount = Number(dVal);
-          }
-
-          const subtotal = items
-            .filter((i) => !i.isGift)
-            .reduce((acc, i) => acc + i.quantity * i.unitPrice, 0);
-          const discountVal = discount && discount > 0 ? discount : 0;
-          const totalAmount = Math.round(Math.max(0, subtotal - discountVal) * 100) / 100;
-
-          return {
-            groupId: unwrapId(g?.groupId ?? g?.GroupId),
-            name: String(g?.name ?? g?.Name ?? ''),
-            items,
-            discount,
-            totalAmount,
-          };
-        })
+      ? rawGroups.map((g: any) => this.normalizePaymentGroup(g))
       : [];
+
+    const remainingAmount = Number(
+      raw?.remainingAmount ??
+        raw?.RemainingAmount ??
+        Math.round(
+          groups
+            .filter((g) => g.status !== 'Paid')
+            .reduce((acc, g) => acc + g.totalAmount, 0) * 100
+        ) / 100
+    );
+
+    const isFullyPaid =
+      groups.length > 0 && groups.every((g) => g.status === 'Paid');
 
     return {
       setId: unwrapId(raw?.setId ?? raw?.SetId),
+      restaurantId: unwrapId(raw?.restaurantId ?? raw?.RestaurantId),
       tableNum: Number(raw?.tableNum ?? raw?.TableNum ?? 0),
       tableId: unwrapId(raw?.tableId ?? raw?.TableId),
+      createdAt: raw?.createdAt ?? raw?.CreatedAt ?? undefined,
       isFlexible: Boolean(raw?.isFlexible ?? raw?.IsFlexible ?? false),
       groups,
+      remainingAmount,
+      isFullyPaid,
     };
   }
 

@@ -1,0 +1,187 @@
+<div class="waiter-qr-container">
+  @if (isLoading()) {
+    <div class="text-center py-5 my-auto">
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+      <p class="text-muted mt-3 fw-bold">{{ 'WaiterView_Loading' | loc }}</p>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="alert alert-danger text-center my-auto shadow-sm" style="border-radius: 1rem;">
+      <h5>{{ 'CustomerGroupPay_AlertTitle' | loc }}</h5>
+      <p class="mb-0">{{ errorMessage() }}</p>
+    </div>
+  } @else if (groupSet() && groupSet()!.groups.length > 0) {
+    @let set = groupSet()!;
+    <div class="waiter-card-header">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <span class="badge bg-white text-dark fw-bold">
+          {{ formatText('CustomerGroupPay_HeaderTableBadge', tableNum()) }}
+        </span>
+        <span class="badge bg-warning text-dark">
+          {{ set.isFlexible ? ('WaiterView_ModeFlexible' | loc) : ('WaiterView_ModeStrict' | loc) }}
+        </span>
+      </div>
+      <h4 class="fw-bold mb-1">{{ 'WaiterView_HeaderTitle' | loc }}</h4>
+      <div class="d-flex justify-content-between align-items-center small opacity-90 mt-2">
+        <span>
+          {{ 'WaiterView_LabelRemaining' | loc }} <strong>€{{ set.remainingAmount.toFixed(2) }}</strong>
+        </span>
+        <span>
+          {{ 'WaiterView_LabelPaid' | loc }} <strong>{{ getPaidCount() }} / {{ set.groups.length }}</strong>
+        </span>
+      </div>
+    </div>
+
+    <div class="group-pill-nav">
+      @for (g of set.groups; track g.groupId; let idx = $index) {
+        @let isSelected = idx === selectedIndex();
+        @let isPaid = g.status === 'Paid';
+        <button
+          type="button"
+          class="group-pill"
+          [class.active]="isSelected"
+          [class.paid]="isPaid"
+          (click)="selectGroup(idx)"
+        >
+          @if (isPaid) {
+            <span>✓ </span>
+          }
+          {{ g.name }} (€{{ g.totalAmount.toFixed(2) }})
+        </button>
+      }
+    </div>
+
+    @if (currentGroup()) {
+      @let current = currentGroup()!;
+      @let currentPayUrl = getGroupPayUrl(current.groupId);
+      @let currentQrUrl = getQrCodeUrl(currentPayUrl);
+      @let isCurrentPaid = current.status === 'Paid';
+
+      <div class="active-qr-card">
+        <div class="w-100">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <h5 class="fw-bold mb-0 text-dark">{{ current.name }}</h5>
+            <span class="badge fs-6 px-3 py-1" [class.bg-success]="isCurrentPaid" [class.bg-primary]="!isCurrentPaid">
+              €{{ current.totalAmount.toFixed(2) }}
+            </span>
+          </div>
+          <small class="text-muted d-block mb-2">
+            {{ formatText('WaiterView_ItemsSubtotalSummary', current.items.length, current.subtotal.toFixed(2)) }}
+            @if (current.discount > 0) {
+              <span class="text-danger ms-1">
+                ({{ formatText('WaiterView_DiscountSummary', current.discount.toFixed(2)) }})
+              </span>
+            }
+          </small>
+
+          <div class="dishes-summary-box">
+            <div class="dishes-summary-title">
+              <span><i class="bi bi-card-checklist me-1"></i>{{ 'WaiterView_DishesIncludedTitle' | loc }}</span>
+              <span>{{ current.items.length }}</span>
+            </div>
+            <div class="dishes-items-scroll">
+              @for (item of current.items; track $index) {
+                @let isAdopted = !!item.originalGroupId;
+                @let displayName = item.isCommonShared ? (item.menuItemName + ' ' + ('CustomerGroupPay_SharedQuotaTag' | loc)) : item.menuItemName;
+                <div class="dish-row">
+                  <div class="d-flex align-items-center text-truncate me-2">
+                    <span class="dish-qty-badge">{{ item.quantity }}&times;</span>
+                    <span class="dish-name" [title]="displayName">{{ displayName }}</span>
+                    @if (item.isGift) {
+                      <span class="badge bg-warning text-dark ms-1" style="font-size: 0.65rem;">
+                        {{ 'CustomerGroupPay_GiftBadge' | loc }}
+                      </span>
+                    }
+                    @if (isAdopted) {
+                      <span class="badge bg-info-subtle text-info-emphasis ms-1" style="font-size: 0.65rem;">
+                        {{ 'WaiterView_OfferedBadge' | loc }}
+                      </span>
+                    }
+                  </div>
+                  <div class="dish-price">
+                    @if (item.isGift) {
+                      <span class="text-muted text-decoration-line-through small me-1">€{{ item.nominalTotal.toFixed(2) }}</span>
+                      <span class="text-success">€0.00</span>
+                    } @else {
+                      <span>€{{ item.total.toFixed(2) }}</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+            @if (current.discount > 0 || current.giftTotal > 0) {
+              <div class="pt-2 mt-1 border-top d-flex justify-content-between align-items-center small">
+                @if (current.discount > 0) {
+                  <span class="text-danger fw-semibold">
+                    <i class="bi bi-tag-fill me-1"></i>{{ formatText('WaiterView_DiscountLabel', current.discount.toFixed(2)) }}
+                  </span>
+                }
+                @if (current.giftTotal > 0) {
+                  <span class="text-success fw-semibold ms-auto">
+                    <i class="bi bi-gift-fill me-1"></i>{{ formatText('WaiterView_GiftsLabel', current.giftTotal.toFixed(2)) }}
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (isCurrentPaid) {
+          <div class="paid-overlay my-auto">
+            <i class="bi bi-check-circle-fill text-success" style="font-size: 3.5rem;"></i>
+            <h4 class="fw-bold mb-0">{{ 'WaiterView_PaidOverlayTitle' | loc }}</h4>
+            <p class="small text-muted mb-0">
+              {{ 'WaiterView_PaidOverlaySubtitle' | loc }}
+              @if (current.paidAt) {
+                <br /><span>{{ formatText('WaiterView_PaidAtTime', formatPaidTime(current.paidAt)) }}</span>
+              }
+            </p>
+          </div>
+        } @else {
+          <div class="my-auto text-center">
+            <img [src]="currentQrUrl" [alt]="'QR ' + current.name" class="qr-large my-2" />
+            <div class="fw-bold text-dark mt-2">{{ 'WaiterView_PromptScan' | loc }}</div>
+            <small class="text-muted d-block mb-3">{{ 'WaiterView_PaymentMethodsHint' | loc }}</small>
+
+            <div class="p-2 bg-light rounded border text-start mx-auto" style="max-width: 420px;">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <small class="text-muted fw-bold">{{ 'WaiterView_DirectLinkLabel' | loc }}</small>
+                @if (copyFeedback()) {
+                  <small class="text-success fw-bold">{{ copyFeedback() }}</small>
+                }
+              </div>
+              <div class="input-group input-group-sm">
+                <input type="text" class="form-control font-monospace" readonly [value]="currentPayUrl" style="font-size: 0.78rem;" />
+                <a [href]="currentPayUrl" target="_blank" class="btn btn-outline-primary" title="Apri link">
+                  <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+                <button class="btn btn-outline-secondary" type="button" title="Copia link" (click)="copyToClipboard(currentPayUrl)">
+                  <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+
+        <div class="w-100 mt-3 d-flex justify-content-between align-items-center">
+          <button
+            class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+            [disabled]="selectedIndex() === 0"
+            (click)="prevGroup()"
+          >
+            <i class="bi bi-chevron-left me-1"></i> {{ 'WaiterView_BtnPrev' | loc }}
+          </button>
+          <span class="small fw-bold text-muted">
+            {{ formatText('WaiterView_PageCounter', selectedIndex() + 1, set.groups.length) }}
+          </span>
+          <button
+            class="btn btn-outline-secondary btn-sm rounded-pill px-3"
+            [disabled]="selectedIndex() >= set.groups.length - 1"
+            (click)="nextGroup()"
+          >
+            {{ 'WaiterView_BtnNext' | loc }} <i class="bi bi-chevron-right ms-1"></i>
+          </button>
+        </div>
+      </div>
+    }
+  }
+</div>

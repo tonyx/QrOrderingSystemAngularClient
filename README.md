@@ -2,6 +2,9 @@
 
 In progress vibe-coded client for the QrOrderingSystem API using the backend of www.restaurantsystem.cloud
 
+Currently this alternative client is live on https://ngdemo.restaurantsystem.cloud
+
+
 Goal: a reference implementation of a client of the 
 www.restaurantsystem.cloud api for any independent developer or company.
 

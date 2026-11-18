@@ -1,0 +1,61 @@
+.print-wrapper {
+  max-width: 1000px;
+  margin: 1.5rem auto;
+  padding: 0 1rem;
+  font-family: 'Outfit', sans-serif, system-ui;
+}
+
+.toolbar-header {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: white;
+  border-radius: 1rem;
+  padding: 1.25rem 1.75rem;
+  margin-bottom: 2rem;
+}
+
+.receipts-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+}
+
+.thermal-receipt {
+  width: 320px;
+  background: #ffffff;
+  border: 1px dashed #94a3b8;
+  border-radius: 0.5rem;
+  padding: 1.5rem 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  color: #0f172a;
+}
+
+.thermal-divider {
+  border-top: 1px dashed #cbd5e1;
+  margin: 0.85rem 0;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-wrapper {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  .receipts-grid {
+    display: block !important;
+  }
+  .thermal-receipt {
+    width: 80mm !important;
+    margin: 0 auto 15mm auto !important;
+    border: none !important;
+    box-shadow: none !important;
+    page-break-after: always;
+    padding: 2mm !important;
+  }
+}

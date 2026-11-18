@@ -1,0 +1,88 @@
+.customer-pay-container {
+  max-width: 540px;
+  margin: 1.5rem auto 3rem auto;
+  padding: 0 1.25rem;
+  font-family: 'Outfit', sans-serif, system-ui;
+}
+
+.bill-header {
+  background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+  color: white;
+  border-radius: 1.25rem;
+  padding: 1.75rem 1.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1.5rem;
+}
+
+.bill-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+  margin-bottom: 1.5rem;
+}
+
+.item-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.95rem;
+}
+
+.item-entry:last-child {
+  border-bottom: none;
+}
+
+.adopt-card {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.tip-btn {
+  padding: 0.45rem 0.8rem;
+  border-radius: 0.6rem;
+  border: 1px solid #cbd5e1;
+  background: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #475569;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.tip-btn:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.tip-btn.active {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: white;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
+}
+
+.tip-btn.is-default {
+  border-color: #818cf8;
+  background: #f5f3ff;
+}
+
+.tip-btn.is-default.active {
+  background: #4f46e5;
+  color: white;
+}
+
+.success-card {
+  background: white;
+  border: 2px solid #10b981;
+  border-radius: 1.5rem;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.1);
+}

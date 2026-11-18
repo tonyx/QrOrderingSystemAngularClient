@@ -46,13 +46,23 @@ export class LoginComponent implements OnInit {
   private handleExternalCallbackIfPresent(): boolean {
     const queryParams = this.route.snapshot.queryParams;
     const fragment = this.route.snapshot.fragment;
-    const hashParams = new URLSearchParams(fragment || '');
+
+    const rawSearch = typeof window !== 'undefined' ? window.location.search || '' : '';
+    const rawHash = typeof window !== 'undefined' ? window.location.hash || '' : (fragment ? `#${fragment}` : '');
+
+    const searchParams = new URLSearchParams(rawSearch.replace(/^\?/, ''));
+    const hashParams = new URLSearchParams(rawHash.replace(/^#/, ''));
+
+    const getParam = (key: string): string | null =>
+      hashParams.get(key) ||
+      searchParams.get(key) ||
+      queryParams[key] ||
+      null;
 
     const errorParam =
-      hashParams.get('error') ||
-      hashParams.get('errorMessage') ||
-      queryParams['error'] ||
-      queryParams['errorMessage'];
+      getParam('error') ||
+      getParam('errorMessage') ||
+      getParam('remoteError');
 
     if (errorParam) {
       this.errorMessage.set(decodeURIComponent(errorParam));
@@ -60,14 +70,13 @@ export class LoginComponent implements OnInit {
     }
 
     const externalToken =
-      hashParams.get('token') ||
-      hashParams.get('access_token') ||
-      queryParams['token'] ||
-      queryParams['access_token'];
+      getParam('token') ||
+      getParam('access_token') ||
+      getParam('jwt');
 
     if (externalToken) {
-      const email = hashParams.get('email') || queryParams['email'] || null;
-      const userId = hashParams.get('userId') || queryParams['userId'] || null;
+      const email = getParam('email');
+      const userId = getParam('userId');
 
       const targetUrl = this.authService.completeExternalLoginFromCallback({
         token: externalToken,
@@ -75,8 +84,9 @@ export class LoginComponent implements OnInit {
         userId,
       });
 
+      const destination = getParam('returnUrl') || targetUrl || '/dashboard';
       this.successMessage.set(`Welcome back${email ? ', ' + email : ''}!`);
-      this.router.navigateByUrl( queryParams['returnUrl'] || targetUrl, { replaceUrl: true });
+      this.router.navigateByUrl(destination, { replaceUrl: true });
       return true;
     }
 
@@ -104,9 +114,13 @@ export class LoginComponent implements OnInit {
     this.successMessage.set(null);
 
     this.authService.login({ email: emailVal, password: passwordVal }).subscribe({
-      next: (res) => {
+      next: (res: any) => {
         const tokenResp = typeof res === 'object' ? res : null;
-        const userEmail = tokenResp?.email || this.authService.currentUser()?.email || emailVal;
+        const userEmail =
+          tokenResp?.email ||
+          tokenResp?.Email ||
+          this.authService.currentUser()?.email ||
+          emailVal;
         this.isLoading.set(false);
         this.successMessage.set(`Welcome back, ${userEmail}!`);
 

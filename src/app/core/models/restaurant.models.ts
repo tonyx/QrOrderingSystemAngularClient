@@ -219,8 +219,6 @@ export interface SettlePayAtCounterItemSelectionDto {
   TableId: string;
   SessionId: string;
   MenuItemName: string;
-  Quantity: number;
-  OrderItemId?: string | null;
   IsGift: boolean;
   OverriddenUnitPrice?: number | null;
 }
@@ -255,24 +253,49 @@ export interface PaymentGroupItemModel {
   menuItemName: string;
   quantity: number;
   unitPrice: number;
-  orderItemIds: string[];
+  orderItemIds?: string[];
   isGift: boolean;
-  isCommonQuota: boolean;
+  isCommonShared: boolean;
+  shareRatio: number;
+  originalGroupId?: string | null;
+  isCustom: boolean;
+  total: number;
+  nominalTotal: number;
+}
+
+export type PaymentGroupStatus = 'Pending' | 'InProgress' | 'Paid';
+
+export interface FiscalMetadataModel {
+  type: 'CodiceFiscale' | 'CodiceLotteria';
+  code: string;
 }
 
 export interface PaymentGroupModel {
   groupId: string;
   name: string;
   items: PaymentGroupItemModel[];
-  discount?: number | null;
+  discount: number;
+  status: PaymentGroupStatus;
+  paymentIntentId?: string | null;
+  paidAt?: string | null;
+  fiscalMetadata?: FiscalMetadataModel | null;
+  subtotal: number;
   totalAmount: number;
+  giftTotal: number;
 }
+
+export type PaymentGroupSetStatus = 'Active' | 'Completed' | 'Cancelled';
 
 export interface PaymentGroupSetModel {
   setId: string;
+  restaurantId: string;
   tableNum: number;
   tableId: string;
+  createdAt?: string;
   isFlexible: boolean;
   groups: PaymentGroupModel[];
+  status?: PaymentGroupSetStatus;
+  remainingAmount: number;
+  isFullyPaid: boolean;
 }
 

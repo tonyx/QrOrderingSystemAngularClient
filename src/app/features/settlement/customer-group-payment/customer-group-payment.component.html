@@ -1,0 +1,438 @@
+<div class="customer-pay-container">
+  @if (isLoading()) {
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;"></div>
+      <p class="text-muted mt-3 fw-bold">{{ 'CustomerGroupPay_Loading' | loc }}</p>
+    </div>
+  } @else if (errorMessage()) {
+    <div class="alert alert-danger text-center shadow-sm" style="border-radius: 1rem;">
+      <h5>{{ 'CustomerGroupPay_AlertTitle' | loc }}</h5>
+      <p class="mb-0">{{ errorMessage() }}</p>
+    </div>
+  } @else if (isPaidSuccess() || group()?.status === 'Paid') {
+    <div class="success-card">
+      <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+      <h3 class="fw-bold mt-3 mb-1">{{ 'CustomerGroupPay_SuccessTitle' | loc }}</h3>
+      <p class="text-muted mb-3">{{ 'CustomerGroupPay_SuccessSubtitle' | loc }}</p>
+      <div class="p-3 bg-light rounded-3 text-start small mb-3">
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted">{{ 'CustomerGroupPay_LabelTable' | loc }}</span>
+          <strong>{{ groupSet()?.tableNum ?? '-' }}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted">{{ 'CustomerGroupPay_LabelGroup' | loc }}</span>
+          <strong>{{ group()?.name ?? '-' }}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-1">
+          <span class="text-muted">{{ 'CustomerGroupPay_LabelAmountPaid' | loc }}</span>
+          <strong class="text-success">€{{ (group()?.totalAmount ?? 0).toFixed(2) }}</strong>
+        </div>
+        @if (tipAmountCents() > 0) {
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">{{ 'CustomerGroupPay_LabelTip' | loc }}</span>
+            <strong class="text-success">€{{ (tipAmountCents() / 100).toFixed(2) }}</strong>
+          </div>
+        }
+        @if (group()?.fiscalMetadata) {
+          @let fm = group()!.fiscalMetadata!;
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">
+              {{ fm.type === 'CodiceFiscale' ? ('CustomerGroupPay_LabelFiscalCode' | loc) : ('CustomerGroupPay_LabelLotteryCode' | loc) }}
+            </span>
+            <strong class="font-monospace">{{ fm.code }}</strong>
+          </div>
+        } @else if (selectedFiscalOption() === 'cf' && fiscalInputText().trim()) {
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">{{ 'CustomerGroupPay_LabelFiscalCode' | loc }}</span>
+            <strong class="font-monospace">{{ fiscalInputText().trim().toUpperCase() }}</strong>
+          </div>
+        } @else if (selectedFiscalOption() === 'lotteria' && fiscalInputText().trim()) {
+          <div class="d-flex justify-content-between mb-1">
+            <span class="text-muted">{{ 'CustomerGroupPay_LabelLotteryCode' | loc }}</span>
+            <strong class="font-monospace">{{ fiscalInputText().trim().toUpperCase() }}</strong>
+          </div>
+        }
+      </div>
+      <p class="small text-muted mb-0">{{ 'CustomerGroupPay_SafeToClose' | loc }}</p>
+    </div>
+  } @else if (group() && groupSet()) {
+    <div class="bill-header">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="badge bg-white text-dark fw-bold">
+          {{ formatText('CustomerGroupPay_HeaderTableBadge', groupSet()!.tableNum) }}
+        </span>
+        <span class="badge bg-light text-secondary">
+          {{ restaurant()?.restaurantName || ('CustomerGroupPay_RestaurantFallback' | loc) }}
+        </span>
+      </div>
+      <h3 class="fw-bold mb-0">{{ group()!.name }}</h3>
+      <small class="opacity-75">{{ 'CustomerGroupPay_HeaderSubtitle' | loc }}</small>
+    </div>
+
+    <div class="bill-card">
+      <h5 class="fw-bold mb-3 text-dark d-flex justify-content-between align-items-center">
+        <span>{{ 'CustomerGroupPay_YourDishesTitle' | loc }}</span>
+        <span class="badge bg-light text-dark fs-6">€{{ group()!.totalAmount.toFixed(2) }}</span>
+      </h5>
+
+      <div class="items-list">
+        @if (group()!.items.length === 0) {
+          <div class="text-center py-4">
+            <i class="bi bi-gift-fill text-warning" style="font-size: 2.5rem;"></i>
+            <h6 class="fw-bold mt-2 mb-1">{{ 'CustomerGroupPay_AllDishesAdoptedTitle' | loc }}</h6>
+            <p class="small text-muted mb-0">
+              {{ 'CustomerGroupPay_AllDishesAdoptedDesc' | loc }}
+            </p>
+          </div>
+        } @else {
+          @for (item of group()!.items; track $index) {
+            @let isAdopted = !!item.originalGroupId;
+            @let title = item.isCommonShared ? (item.menuItemName + ' ' + ('CustomerGroupPay_SharedQuotaTag' | loc)) : item.menuItemName;
+            <div class="item-entry d-flex justify-content-between align-items-center">
+              <div class="d-flex align-items-center flex-wrap gap-1">
+                <span class="fw-bold text-primary me-1">{{ item.quantity }}&times;</span>
+                <span class="text-dark">{{ title }}</span>
+                @if (item.isGift) {
+                  <span class="badge bg-warning text-dark ms-1" style="font-size: 0.7rem;">
+                    {{ 'CustomerGroupPay_GiftBadge' | loc }}
+                  </span>
+                }
+                @if (isAdopted) {
+                  <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle ms-1" style="font-size: 0.7rem;">
+                    <i class="bi bi-gift-fill me-1"></i>{{ 'CustomerGroupPay_AdoptedByYouBadge' | loc }}
+                  </span>
+                }
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                @if (item.isGift) {
+                  <span class="text-success fw-bold">€0.00</span>
+                } @else {
+                  <span class="fw-bold text-dark">€{{ item.total.toFixed(2) }}</span>
+                }
+                @if (isAdopted && group()!.status !== 'Paid') {
+                  <button
+                    type="button"
+                    class="btn btn-outline-danger btn-sm py-0 px-2"
+                    style="font-size: 0.75rem;"
+                    [title]="'CustomerGroupPay_RemoveAdoptedTooltip' | loc"
+                    [disabled]="isBusy()"
+                    (click)="removeAdoptedItem(item.sessionId, item.menuItemName)"
+                  >
+                    <i class="bi bi-arrow-counterclockwise me-1"></i>{{ 'CustomerGroupPay_BtnRemove' | loc }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+
+      @if (group()!.items.length > 0) {
+        <div class="pt-3 mt-2 border-top">
+          <div class="d-flex justify-content-between small text-muted mb-1">
+            <span>{{ 'CustomerGroupPay_SubtotalLabel' | loc }}</span>
+            <span>€{{ group()!.subtotal.toFixed(2) }}</span>
+          </div>
+          @if (group()!.discount > 0) {
+            <div class="d-flex justify-content-between small text-danger mb-1">
+              <span>{{ 'CustomerGroupPay_DiscountAppliedLabel' | loc }}</span>
+              <span>-€{{ group()!.discount.toFixed(2) }}</span>
+            </div>
+          }
+          @if (tipAmountCents() > 0) {
+            <div class="d-flex justify-content-between small text-info mb-1">
+              <span>{{ 'CustomerGroupPay_LabelTip' | loc }}</span>
+              <span>+€{{ (tipAmountCents() / 100).toFixed(2) }}</span>
+            </div>
+          }
+          <div class="d-flex justify-content-between fs-5 fw-bold text-dark pt-2 border-top">
+            <span>{{ 'CustomerGroupPay_TotalToPayLabel' | loc }}</span>
+            <span class="text-primary">€{{ (group()!.totalAmount + (tipAmountCents() / 100)).toFixed(2) }}</span>
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (groupSet()!.isFlexible) {
+      @let adoptableGroups = getAdoptableGroups();
+      @if (adoptableGroups.length > 0) {
+        <div class="adopt-card">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0 text-dark">
+              <i class="bi bi-gift-fill text-warning me-1"></i> {{ 'CustomerGroupPay_AdoptSectionTitle' | loc }}
+            </h6>
+            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
+              {{ 'CustomerGroupPay_FlexibleBadge' | loc }}
+            </span>
+          </div>
+          <p class="small text-muted mb-3">{{ 'CustomerGroupPay_AdoptSectionDesc' | loc }}</p>
+
+          @for (og of adoptableGroups; track og.groupId) {
+            <div class="mb-2">
+              <small class="text-muted fw-bold d-block mb-1">
+                {{ formatText('CustomerGroupPay_AdoptFromGroup', og.name) }}
+              </small>
+              @for (oItem of getAdoptableItemsForGroup(og); track $index) {
+                <div class="d-flex justify-content-between align-items-center p-2 rounded bg-white border mb-1">
+                  <span class="small">
+                    {{ oItem.quantity }}&times; {{ oItem.menuItemName }}
+                    <strong class="text-success ms-1">€{{ oItem.total.toFixed(2) }}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-sm py-0 px-2"
+                    [disabled]="isBusy()"
+                    (click)="adoptItem(og.groupId, oItem.sessionId, oItem.menuItemName)"
+                  >
+                    <i class="bi bi-plus-circle me-1"></i> {{ 'CustomerGroupPay_BtnAddToMyBill' | loc }}
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+
+    @if (group()!.items.length === 0) {
+      <div class="p-4 bg-light rounded-4 text-center small my-3 border shadow-sm">
+        <i class="bi bi-info-circle text-primary me-1 fs-5 d-block mb-2"></i>
+        <span class="text-muted">{{ 'CustomerGroupPay_ZeroBalanceNotice' | loc }}</span>
+      </div>
+    } @else {
+      @let rest = restaurant();
+      @let hasTipsHints = rest && rest.tipsHints && rest.tipsHints.length > 0;
+      @let isShowTipsEnabled = !!(rest && rest.showTips);
+      @let shouldShowTipForm = (isShowTipsEnabled && hasTipsHints) || showExplicitTipForm();
+
+      <div class="bill-card">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 0.95rem;">
+            <i class="bi bi-heart{{ shouldShowTipForm && tipAmountCents() > 0 ? '-fill text-danger' : ' text-muted' }}"></i>
+            <span>{{ 'Order_AddTipHeader' | loc }}</span>
+          </div>
+          @if (!shouldShowTipForm) {
+            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" (click)="toggleExplicitTipForm()">
+              {{ 'Order_BtnTipOption' | loc }}
+            </button>
+          } @else if (!isShowTipsEnabled || !hasTipsHints) {
+            <button type="button" class="btn btn-sm btn-link text-secondary text-decoration-none p-0 ms-auto" (click)="toggleExplicitTipForm()">
+              {{ 'Order_BtnHide' | loc }}
+            </button>
+          }
+        </div>
+
+        @if (shouldShowTipForm) {
+          <div class="mt-2 mb-3">
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              <button
+                type="button"
+                class="tip-btn"
+                [class.active]="selectedTipMode() === 'none'"
+                [disabled]="isBusy() || isInitializingStripe()"
+                (click)="selectTipMode('none')"
+              >
+                {{ 'Order_BtnNoTip' | loc }}
+              </button>
+
+              @if (hasTipsHints && rest?.tipsHints) {
+                @for (item of rest!.tipsHints!; track item.percentage) {
+                  <button
+                    type="button"
+                    class="tip-btn"
+                    [class.active]="selectedTipMode() === 'percentage' && selectedTipPercentage() === item.percentage"
+                    [class.is-default]="item.isDefault"
+                    [disabled]="isBusy() || isInitializingStripe()"
+                    (click)="selectTipPercentage(item.percentage)"
+                  >
+                    {{ item.percentage }}%{{ item.isDefault ? ' ★' : '' }}
+                  </button>
+                }
+              }
+
+              <button
+                type="button"
+                class="tip-btn"
+                [class.active]="selectedTipMode() === 'custom_percentage'"
+                [disabled]="isBusy() || isInitializingStripe()"
+                (click)="selectTipMode('custom_percentage')"
+              >
+                {{ 'Order_BtnCustomPercentage' | loc }}
+              </button>
+
+              <button
+                type="button"
+                class="tip-btn"
+                [class.active]="selectedTipMode() === 'fixed'"
+                [disabled]="isBusy() || isInitializingStripe()"
+                (click)="selectTipMode('fixed')"
+              >
+                {{ 'Order_BtnFixedAmount' | loc }}
+              </button>
+            </div>
+
+            @if (selectedTipMode() === 'custom_percentage') {
+              <div class="input-group input-group-sm mb-2" style="max-width: 220px;">
+                <input
+                  type="number"
+                  class="form-control"
+                  [placeholder]="'Order_PlaceholderPercentage' | loc"
+                  min="1"
+                  max="500"
+                  [value]="customTipPercentageInput() ?? ''"
+                  (input)="onCustomTipPercentageChange($event)"
+                />
+                <span class="input-group-text">%</span>
+              </div>
+            } @else if (selectedTipMode() === 'fixed') {
+              <div class="input-group input-group-sm mb-2" style="max-width: 220px;">
+                <span class="input-group-text">€</span>
+                <input
+                  type="number"
+                  step="0.50"
+                  class="form-control"
+                  [placeholder]="'Order_PlaceholderAmount' | loc"
+                  min="0.50"
+                  max="500"
+                  [value]="customTipFixedInput() ?? ''"
+                  (input)="onCustomTipFixedChange($event)"
+                />
+              </div>
+            }
+
+            @if (isTipOver50PercentThreshold()) {
+              <div class="alert alert-warning p-2 small mt-2 mb-0 d-flex flex-column gap-2" style="border-radius: 0.5rem;">
+                <div class="fw-bold text-dark">
+                  {{ 'Order_HighTipWarningTitle' | loc }}
+                </div>
+                <div class="form-check">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="confirmHighTipCheck"
+                    [checked]="isHighTipConfirmed()"
+                    (change)="onToggleHighTipConfirmed($event)"
+                  />
+                  <label class="form-check-label text-dark fw-semibold" for="confirmHighTipCheck">
+                    {{ 'Order_HighTipConfirmLabel' | loc }}
+                  </label>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <div class="mb-3 p-3 bg-light rounded border">
+          <label class="form-label small fw-bold text-muted mb-2 d-block">
+            <i class="bi bi-receipt me-1"></i>{{ 'CustomerGroupPay_FiscalSectionTitle' | loc }}
+          </label>
+          <div class="d-flex flex-wrap gap-3 mb-2">
+            <div class="form-check form-check-inline m-0">
+              <input
+                class="form-check-input"
+                type="radio"
+                name="fiscalOpt_group"
+                id="groupFiscal_none"
+                value="none"
+                [checked]="selectedFiscalOption() === 'none'"
+                (change)="setFiscalOption('none')"
+              />
+              <label class="form-check-label small" for="groupFiscal_none">
+                {{ 'CustomerGroupPay_FiscalNone' | loc }}
+              </label>
+            </div>
+            <div class="form-check form-check-inline m-0">
+              <input
+                class="form-check-input"
+                type="radio"
+                name="fiscalOpt_group"
+                id="groupFiscal_cf"
+                value="cf"
+                [checked]="selectedFiscalOption() === 'cf'"
+                (change)="setFiscalOption('cf')"
+              />
+              <label class="form-check-label small fw-bold" for="groupFiscal_cf">
+                {{ 'CustomerGroupPay_FiscalCf' | loc }}
+              </label>
+            </div>
+            <div class="form-check form-check-inline m-0">
+              <input
+                class="form-check-input"
+                type="radio"
+                name="fiscalOpt_group"
+                id="groupFiscal_lotteria"
+                value="lotteria"
+                [checked]="selectedFiscalOption() === 'lotteria'"
+                (change)="setFiscalOption('lotteria')"
+              />
+              <label class="form-check-label small fw-bold" for="groupFiscal_lotteria">
+                {{ 'CustomerGroupPay_FiscalLottery' | loc }}
+              </label>
+            </div>
+          </div>
+
+          @if (selectedFiscalOption() !== 'none') {
+            <div class="mt-2">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white fw-semibold">
+                  {{ selectedFiscalOption() === 'cf' ? 'CF' : 'Lotteria' }}
+                </span>
+                <input
+                  type="text"
+                  class="form-control text-uppercase font-monospace"
+                  [placeholder]="selectedFiscalOption() === 'cf' ? ('CustomerGroupPay_FiscalCfPlaceholder' | loc) : ('CustomerGroupPay_FiscalLotteryPlaceholder' | loc)"
+                  [attr.maxlength]="selectedFiscalOption() === 'cf' ? 16 : 8"
+                  [value]="fiscalInputText()"
+                  (input)="onFiscalInputTextChange($event)"
+                />
+              </div>
+              @if (fiscalValidationError()) {
+                <div class="text-danger small mt-1">
+                  <i class="bi bi-exclamation-circle me-1"></i>{{ fiscalValidationError() }}
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-muted mb-1">
+            {{ 'CustomerGroupPay_PaymentMethodTitle' | loc }}
+          </label>
+          @if (isInitializingStripe()) {
+            <div class="text-center py-3 border rounded bg-light my-2">
+              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+              <small class="d-block text-muted mt-2">{{ 'CustomerGroupPay_LoadingStripe' | loc }}</small>
+            </div>
+          }
+          <div id="stripe-payment-element-container" class="p-2 border rounded bg-light my-2" style="min-height: 120px;"></div>
+        </div>
+
+        @if (paymentError()) {
+          <div class="alert alert-danger py-2 small mb-3">{{ paymentError() }}</div>
+        }
+
+        <button
+          type="button"
+          class="btn btn-success w-100 py-3 fw-bold rounded-pill shadow-sm"
+          [disabled]="isBusy() || isInitializingStripe() || !isStripeReady() || (isTipOver50PercentThreshold() && !isHighTipConfirmed())"
+          (click)="executePayment()"
+        >
+          @if (isBusy()) {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            <span>{{ 'CustomerGroupPay_ProcessingPayment' | loc }}</span>
+          } @else {
+            <span>
+              {{ formatText('CustomerGroupPay_BtnPayWithAmount', (group()!.totalAmount + (tipAmountCents() / 100)).toFixed(2)) }}
+            </span>
+          }
+        </button>
+        <div class="text-center mt-2">
+          <small class="text-muted">
+            <i class="bi bi-shield-lock-fill me-1 text-success"></i> {{ 'CustomerGroupPay_SecurePaymentStripe' | loc }}
+          </small>
+        </div>
+      </div>
+    }
+  }
+</div>

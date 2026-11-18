@@ -154,7 +154,7 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
   showPaymentGroupModal = false;
   groupModalTableNum = 0;
   groupModalTableId = '';
-  isFlexibleGroupSet = false;
+  isFlexibleGroupSet = true;
   isPublishingGroups = false;
   publishGroupError: string | null = null;
   copyFeedback: string | null = null;
@@ -1130,16 +1130,18 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
   private buildSelectionsList(): SettlePayAtCounterItemSelectionDto[] {
     const list: SettlePayAtCounterItemSelectionDto[] = [];
     this.selectedPayAtCounterItems.forEach((v, k) => {
-      list.push({
-        TableNum: v.tableNum,
-        TableId: v.tableId,
-        SessionId: v.sessionId,
-        MenuItemName: v.menuItemName,
-        Quantity: v.quantity,
-        OrderItemId: v.orderItemId || null,
-        IsGift: this.selectedGiftKeys.has(k),
-        OverriddenUnitPrice: v.unitPrice > 0 ? v.unitPrice : null,
-      });
+      const isGift = this.selectedGiftKeys.has(k);
+      const count = Math.max(1, v.quantity);
+      for (let q = 0; q < count; q++) {
+        list.push({
+          TableNum: v.tableNum,
+          TableId: v.tableId,
+          SessionId: v.sessionId,
+          MenuItemName: v.menuItemName,
+          IsGift: isGift,
+          OverriddenUnitPrice: v.unitPrice > 0 ? v.unitPrice : null,
+        });
+      }
     });
     return list;
   }
@@ -1356,7 +1358,7 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
 
     this.groupModalTableNum = tableNum;
     this.groupModalTableId = tableId;
-    this.isFlexibleGroupSet = false;
+    this.isFlexibleGroupSet = true;
     this.publishGroupError = null;
     this.publishedGroupSet = null;
     this.copyFeedback = null;
@@ -1425,7 +1427,7 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
 
     this.groupModalTableNum = first.tableNum;
     this.groupModalTableId = first.tableId;
-    this.isFlexibleGroupSet = false;
+    this.isFlexibleGroupSet = true;
     this.publishGroupError = null;
     this.publishedGroupSet = null;
     this.copyFeedback = null;
@@ -1739,18 +1741,22 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
     this.publishGroupError = null;
 
     const groupsDto: CreatePaymentGroupDto[] = this.builderGroups.map((g) => {
-      const groupSessionItems: SettlePayAtCounterItemSelectionDto[] = this.builderItems
+      const groupSessionItems: SettlePayAtCounterItemSelectionDto[] = [];
+      this.builderItems
         .filter((i) => !i.isCustom && !i.isCommon && i.assignedGroupId === g.id)
-        .map((i) => ({
-          TableNum: this.groupModalTableNum,
-          TableId: this.groupModalTableId,
-          SessionId: i.sessionId,
-          MenuItemName: i.menuItemName,
-          Quantity: i.quantity,
-          OrderItemId: i.orderItemId || null,
-          IsGift: i.isGift,
-          OverriddenUnitPrice: i.unitPrice > 0 ? i.unitPrice : null,
-        }));
+        .forEach((i) => {
+          const count = Math.max(1, i.quantity);
+          for (let q = 0; q < count; q++) {
+            groupSessionItems.push({
+              TableNum: this.groupModalTableNum,
+              TableId: this.groupModalTableId,
+              SessionId: i.sessionId,
+              MenuItemName: i.menuItemName,
+              IsGift: i.isGift,
+              OverriddenUnitPrice: i.unitPrice > 0 ? i.unitPrice : null,
+            });
+          }
+        });
 
       const groupCustomItems: ArbitraryPaymentGroupItemDto[] = this.builderItems
         .filter((i) => i.isCustom && !i.isCommon && i.assignedGroupId === g.id)
@@ -1771,18 +1777,22 @@ export class AllOrdersComponent implements OnInit, OnDestroy {
       };
     });
 
-    const commonItemsDto: SettlePayAtCounterItemSelectionDto[] = this.builderItems
+    const commonItemsDto: SettlePayAtCounterItemSelectionDto[] = [];
+    this.builderItems
       .filter((i) => !i.isCustom && i.isCommon)
-      .map((i) => ({
-        TableNum: this.groupModalTableNum,
-        TableId: this.groupModalTableId,
-        SessionId: i.sessionId,
-        MenuItemName: i.menuItemName,
-        Quantity: i.quantity,
-        OrderItemId: i.orderItemId || null,
-        IsGift: i.isGift,
-        OverriddenUnitPrice: i.unitPrice > 0 ? i.unitPrice : null,
-      }));
+      .forEach((i) => {
+        const count = Math.max(1, i.quantity);
+        for (let q = 0; q < count; q++) {
+          commonItemsDto.push({
+            TableNum: this.groupModalTableNum,
+            TableId: this.groupModalTableId,
+            SessionId: i.sessionId,
+            MenuItemName: i.menuItemName,
+            IsGift: i.isGift,
+            OverriddenUnitPrice: i.unitPrice > 0 ? i.unitPrice : null,
+          });
+        }
+      });
 
     const commonCustomItemsDto: ArbitraryPaymentGroupItemDto[] = this.builderItems
       .filter((i) => i.isCustom && i.isCommon)

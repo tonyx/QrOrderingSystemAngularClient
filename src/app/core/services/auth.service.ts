@@ -31,12 +31,12 @@ export class AuthService {
 
   login(credentials: TokenRequest): Observable<TokenResponse | string> {
     return this.authApi.postApiAuthToken(credentials).pipe(
-      tap((res) => {
-        // Robust extraction supporting token response or plain string
+      tap((res: any) => {
+        // Robust extraction supporting PascalCase, camelCase, or plain token string
         const extractedToken =
           typeof res === 'string'
             ? res
-            : (res as TokenResponse)?.token || '';
+            : res?.token || res?.Token || '';
         if (extractedToken) {
           const authResult: TokenResponse = typeof res === 'string' ? { token: res } : res;
           this.setSession(authResult, extractedToken);
@@ -113,12 +113,12 @@ export class AuthService {
 
   fetchCurrentUser(): Observable<CurrentUserResponse> {
     return this.authApi.getApiAuthMe('application/json').pipe(
-      tap((user) => {
+      tap((user: any) => {
         const normalized: CurrentUserResponse = {
-          userId: user.userId ?? null,
-          email: user.email ?? null,
-          isPlatformAdmin: user.isPlatformAdmin ?? false,
-          userContext: user.userContext ?? null,
+          userId: user?.userId ?? user?.UserId ?? null,
+          email: user?.email ?? user?.Email ?? null,
+          isPlatformAdmin: user?.isPlatformAdmin ?? user?.IsPlatformAdmin ?? false,
+          userContext: user?.userContext ?? user?.UserContext ?? null,
         };
         this.currentUser.set(normalized);
         this.persistUser(normalized);
@@ -137,7 +137,7 @@ export class AuthService {
     }
   }
 
-  private setSession(authResult: TokenResponse, extractedToken: string): void {
+  private setSession(authResult: any, extractedToken: string): void {
     this.token.set(extractedToken);
     try {
       localStorage.setItem(TOKEN_STORAGE_KEY, extractedToken);
@@ -151,9 +151,23 @@ export class AuthService {
     try {
       const parts = extractedToken.split('.');
       if (parts.length === 3) {
-        const payload = JSON.parse(atob(parts[1]));
-        emailFromJwt = payload.email || payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] || '';
-        const roleClaim = payload.role || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+        let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        while (b64.length % 4) b64 += '=';
+        const json = decodeURIComponent(
+          atob(b64)
+            .split('')
+            .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        const payload = JSON.parse(json);
+        emailFromJwt =
+          payload.email ||
+          payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'] ||
+          '';
+        const roleClaim =
+          payload.role ||
+          payload.roles ||
+          payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
         if (roleClaim) {
           rolesFromJwt = Array.isArray(roleClaim) ? roleClaim : [roleClaim];
         }
@@ -162,9 +176,9 @@ export class AuthService {
       // Ignore JWT parse failures
     }
 
-    const email = authResult?.email ?? emailFromJwt ?? '';
-    const userId = authResult?.userId ?? '';
-    const roles = authResult?.roles ?? rolesFromJwt;
+    const email = authResult?.email ?? authResult?.Email ?? emailFromJwt ?? '';
+    const userId = authResult?.userId ?? authResult?.UserId ?? '';
+    const roles = authResult?.roles ?? authResult?.Roles ?? rolesFromJwt;
     const isPlatformAdmin = roles.includes('PlatformAdmin');
 
     const initialUser: CurrentUserResponse = {
