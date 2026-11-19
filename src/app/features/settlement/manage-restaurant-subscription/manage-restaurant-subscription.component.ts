@@ -47,6 +47,14 @@ export class ManageRestaurantSubscriptionComponent implements OnInit {
   protected discount6MonthsPercent = signal<number>(15.0);
   protected discount12MonthsPercent = signal<number>(20.0);
 
+  // Stripe Mode configuration & selection
+  protected hasTestKeys = signal<boolean>(false);
+  protected hasLiveKeys = signal<boolean>(false);
+  protected isTestMode = signal<boolean>(true); // default to true since this client is deployed in test mode
+
+  // Only allow toggling if both test and live keys are configured
+  protected canTogglePaymentMode = computed(() => this.hasTestKeys() && this.hasLiveKeys());
+
   protected monthlyFeeAmount = computed(() => this.monthlyFeeCents() / 100.0);
 
   protected parsedSub = computed<ParsedSubscriptionInfo>(() => {
@@ -79,12 +87,36 @@ export class ManageRestaurantSubscriptionComponent implements OnInit {
           this.discount3MonthsPercent.set(config.discount3MonthsPercent ?? 10.0);
           this.discount6MonthsPercent.set(config.discount6MonthsPercent ?? 15.0);
           this.discount12MonthsPercent.set(config.discount12MonthsPercent ?? 20.0);
+          this.hasTestKeys.set(Boolean(config.hasTestKeys));
+          this.hasLiveKeys.set(Boolean(config.hasLiveKeys));
+
+          // If only test keys are present, automatically force/default to test mode.
+          // If only live keys are present, switch to live mode (false).
+          // If both are present, defaults to test mode as requested for this client.
+          if (config.hasTestKeys && !config.hasLiveKeys) {
+            this.isTestMode.set(true);
+          } else if (!config.hasTestKeys && config.hasLiveKeys) {
+            this.isTestMode.set(false);
+          } else {
+            // Both configured or neither configured: default to test mode for this test-mode client
+            this.isTestMode.set(true);
+          }
         }
       },
       error: () => {
         // Fall back to defaults
       },
     });
+  }
+
+  setTestMode(enabled: boolean): void {
+    this.isTestMode.set(enabled);
+  }
+
+  toggleTestMode(): void {
+    if (this.canTogglePaymentMode()) {
+      this.isTestMode.update((v) => !v);
+    }
   }
 
   loadRestaurant(): void {
@@ -167,6 +199,7 @@ export class ManageRestaurantSubscriptionComponent implements OnInit {
 
     const currentUser = this.authService.currentUser();
     const userId = currentUser?.userId || null;
+    const isSandbox = this.isTestMode();
 
     this.stripePaymentService
       .createSubscriptionIntent(restId, {
@@ -174,7 +207,8 @@ export class ManageRestaurantSubscriptionComponent implements OnInit {
         successUrl,
         cancelUrl,
         userId,
-      })
+        isSandbox,
+      }, isSandbox)
       .subscribe({
         next: (res) => {
           this.isSubmitting.set(false);

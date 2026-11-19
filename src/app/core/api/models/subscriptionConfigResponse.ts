@@ -35,4 +35,12 @@ export interface SubscriptionConfigResponse {
      * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
      */
   discount12MonthsPercent?: number | string;
+  /**
+   * Indicates whether Stripe Test Mode API keys are configured on the platform.
+   */
+  hasTestKeys?: boolean;
+  /**
+   * Indicates whether Stripe Live (Production) Mode API keys are configured on the platform.
+   */
+  hasLiveKeys?: boolean;
 }

@@ -24,6 +24,8 @@ export interface SubscriptionSettingsConfig {
   discount3MonthsPercent: number;
   discount6MonthsPercent: number;
   discount12MonthsPercent: number;
+  hasTestKeys?: boolean;
+  hasLiveKeys?: boolean;
 }
 
 export interface CreateSubscriptionIntentRequest {
@@ -31,6 +33,7 @@ export interface CreateSubscriptionIntentRequest {
   successUrl: string;
   cancelUrl: string;
   userId?: string | null;
+  isSandbox?: boolean;
 }
 
 export interface CreateSubscriptionIntentResponse {

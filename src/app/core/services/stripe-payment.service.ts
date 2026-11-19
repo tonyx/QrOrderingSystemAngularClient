@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { StripePaymentsService } from '../api/endpoints/stripe-payments/stripe-payments.service';
 import {
@@ -32,6 +33,8 @@ export class StripePaymentService {
         discount3MonthsPercent: Number(res?.discount3MonthsPercent ?? res?.Discount3MonthsPercent ?? 10.0),
         discount6MonthsPercent: Number(res?.discount6MonthsPercent ?? res?.Discount6MonthsPercent ?? 15.0),
         discount12MonthsPercent: Number(res?.discount12MonthsPercent ?? res?.Discount12MonthsPercent ?? 20.0),
+        hasTestKeys: Boolean(res?.hasTestKeys ?? res?.HasTestKeys ?? false),
+        hasLiveKeys: Boolean(res?.hasLiveKeys ?? res?.HasLiveKeys ?? false),
       }))
     );
   }
@@ -41,13 +44,29 @@ export class StripePaymentService {
    */
   createSubscriptionIntent(
     restaurantId: string,
-    payload: CreateSubscriptionIntentRequest
+    payload: CreateSubscriptionIntentRequest,
+    isSandbox?: boolean
   ): Observable<CreateSubscriptionIntentResponse> {
+    const sandboxValue = Boolean(isSandbox ?? payload.isSandbox);
+    let headers: HttpHeaders | undefined;
+    let params: HttpParams | undefined;
+
+    if (sandboxValue) {
+      headers = new HttpHeaders({ 'X-Sandbox': 'true' });
+      params = new HttpParams().set('sandbox', 'true');
+    }
+
+    const body = {
+      ...payload,
+      isSandbox: sandboxValue,
+    };
+
     return this.stripeApi
       .postApiStripePaymentRestaurantRestaurantIdCreateSubscriptionIntent(
         restaurantId,
-        payload as any,
-        'application/json'
+        body as any,
+        'application/json',
+        { headers, params }
       )
       .pipe(
         map((res: any) => ({

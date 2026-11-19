@@ -30,4 +30,8 @@ export interface CreateSubscriptionPaymentIntentRequest {
      * @nullable
      */
   userId?: string | null;
+  /**
+   * Optional boolean flag indicating sandbox/test mode request.
+   */
+  isSandbox?: boolean;
 }

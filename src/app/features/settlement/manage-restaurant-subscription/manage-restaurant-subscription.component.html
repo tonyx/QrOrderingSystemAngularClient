@@ -188,6 +188,58 @@
                   </span>
                 </div>
 
+                <!-- Payment Mode Selector (Sandbox / Live) -->
+                <div class="card border mb-4 bg-body-tertiary">
+                  <div class="card-body p-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <label class="form-label fw-bold mb-0 d-flex align-items-center">
+                        <i class="bi bi-toggles me-2 text-primary"></i>
+                        {{ 'ManageSub_PaymentModeLabel' | loc }}
+                      </label>
+                      <div>
+                        @if (isTestMode()) {
+                          <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-2 py-1 rounded-pill">
+                            <i class="bi bi-cone-striped me-1"></i> {{ 'ManageSub_TestModeBadge' | loc }}
+                          </span>
+                        } @else {
+                          <span class="badge bg-success-subtle text-success border border-success px-2 py-1 rounded-pill">
+                            <i class="bi bi-shield-check me-1"></i> {{ 'ManageSub_LiveModeBadge' | loc }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+
+                    @if (canTogglePaymentMode()) {
+                      <div class="form-check form-switch mt-2">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          id="testModeSwitch"
+                          [checked]="isTestMode()"
+                          (change)="toggleTestMode()"
+                        />
+                        <label class="form-check-label small fw-semibold" for="testModeSwitch" style="cursor: pointer;">
+                          {{ 'ManageSub_TestModeBadge' | loc }}
+                        </label>
+                      </div>
+                    }
+
+                    <!-- Testing Guidance Notice when in Test Mode -->
+                    @if (isTestMode()) {
+                      <div class="alert alert-warning border-warning-subtle py-2 px-3 mt-2 mb-0 small">
+                        <div class="fw-semibold">
+                          <i class="bi bi-info-circle-fill me-1"></i> {{ 'ManageSub_UseSandboxCards' | loc }}
+                        </div>
+                        <div class="mt-1 text-muted">
+                          <i class="bi bi-credit-card-2-front me-1"></i>
+                          <span>{{ 'ManageSub_TestCardHint' | loc }}</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+
                 <div class="mb-3">
                   <label class="form-label fw-semibold">{{ 'ManageSub_SelectExtensionPeriodLabel' | loc }}</label>
                   <div class="row g-2">
