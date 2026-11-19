@@ -1,10 +1,10 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LocPipe } from '../../../core/pipes/loc.pipe';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RestaurantService } from '../../../core/services/restaurant.service';
 import { StripePaymentService } from '../../../core/services/stripe-payment.service';
-import { RestaurantItem, StripeAccountStatus } from '../../../core/models/restaurant.models';
+import { RestaurantItem, StripeAccountStatus, SubscriptionSettingsConfig } from '../../../core/models/restaurant.models';
 import { MainLayoutComponent } from '../../../shared/components/main-layout/main-layout.component';
 
 @Component({
@@ -24,6 +24,14 @@ export class OnboardingComponent implements OnInit {
   protected restaurant = signal<RestaurantItem | null>(null);
   protected accountStatus = signal<StripeAccountStatus | null>(null);
 
+  // Stripe Mode configuration & selection
+  protected hasTestKeys = signal<boolean>(false);
+  protected hasLiveKeys = signal<boolean>(false);
+  protected isTestMode = signal<boolean>(true); // default to true since this client is deployed in test mode
+
+  // Only allow toggling if both test and live keys are configured
+  protected canTogglePaymentMode = computed(() => this.hasTestKeys() && this.hasLiveKeys());
+
   protected isLoading = signal<boolean>(true);
   protected isActionProcessing = signal<boolean>(false);
   protected errorMessage = signal<string | null>(null);
@@ -37,7 +45,42 @@ export class OnboardingComponent implements OnInit {
       return;
     }
     this.restaurantId.set(id);
+    this.loadSubscriptionConfig();
     this.loadRestaurantData();
+  }
+
+  loadSubscriptionConfig(): void {
+    this.stripePaymentService.getSubscriptionConfig().subscribe({
+      next: (config: SubscriptionSettingsConfig) => {
+        if (config) {
+          this.hasTestKeys.set(Boolean(config.hasTestKeys));
+          this.hasLiveKeys.set(Boolean(config.hasLiveKeys));
+
+          if (config.hasTestKeys && !config.hasLiveKeys) {
+            this.isTestMode.set(true);
+          } else if (!config.hasTestKeys && config.hasLiveKeys) {
+            this.isTestMode.set(false);
+          } else {
+            this.isTestMode.set(true);
+          }
+        }
+      },
+      error: () => {
+        // keep default
+      },
+    });
+  }
+
+  setTestMode(enabled: boolean): void {
+    this.isTestMode.set(enabled);
+    this.loadRestaurantData();
+  }
+
+  toggleTestMode(): void {
+    if (this.canTogglePaymentMode()) {
+      this.isTestMode.update((v) => !v);
+      this.loadRestaurantData();
+    }
   }
 
   loadRestaurantData(): void {
@@ -48,8 +91,17 @@ export class OnboardingComponent implements OnInit {
     this.restaurantService.getRestaurant(id).subscribe({
       next: (rest) => {
         this.restaurant.set(rest);
-        this.accountStatus.set(rest.stripeStatus || null);
-        this.isLoading.set(false);
+        // Refresh account status with current sandbox mode
+        this.stripePaymentService.getConnectAccountStatus(id, this.isTestMode()).subscribe({
+          next: (status) => {
+            this.accountStatus.set(status);
+            this.isLoading.set(false);
+          },
+          error: () => {
+            this.accountStatus.set(rest.stripeStatus || null);
+            this.isLoading.set(false);
+          },
+        });
       },
       error: (err) => {
         this.isLoading.set(false);
@@ -70,7 +122,8 @@ export class OnboardingComponent implements OnInit {
     this.statusMessage.set(null);
 
     const currentUrl = window.location.href;
-    this.stripePaymentService.createConnectAccountLink(id, currentUrl, currentUrl).subscribe({
+    const isSandbox = this.isTestMode();
+    this.stripePaymentService.createConnectAccountLink(id, currentUrl, currentUrl, isSandbox).subscribe({
       next: (redirectUrl) => {
         this.isActionProcessing.set(false);
         if (redirectUrl) {
@@ -97,7 +150,8 @@ export class OnboardingComponent implements OnInit {
     this.errorMessage.set(null);
     this.statusMessage.set(null);
 
-    this.stripePaymentService.createConnectAccountLoginLink(id).subscribe({
+    const isSandbox = this.isTestMode();
+    this.stripePaymentService.createConnectAccountLoginLink(id, isSandbox).subscribe({
       next: (loginUrl) => {
         this.isActionProcessing.set(false);
         if (loginUrl) {

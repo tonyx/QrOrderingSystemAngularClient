@@ -14,4 +14,6 @@ export interface CreateConnectLinkRequest {
   refreshUrl?: string;
   /** URL to redirect the merchant to upon completing onboarding. */
   returnUrl?: string;
+  /** Optional sandbox/test mode flag. */
+  isSandbox?: boolean;
 }

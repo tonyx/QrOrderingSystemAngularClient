@@ -79,17 +79,27 @@ export class StripePaymentService {
   /**
    * Retrieves Stripe Connect account status and verification requirements.
    */
-  getConnectAccountStatus(restaurantId: string): Observable<StripeAccountStatus> {
-    return this.stripeApi.getApiStripePaymentRestaurantRestaurantIdAccountStatus(restaurantId, 'application/json').pipe(
-      map((res: any) => ({
-        isConnected: res?.isConnected ?? res?.IsConnected ?? false,
-        detailsSubmitted: res?.detailsSubmitted ?? res?.DetailsSubmitted ?? false,
-        chargesEnabled: res?.chargesEnabled ?? res?.ChargesEnabled ?? false,
-        payoutsEnabled: res?.payoutsEnabled ?? res?.PayoutsEnabled ?? false,
-        stripeAccountId: res?.stripeAccountId ?? res?.StripeAccountId ?? null,
-        requirementsDue: res?.requirementsDue ?? res?.RequirementsDue ?? [],
-      }))
-    );
+  getConnectAccountStatus(restaurantId: string, isSandbox?: boolean): Observable<StripeAccountStatus> {
+    let headers: HttpHeaders | undefined;
+    let params: HttpParams | undefined;
+
+    if (isSandbox) {
+      headers = new HttpHeaders({ 'X-Sandbox': 'true' });
+      params = new HttpParams().set('sandbox', 'true');
+    }
+
+    return this.stripeApi
+      .getApiStripePaymentRestaurantRestaurantIdAccountStatus(restaurantId, 'application/json', { headers, params })
+      .pipe(
+        map((res: any) => ({
+          isConnected: res?.isConnected ?? res?.IsConnected ?? false,
+          detailsSubmitted: res?.detailsSubmitted ?? res?.DetailsSubmitted ?? false,
+          chargesEnabled: res?.chargesEnabled ?? res?.ChargesEnabled ?? false,
+          payoutsEnabled: res?.payoutsEnabled ?? res?.PayoutsEnabled ?? false,
+          stripeAccountId: res?.stripeAccountId ?? res?.StripeAccountId ?? null,
+          requirementsDue: res?.requirementsDue ?? res?.RequirementsDue ?? [],
+        }))
+      );
   }
 
   /**
@@ -98,13 +108,23 @@ export class StripePaymentService {
   createConnectAccountLink(
     restaurantId: string,
     refreshUrl: string,
-    returnUrl: string
+    returnUrl: string,
+    isSandbox?: boolean
   ): Observable<string> {
+    let headers: HttpHeaders | undefined;
+    let params: HttpParams | undefined;
+
+    if (isSandbox) {
+      headers = new HttpHeaders({ 'X-Sandbox': 'true' });
+      params = new HttpParams().set('sandbox', 'true');
+    }
+
     return this.stripeApi
       .postApiStripePaymentRestaurantRestaurantIdCreateConnectLink(
         restaurantId,
-        { refreshUrl, returnUrl },
-        'application/json'
+        { refreshUrl, returnUrl, isSandbox },
+        'application/json',
+        { headers, params }
       )
       .pipe(
         map((res: any) => {
@@ -117,9 +137,17 @@ export class StripePaymentService {
   /**
    * Generates a single-sign-on login link into the Stripe Express Dashboard for the restaurant merchant.
    */
-  createConnectAccountLoginLink(restaurantId: string): Observable<string> {
+  createConnectAccountLoginLink(restaurantId: string, isSandbox?: boolean): Observable<string> {
+    let headers: HttpHeaders | undefined;
+    let params: HttpParams | undefined;
+
+    if (isSandbox) {
+      headers = new HttpHeaders({ 'X-Sandbox': 'true' });
+      params = new HttpParams().set('sandbox', 'true');
+    }
+
     return this.stripeApi
-      .postApiStripePaymentRestaurantRestaurantIdCreateLoginLink(restaurantId, 'application/json')
+      .postApiStripePaymentRestaurantRestaurantIdCreateLoginLink(restaurantId, 'application/json', { headers, params })
       .pipe(
         map((res: any) => {
           if (typeof res === 'string') return res;
