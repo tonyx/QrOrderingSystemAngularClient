@@ -68,8 +68,22 @@ export class ManageRestaurantSubscriptionComponent implements OnInit {
 
     // Check query params for status = success / cancel
     const queryParams = this.route.snapshot.queryParams;
+    const sessionId = queryParams['session_id'];
     if (queryParams['status'] === 'success') {
       this.successMessage.set(this.loc.translate('ManageSub_SuccessPayment'));
+      // If returning with session_id, proactively confirm the subscription
+      // so renewal takes effect immediately without depending solely on webhook timing
+      if (id && sessionId) {
+        this.restaurantService.confirmSubscriptionPaymentIntent(id, sessionId).subscribe({
+          next: () => {
+            this.loadRestaurant();
+          },
+          error: () => {
+            // Already confirmed by webhook or pending resolution, reload to reflect state
+            this.loadRestaurant();
+          },
+        });
+      }
     } else if (queryParams['status'] === 'cancel') {
       this.errorMessage.set(this.loc.translate('ManageSub_CancelledPayment'));
     }

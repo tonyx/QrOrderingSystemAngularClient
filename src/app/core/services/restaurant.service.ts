@@ -1168,6 +1168,15 @@ export class RestaurantService {
     );
   }
 
+  /**
+   * Confirms a subscription payment intent or checkout session ID, renewing/extending the restaurant subscription.
+   */
+  confirmSubscriptionPaymentIntent(restaurantId: string, paymentIntentId: string): Observable<void> {
+    return this.restaurantOrderingApi.postApiRestaurantIdSubscriptionConfirmIntent(restaurantId, {
+      paymentIntentId,
+    });
+  }
+
   addMember(restaurantId: string, newMemberId: string): Observable<void> {
     return this.restaurantOrderingApi.postApiRestaurantIdMembersAdd(restaurantId, newMemberId);
   }
