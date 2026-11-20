@@ -1,7 +1,7 @@
 export const environment = {
   production: false,
-  // Empty string allows Angular dev server proxy to route /api requests to https://localhost:7113 seamlessly
-  apiBaseUrl: 'https://localhost:7113/api',
+  // Empty string allows Angular dev server proxy to route /api requests to target (proxy.conf.json) seamlessly without CORS issues
+  apiBaseUrl: '',
   oauthBackendOrigin: 'https://localhost:7113',
   accessKey: '',
   defaultRestaurantId: '',

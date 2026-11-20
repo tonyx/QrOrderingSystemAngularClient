@@ -39,11 +39,24 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     headers = headers.set('X-Api-Key', accessKey);
   }
 
-  // 3. Rewrite relative API URLs to absolute backend URLs in production / direct API mode
+  // 3. Rewrite relative API URLs to absolute backend URLs only when explicitly configured and not using dev proxy or cloud proxy
   let url = req.url;
+  const isLocalDev =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.port === '4200');
+
   const rawApiBase = environment.apiBaseUrl?.trim();
-  if (rawApiBase && rawApiBase !== '.' && rawApiBase !== '/api') {
-    // If apiBaseUrl is 'https://www.restaurantsystem.cloud/api' or 'https://www.restaurantsystem.cloud'
+  // Do not rewrite relative URLs when running in local dev (dev server proxy handles /api)
+  // or when targeting restaurantsystem.cloud (which requires same-origin proxy due to CORS restrictions)
+  if (
+    !isLocalDev &&
+    rawApiBase &&
+    rawApiBase !== '.' &&
+    rawApiBase !== '/api' &&
+    !rawApiBase.includes('restaurantsystem.cloud')
+  ) {
     const backendOrigin = rawApiBase.replace(/\/api\/?$/, '').replace(/\/$/, '');
     if (url.startsWith('/api/') || url === '/api') {
       url = `${backendOrigin}${url}`;

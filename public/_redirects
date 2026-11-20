@@ -1,1 +1,6 @@
+/api/*  https://www.restaurantsystem.cloud/api/:splat  200
+/hubs/*  https://www.restaurantsystem.cloud/hubs/:splat  200
+/Account/*  https://www.restaurantsystem.cloud/Account/:splat  200
+/signin-google  https://www.restaurantsystem.cloud/signin-google  200
+/signin-facebook  https://www.restaurantsystem.cloud/signin-facebook  200
 /*    /index.html   200
