@@ -318,6 +318,151 @@
         }
       }
     },
+    "/api/Auth/refresh-token": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Renew JWT access token using a refresh token with automatic rotation",
+        "requestBody": {
+          "description": "Payload containing the current refresh token.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token refresh successful; returns updated access and refresh tokens.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Refresh token was not provided.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Refresh token is invalid, expired, or has been revoked.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Auth/revoke-token": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Revoke an active refresh token upon client logout",
+        "requestBody": {
+          "description": "Payload containing the refresh token to revoke.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeTokenRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeTokenRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token revoked successfully or already inactive."
+          },
+          "400": {
+            "description": "Refresh token was not provided.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/Auth/session-token": {
       "get": {
         "tags": [
@@ -18305,150 +18450,6 @@
             "text/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateSubscriptionPaymentIntentRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateSubscriptionPaymentIntentRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Checkout session created.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateSubscriptionIntentResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateSubscriptionIntentResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateSubscriptionIntentResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Configuration missing or Stripe API error.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/Voting/vote": {
-      "post": {
-        "tags": [
-          "Voting"
-        ],
-        "summary": "Submits a star rating (1 to 5 stars) for a menu item within a dining session.",
-        "requestBody": {
-          "description": "Payload containing restaurant ID, menu item name, session token, and star score.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoteMenuItemRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoteMenuItemRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoteMenuItemRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Vote successfully registered."
-          },
-          "400": {
-            "description": "Invalid score, non-existent menu item, or session error.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "string"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/Voting/five-star": {
-      "post": {
-        "tags": [
-          "Voting"
-        ],
-        "summary": "Submits a 5-star rating for a menu item.",
-        "requestBody": {
-          "description": "Vote details including restaurant, dish name, and session ID.",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoteRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoteRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/VoteRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Vote registered."
-          },
-          "400": {
-            "description": "Vote rejected.",
-            "content": {
-              "text/plain": {
-                "schema": {
                   "type": "string"
                 }
               },
@@ -23092,12 +23093,43 @@
         },
         "description": "Request payload for obtaining a JWT token using email and password."
       },
+      "RefreshTokenRequest": {
+        "required": [
+          "refreshToken"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Opaque refresh token issued during login or previous token refresh."
+          }
+        },
+        "description": "Request payload for renewing an access token using a refresh token."
+      },
+      "RevokeTokenRequest": {
+        "required": [
+          "refreshToken"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "Opaque refresh token to revoke."
+          }
+        },
+        "description": "Request payload for explicitly revoking a refresh token."
+      },
       "TokenResponse": {
         "type": "object",
         "properties": {
           "token": {
             "type": "string",
             "description": "Signed JSON Web Token (JWT) to pass in the Authorization header as 'Bearer &lt;token&gt;'."
+          },
+          "refreshToken": {
+            "type": "string",
+            "nullable": true,
+            "description": "Opaque cryptographically secure refresh token to renew access tokens without re-authenticating."
           },
           "userId": {
             "type": "string",

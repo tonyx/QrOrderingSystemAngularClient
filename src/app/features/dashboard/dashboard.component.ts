@@ -49,6 +49,9 @@ export class DashboardComponent implements OnInit {
 
   // Create restaurant state
   protected newRestaurantName = signal('');
+  protected isCreatingRestaurant = signal(false);
+  protected showTrialExpirationModal = signal(false);
+  protected pendingRestaurantName = signal('');
   protected createErrorMessage = signal<string | null>(null);
   protected createSuccessMessage = signal<string | null>(null);
 
@@ -256,13 +259,62 @@ export class DashboardComponent implements OnInit {
 
   onCreateRestaurant(): void {
     const name = this.newRestaurantName().trim();
-    if (!name) {
-      this.createErrorMessage.set('Please provide a restaurant name.');
+    if (!name || name.length < 2 || name.length > 100) {
+      this.createErrorMessage.set(this.loc.translate('RestsAdmin_ErrInvalidRestaurantName'));
       return;
     }
+
+    if (this.restaurants().length >= 5) {
+      this.createErrorMessage.set(this.loc.translate('RestsAdmin_ErrMaxLimitReached', '5'));
+      return;
+    }
+
     this.createErrorMessage.set(null);
-    this.createSuccessMessage.set(`Creation of "${name}" triggered (feature placeholder).`);
-    this.newRestaurantName.set('');
+    this.createSuccessMessage.set(null);
+
+    // If user already has 1 or more restaurants, their 1-week trial was already claimed on the first restaurant.
+    // Show trial expiration notice modal matching Blazor behavior.
+    if (this.restaurants().length > 0) {
+      this.pendingRestaurantName.set(name);
+      this.showTrialExpirationModal.set(true);
+      return;
+    }
+
+    this.executeCreateRestaurant(name);
+  }
+
+  cancelTrialExpirationModal(): void {
+    this.showTrialExpirationModal.set(false);
+    this.pendingRestaurantName.set('');
+  }
+
+  confirmTrialExpirationCreate(): void {
+    const name = this.pendingRestaurantName();
+    this.showTrialExpirationModal.set(false);
+    this.pendingRestaurantName.set('');
+    if (name) {
+      this.executeCreateRestaurant(name);
+    }
+  }
+
+  private executeCreateRestaurant(name: string): void {
+    this.isCreatingRestaurant.set(true);
+    this.createErrorMessage.set(null);
+    this.createSuccessMessage.set(null);
+
+    this.restaurantService.createRestaurant(name).subscribe({
+      next: () => {
+        this.isCreatingRestaurant.set(false);
+        this.newRestaurantName.set('');
+        this.createSuccessMessage.set(this.loc.translate('RestsAdmin_SuccessCreated'));
+        this.loadRestaurants();
+      },
+      error: (err) => {
+        this.isCreatingRestaurant.set(false);
+        const errDetail = err?.error?.message || err?.error || err?.message || this.loc.translate('RestsAdmin_ErrCreationNotAllowed');
+        this.createErrorMessage.set(typeof errDetail === 'string' ? errDetail : this.loc.translate('RestsAdmin_ErrCreationNotAllowed'));
+      },
+    });
   }
 
   askAssistant(topic: string, restaurantId: string): void {

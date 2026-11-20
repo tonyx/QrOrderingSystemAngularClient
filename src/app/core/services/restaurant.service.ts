@@ -130,10 +130,26 @@ export class RestaurantService {
 
   /**
    * Retrieves public details of a restaurant (menu and dishes) for diners / view menu mode.
+   * If tableNum and tableId capability are provided, queries the scoped table/session projection.
    * Calls GET /api/Restaurant/public/{id}
    */
-  getRestaurantPublic(id: string): Observable<PublicRestaurantDetails> {
-    return this.restaurantOrderingApi.getApiRestaurantPublicId(id, 'application/json').pipe(
+  getRestaurantPublic(
+    id: string,
+    tableSession?: { tableNum: number; tableId: string; sessionId?: string | null }
+  ): Observable<PublicRestaurantDetails> {
+    const options: any = {};
+    if (tableSession && tableSession.tableNum && tableSession.tableId) {
+      const params: Record<string, string> = {
+        tableNum: tableSession.tableNum.toString(),
+        tableId: tableSession.tableId,
+      };
+      if (tableSession.sessionId) {
+        params['sessionId'] = tableSession.sessionId;
+      }
+      options.params = params;
+    }
+
+    return this.restaurantOrderingApi.getApiRestaurantPublicId(id, 'application/json', options).pipe(
       map((raw) => this.normalizePublicRestaurant(raw))
     );
   }
@@ -157,6 +173,10 @@ export class RestaurantService {
 
   getClientIp(): Observable<string> {
     return this.restaurantOrderingApi.getApiRestaurantClientIp('text/plain');
+  }
+
+  createRestaurant(name: string): Observable<void> {
+    return this.restaurantOrderingApi.postApiRestaurantCreate({ name });
   }
 
   setCidrAddresses(restaurantId: string, cidrAddress: string): Observable<void> {
@@ -797,7 +817,7 @@ export class RestaurantService {
       items?: string | null;
       tipAmount?: number | null;
     }
-  ): Observable<{ clientSecret: string; paymentIntentId: string }> {
+  ): Observable<{ clientSecret: string; paymentIntentId: string; publishableKey?: string; isTestMode?: boolean }> {
     const body: any = {
       TableNum: payload.tableNum,
       TableId: payload.tableId,
@@ -830,7 +850,9 @@ export class RestaurantService {
             res?.paymentIntentId ??
             res?.PaymentIntentId ??
             (clientSecret.includes('_secret_') ? clientSecret.split('_secret_')[0] : clientSecret);
-          return { clientSecret, paymentIntentId };
+          const publishableKey = res?.publishableKey ?? res?.PublishableKey ?? '';
+          const isTestMode = !!(res?.isTestMode ?? res?.IsTestMode);
+          return { clientSecret, paymentIntentId, publishableKey, isTestMode };
         })
       );
   }
@@ -1132,7 +1154,7 @@ export class RestaurantService {
     sessionId: string,
     items?: string,
     tipAmountCents?: number
-  ): Observable<string> {
+  ): Observable<{ clientSecret: string; paymentIntentId: string; publishableKey?: string; isTestMode?: boolean }> {
     return this.stripePaymentsApi
       .postApiStripePaymentRestaurantRestaurantIdCreatePaymentIntent(
         restaurantId,
@@ -1149,15 +1171,38 @@ export class RestaurantService {
       )
       .pipe(
         map((res: any) => {
-          if (typeof res === 'string') return res;
-          return res?.clientSecret || res?.ClientSecret || res?.secret || res?.Secret || '';
+          if (typeof res === 'string') {
+            return {
+              clientSecret: res,
+              paymentIntentId: res.includes('_secret_') ? res.split('_secret_')[0] : res,
+              publishableKey: '',
+              isTestMode: false,
+            };
+          }
+          const clientSecret = res?.clientSecret || res?.ClientSecret || res?.secret || res?.Secret || '';
+          const paymentIntentId =
+            res?.paymentIntentId ||
+            res?.PaymentIntentId ||
+            (clientSecret.includes('_secret_') ? clientSecret.split('_secret_')[0] : clientSecret);
+          const publishableKey = res?.publishableKey || res?.PublishableKey || '';
+          const isTestMode = !!(res?.isTestMode ?? res?.IsTestMode);
+          return { clientSecret, paymentIntentId, publishableKey, isTestMode };
         })
       );
   }
 
-  getStripePublishableKey(): Observable<string> {
-    return this.stripePaymentsApi.getApiStripePaymentPublishableKey('application/json').pipe(
-      map((res: any) => (typeof res === 'string' ? res : res?.publishableKey || res?.PublishableKey || ''))
+  getStripePublishableKey(sandbox?: boolean): Observable<{ publishableKey: string; isTestMode: boolean }> {
+    const params = sandbox !== undefined ? { sandbox } : undefined;
+    return this.stripePaymentsApi.getApiStripePaymentPublishableKey('application/json', params as any).pipe(
+      map((res: any) => {
+        if (typeof res === 'string') {
+          return { publishableKey: res, isTestMode: !!sandbox };
+        }
+        return {
+          publishableKey: res?.publishableKey || res?.PublishableKey || '',
+          isTestMode: !!(res?.isTestMode ?? res?.IsTestMode ?? sandbox),
+        };
+      })
     );
   }
 

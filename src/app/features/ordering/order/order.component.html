@@ -493,6 +493,21 @@
               </div>
 
               @if (showStripeElement()) {
+                @if (isStripeTestMode()) {
+                  <div class="alert alert-warning py-2 px-3 mb-2 small d-flex flex-column gap-1" role="alert">
+                    <div class="d-flex align-items-center gap-1">
+                      <span class="badge bg-warning text-dark"><i class="bi bi-bug me-1"></i>{{ 'ManageSub_TestModeBadge' | loc }}</span>
+                    </div>
+                    <div>
+                      <i class="bi bi-info-circle me-1 text-primary"></i>{{ 'ManageSub_TestCardHint' | loc }}
+                    </div>
+                  </div>
+                } @else {
+                  <div class="mb-2 small d-flex align-items-center gap-1">
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>{{ 'ManageSub_LiveModeBadge' | loc }}</span>
+                  </div>
+                }
+
                 <div id="stripe-payment-element-container" class="my-3"></div>
 
                 <button type="button" class="btn btn-success w-100 fw-bold py-2 mt-2" (click)="handleConfirmStripePayment()" [disabled]="isBusy()">

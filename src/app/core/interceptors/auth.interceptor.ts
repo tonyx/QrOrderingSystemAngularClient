@@ -1,7 +1,21 @@
-import { HttpInterceptorFn } from '@angular/common/http';
+import { HttpInterceptorFn, HttpErrorResponse, HttpContextToken } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { catchError, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { environment } from '../../../environments/environment';
+
+export const RETRY_ATTEMPTED = new HttpContextToken<boolean>(() => false);
+
+function isAuthEndpoint(url: string): boolean {
+  const lower = url.toLowerCase();
+  return (
+    lower.includes('/api/auth/token') ||
+    lower.includes('/api/auth/refresh-token') ||
+    lower.includes('/api/auth/revoke-token') ||
+    lower.includes('/api/auth/external-login') ||
+    lower.includes('/api/auth/external-callback')
+  );
+}
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
@@ -10,8 +24,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   let headers = req.headers;
 
-  // 1. Attach JWT Bearer token if user is signed in
-  if (token) {
+  // 1. Attach JWT Bearer token if user is signed in and request is not to an anonymous auth endpoint
+  if (token && !isAuthEndpoint(req.url)) {
     headers = headers.set('Authorization', `Bearer ${token}`);
   }
 
@@ -37,5 +51,50 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   const clonedReq = req.clone({ headers, url });
-  return next(clonedReq);
+
+  // 4. Proactive refresh: If token is expired and refresh token is available, refresh before calling API
+  const isRetry = req.context.get(RETRY_ATTEMPTED);
+  if (!isRetry && !isAuthEndpoint(req.url) && authService.hasRefreshToken() && authService.isTokenExpired(token)) {
+    return authService.refreshAccessToken().pipe(
+      switchMap((newToken) => {
+        const retriedHeaders = clonedReq.headers.set('Authorization', `Bearer ${newToken}`);
+        const retriedReq = clonedReq.clone({
+          headers: retriedHeaders,
+          context: clonedReq.context.set(RETRY_ATTEMPTED, true),
+        });
+        return next(retriedReq);
+      }),
+      catchError((refreshErr) => {
+        return throwError(() => refreshErr);
+      })
+    );
+  }
+
+  // 5. Reactive refresh: catch 401 Unauthorized errors and retry once with a refreshed token
+  return next(clonedReq).pipe(
+    catchError((error: unknown) => {
+      if (
+        error instanceof HttpErrorResponse &&
+        error.status === 401 &&
+        !isRetry &&
+        !isAuthEndpoint(clonedReq.url) &&
+        authService.hasRefreshToken()
+      ) {
+        return authService.refreshAccessToken().pipe(
+          switchMap((newToken) => {
+            const retriedHeaders = clonedReq.headers.set('Authorization', `Bearer ${newToken}`);
+            const retriedReq = clonedReq.clone({
+              headers: retriedHeaders,
+              context: clonedReq.context.set(RETRY_ATTEMPTED, true),
+            });
+            return next(retriedReq);
+          }),
+          catchError((refreshErr) => {
+            return throwError(() => refreshErr);
+          })
+        );
+      }
+      return throwError(() => error);
+    })
+  );
 };

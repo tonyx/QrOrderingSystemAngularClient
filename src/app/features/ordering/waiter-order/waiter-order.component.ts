@@ -282,7 +282,16 @@ export class WaiterOrderComponent implements OnInit, OnDestroy {
   }
 
   private loadRestaurantData(): void {
-    this.restaurantService.getRestaurantPublic(this.restaurantId).subscribe({
+    const tableSession =
+      this.tableNumber !== null && this.tableId
+        ? {
+            tableNum: this.tableNumber,
+            tableId: this.tableId,
+            sessionId: this.selectedSessionId() || undefined,
+          }
+        : undefined;
+
+    this.restaurantService.getRestaurantPublic(this.restaurantId, tableSession).subscribe({
       next: (rest) => {
         this.restaurant.set(rest);
 
@@ -383,7 +392,16 @@ export class WaiterOrderComponent implements OnInit, OnDestroy {
 
   refreshOrders(): void {
     if (!this.restaurantId || !this.tableNumber) return;
-    this.restaurantService.getRestaurantPublic(this.restaurantId).subscribe({
+    const tableSession =
+      this.tableId
+        ? {
+            tableNum: this.tableNumber,
+            tableId: this.tableId,
+            sessionId: this.selectedSessionId() || undefined,
+          }
+        : undefined;
+
+    this.restaurantService.getRestaurantPublic(this.restaurantId, tableSession).subscribe({
       next: (rest) => {
         this.restaurant.set(rest);
         const parsedTables: TableModel[] = rest.parsedTables || [];

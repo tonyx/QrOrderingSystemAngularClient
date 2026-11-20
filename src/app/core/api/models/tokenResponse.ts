@@ -12,6 +12,11 @@
 export interface TokenResponse {
   /** Signed JSON Web Token (JWT) to pass in the Authorization header as 'Bearer &lt;token&gt;'. */
   token?: string;
+  /**
+     * Opaque cryptographically secure refresh token to renew access tokens without re-authenticating.
+     * @nullable
+     */
+  refreshToken?: string | null;
   /** Unique identifier of the authenticated user. */
   userId?: string;
   /** Email address of the authenticated user. */

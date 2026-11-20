@@ -27,6 +27,8 @@ import type {
   CurrentUserResponse,
   GetApiAuthExternalCallbackParams,
   GetApiAuthExternalLoginParams,
+  RefreshTokenRequest,
+  RevokeTokenRequest,
   TokenRequest,
   TokenResponse
 } from '../../models';
@@ -160,6 +162,14 @@ export const PostApiAuthTokenAccept = {
   text_json: 'text/json',
 } as const;
 
+export type PostApiAuthRefreshTokenAccept = typeof PostApiAuthRefreshTokenAccept[keyof typeof PostApiAuthRefreshTokenAccept];
+
+export const PostApiAuthRefreshTokenAccept = {
+  text_plain: 'text/plain',
+  application_json: 'application/json',
+  text_json: 'text/json',
+} as const;
+
 export type GetApiAuthSessionTokenAccept = typeof GetApiAuthSessionTokenAccept[keyof typeof GetApiAuthSessionTokenAccept];
 
 export const GetApiAuthSessionTokenAccept = {
@@ -232,6 +242,88 @@ export class AuthenticationService {
 
 
       });
+  }
+/**
+ * @summary Renew JWT access token using a refresh token with automatic rotation
+ */
+ postApiAuthRefreshToken(refreshTokenRequest: RefreshTokenRequest,
+    accept: 'text/plain', options?: HttpClientOptions): Observable<string>;
+  postApiAuthRefreshToken(refreshTokenRequest: RefreshTokenRequest,
+    accept: 'application/json', options?: HttpClientOptions): Observable<TokenResponse>;
+  postApiAuthRefreshToken(refreshTokenRequest: RefreshTokenRequest,
+    accept: 'text/json', options?: HttpClientOptions): Observable<TokenResponse>;
+  postApiAuthRefreshToken(refreshTokenRequest: RefreshTokenRequest,
+    accept?: PostApiAuthRefreshTokenAccept, options?: HttpClientOptions): Observable<TokenResponse | string>;
+  postApiAuthRefreshToken(
+    refreshTokenRequest: RefreshTokenRequest,
+    accept: PostApiAuthRefreshTokenAccept = 'application/json',
+    options?: HttpClientOptions
+  ): Observable<TokenResponse | string> {
+    const headers = options?.headers instanceof HttpHeaders
+      ? options.headers.set('Accept', accept)
+      : { ...(options?.headers ?? {}), Accept: accept };
+
+    if (accept.includes('json') || accept.includes('+json')) {
+      return this.http.post<TokenResponse>(`/api/Auth/refresh-token`, refreshTokenRequest, {
+        ...options,
+        responseType: 'json',
+        headers,
+
+
+      });
+    } else if (accept.startsWith('text/') || accept.includes('xml')) {
+      return this.http.post(`/api/Auth/refresh-token`, refreshTokenRequest, {
+        ...options,
+        responseType: 'text',
+        headers,
+
+
+      }) as Observable<string>;
+    }
+
+    return this.http.post<TokenResponse>(`/api/Auth/refresh-token`, refreshTokenRequest, {
+        ...options,
+        responseType: 'json',
+        headers,
+
+
+      });
+  }
+/**
+ * @summary Revoke an active refresh token upon client logout
+ */
+ postApiAuthRevokeToken<TData = void>(revokeTokenRequest: RevokeTokenRequest, options?: HttpClientBodyOptions): Observable<TData>;
+ postApiAuthRevokeToken<TData = void>(revokeTokenRequest: RevokeTokenRequest, options?: HttpClientEventOptions): Observable<HttpEvent<TData>>;
+ postApiAuthRevokeToken<TData = void>(revokeTokenRequest: RevokeTokenRequest, options?: HttpClientResponseOptions): Observable<AngularHttpResponse<TData>>;
+  postApiAuthRevokeToken<TData = void>(
+    revokeTokenRequest: RevokeTokenRequest, options?: HttpClientObserveOptions): Observable<TData | HttpEvent<TData> | AngularHttpResponse<TData>> {
+    if (options?.observe === 'events') {
+      return this.http.post<TData>(
+      `/api/Auth/revoke-token`,
+      revokeTokenRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'events',
+      }
+    );
+    }
+
+    if (options?.observe === 'response') {
+      return this.http.post<TData>(
+      `/api/Auth/revoke-token`,
+      revokeTokenRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'response',
+      }
+    );
+    }
+
+    return this.http.post<TData>(
+      `/api/Auth/revoke-token`,
+      revokeTokenRequest,{
+        ...(options as Omit<NonNullable<typeof options>, 'observe'>),
+        observe: 'body',
+      }
+    );
   }
 /**
  * @summary Generates a JWT Bearer token using the caller's active ASP.NET Core Identity authentication cookie or session.
@@ -429,6 +521,8 @@ export class AuthenticationService {
 };
 
 export type PostApiAuthTokenClientResult = NonNullable<string | TokenResponse>
+export type PostApiAuthRefreshTokenClientResult = NonNullable<string | TokenResponse>
+export type PostApiAuthRevokeTokenClientResult = NonNullable<void>
 export type GetApiAuthSessionTokenClientResult = NonNullable<string | TokenResponse>
 export type PostApiAuthSessionTokenClientResult = NonNullable<string | TokenResponse>
 export type GetApiAuthExternalLoginClientResult = NonNullable<void>

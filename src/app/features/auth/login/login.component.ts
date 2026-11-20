@@ -75,11 +75,15 @@ export class LoginComponent implements OnInit {
       getParam('jwt');
 
     if (externalToken) {
+      const refreshToken =
+        getParam('refreshToken') ||
+        getParam('refresh_token');
       const email = getParam('email');
       const userId = getParam('userId');
 
       const targetUrl = this.authService.completeExternalLoginFromCallback({
         token: externalToken,
+        refreshToken,
         email,
         userId,
       });

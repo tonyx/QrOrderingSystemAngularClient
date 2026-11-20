@@ -5,9 +5,19 @@ export interface TokenRequest {
   password: string;
 }
 
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+export interface RevokeTokenRequest {
+  refreshToken: string;
+}
+
 export interface TokenResponse {
   token?: string;
   Token?: string;
+  refreshToken?: string | null;
+  RefreshToken?: string | null;
   userId?: string;
   UserId?: string;
   email?: string;

@@ -405,6 +405,24 @@
               <small class="d-block text-muted mt-2">{{ 'CustomerGroupPay_LoadingStripe' | loc }}</small>
             </div>
           }
+
+          @if (isStripeReady()) {
+            @if (isStripeTestMode()) {
+              <div class="alert alert-warning py-2 px-3 mb-2 small d-flex flex-column gap-1" role="alert">
+                <div class="d-flex align-items-center gap-1">
+                  <span class="badge bg-warning text-dark"><i class="bi bi-bug me-1"></i>{{ 'ManageSub_TestModeBadge' | loc }}</span>
+                </div>
+                <div>
+                  <i class="bi bi-info-circle me-1 text-primary"></i>{{ 'ManageSub_TestCardHint' | loc }}
+                </div>
+              </div>
+            } @else {
+              <div class="mb-2 small d-flex align-items-center gap-1">
+                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>{{ 'ManageSub_LiveModeBadge' | loc }}</span>
+              </div>
+            }
+          }
+
           <div id="stripe-payment-element-container" class="p-2 border rounded bg-light my-2" style="min-height: 120px;"></div>
         </div>
 

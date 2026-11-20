@@ -102,6 +102,7 @@ export class OrderComponent implements OnInit, OnDestroy {
   isStripeConfigEnabled = signal(true);
   showOnlinePaymentBlock = signal(false);
   showStripeElement = signal(false);
+  isStripeTestMode = signal(false);
   paymentIntentStatus = signal<string | null>(null);
   paymentIntentDetail = signal<string | null>(null);
   newlyConfirmedItems = signal<Array<{ qty: number; itemName: string }>>([]);
@@ -345,7 +346,16 @@ export class OrderComponent implements OnInit, OnDestroy {
   }
 
   private loadRestaurantData(onSuccess?: () => void): void {
-    this.restaurantService.getRestaurantPublic(this.restaurantId).subscribe({
+    const tableSession =
+      this.tableNumber !== null && this.tableId
+        ? {
+            tableNum: this.tableNumber,
+            tableId: this.tableId,
+            sessionId: this.sessionId() || undefined,
+          }
+        : undefined;
+
+    this.restaurantService.getRestaurantPublic(this.restaurantId, tableSession).subscribe({
       next: (rest) => {
         this.restaurant.set(rest);
 
@@ -491,7 +501,16 @@ export class OrderComponent implements OnInit, OnDestroy {
 
   refreshOrders(): void {
     if (!this.restaurantId) return;
-    this.restaurantService.getRestaurantPublic(this.restaurantId).subscribe({
+    const tableSession =
+      this.tableNumber !== null && this.tableId
+        ? {
+            tableNum: this.tableNumber,
+            tableId: this.tableId,
+            sessionId: this.sessionId() || undefined,
+          }
+        : undefined;
+
+    this.restaurantService.getRestaurantPublic(this.restaurantId, tableSession).subscribe({
       next: (rest) => {
         this.restaurant.set(rest);
         const parsedTables: TableModel[] = rest.parsedTables || [];
@@ -1182,21 +1201,28 @@ export class OrderComponent implements OnInit, OnDestroy {
         tipInCents
       )
       .subscribe({
-        next: (clientSecret) => {
+        next: (intentRes) => {
+          const clientSecret = intentRes.clientSecret;
+          const isTestMode = !!intentRes.isTestMode;
+          this.isStripeTestMode.set(isTestMode);
           this.paymentIntentStatus.set('In attesa di autorizzazione');
           this.paymentIntentDetail.set('Inserisci i dettagli della carta per autorizzare il pagamento.');
           this.showStripeElement.set(true);
 
-          this.restaurantService.getStripePublishableKey().subscribe({
-            next: (pubKey) => {
-              this.mountStripeElement(pubKey, clientSecret);
-            },
-            error: (err) => {
-              this.paymentIntentStatus.set('Errore');
-              this.paymentIntentDetail.set(`Errore recupero chiave Stripe: ${err?.message || err}`);
-              this.isBusy.set(false);
-            },
-          });
+          if (intentRes.publishableKey) {
+            this.mountStripeElement(intentRes.publishableKey, clientSecret);
+          } else {
+            this.restaurantService.getStripePublishableKey(isTestMode).subscribe({
+              next: (pubKeyRes) => {
+                this.mountStripeElement(pubKeyRes.publishableKey, clientSecret);
+              },
+              error: (err) => {
+                this.paymentIntentStatus.set('Errore');
+                this.paymentIntentDetail.set(`Errore recupero chiave Stripe: ${err?.message || err}`);
+                this.isBusy.set(false);
+              },
+            });
+          }
         },
         error: (err) => {
           this.paymentIntentStatus.set('Errore');

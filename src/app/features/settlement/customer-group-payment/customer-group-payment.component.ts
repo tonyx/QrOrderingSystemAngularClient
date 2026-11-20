@@ -35,6 +35,7 @@ export class CustomerGroupPaymentComponent implements OnInit, OnDestroy {
   isBusy = signal<boolean>(false);
   isInitializingStripe = signal<boolean>(false);
   isStripeReady = signal<boolean>(false);
+  isStripeTestMode = signal<boolean>(false);
   isPaidSuccess = signal<boolean>(false);
 
   errorMessage = signal<string | null>(null);
@@ -465,19 +466,24 @@ export class CustomerGroupPaymentComponent implements OnInit, OnDestroy {
         tipAmount: tipCents,
       })
       .subscribe({
-        next: ({ clientSecret, paymentIntentId }) => {
+        next: ({ clientSecret, paymentIntentId, publishableKey, isTestMode }) => {
           this.clientSecret = clientSecret;
           this.paymentIntentId = paymentIntentId;
+          this.isStripeTestMode.set(!!isTestMode);
 
-          this.restaurantService.getStripePublishableKey().subscribe({
-            next: (pubKey) => {
-              this.mountStripeElement(pubKey, clientSecret);
-            },
-            error: (err) => {
-              this.paymentError.set(`Error loading Stripe publishable key: ${err?.message || err}`);
-              this.isInitializingStripe.set(false);
-            },
-          });
+          if (publishableKey) {
+            this.mountStripeElement(publishableKey, clientSecret);
+          } else {
+            this.restaurantService.getStripePublishableKey(isTestMode).subscribe({
+              next: (pubKeyRes) => {
+                this.mountStripeElement(pubKeyRes.publishableKey, clientSecret);
+              },
+              error: (err) => {
+                this.paymentError.set(`Error loading Stripe publishable key: ${err?.message || err}`);
+                this.isInitializingStripe.set(false);
+              },
+            });
+          }
         },
         error: (err) => {
           this.paymentError.set(err?.error?.detail || err?.error || err?.message || 'Error creating payment intent.');

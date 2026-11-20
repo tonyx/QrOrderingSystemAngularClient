@@ -715,25 +715,82 @@
           @if (createSuccessMessage()) {
             <div class="alert alert-success">{{ createSuccessMessage() }}</div>
           }
+          @if (restaurants().length >= 5) {
+            <div class="alert alert-warning mb-3">
+              {{ 'RestsAdmin_LimitReachedAlert' | loc: 5 }}
+            </div>
+          }
           <div class="input-group mb-3">
             <input
               type="text"
               class="form-control"
-              placeholder="e.g. Trattoria del Porto"
+              [placeholder]="'RestsAdmin_InputNamePlaceholder' | loc"
               [ngModel]="newRestaurantName()"
               (ngModelChange)="newRestaurantName.set($event)"
+              [disabled]="isCreatingRestaurant() || restaurants().length >= 5"
+              (keyup.enter)="onCreateRestaurant()"
             />
-            <button class="btn btn-primary" type="button" (click)="onCreateRestaurant()">
-              Create Restaurant
+            <button
+              class="btn btn-primary d-flex align-items-center gap-1"
+              type="button"
+              [title]="'RestsAdmin_BtnCreateTooltip' | loc"
+              [disabled]="isCreatingRestaurant() || !newRestaurantName().trim() || restaurants().length >= 5"
+              (click)="onCreateRestaurant()"
+            >
+              @if (isCreatingRestaurant()) {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+              }
+              {{ 'RestsAdmin_BtnCreate' | loc }}
             </button>
           </div>
           <small class="text-muted">
-            You currently have {{ restaurants().length }} of 5 permitted restaurants.
+            {{ 'RestsAdmin_LimitLabel' | loc: restaurants().length: 5 }}
           </small>
         </div>
       </div>
   </div>
 </app-main-layout>
+
+<!-- Trial Expiration Notice Modal (matching Blazor) -->
+@if (showTrialExpirationModal()) {
+  <div
+    class="modal fade show d-block"
+    tabindex="-1"
+    style="background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1055;"
+    (click)="cancelTrialExpirationModal()"
+  >
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
+      <div class="modal-content shadow-lg border-0 text-dark" style="border-radius: 1rem;">
+        <div class="modal-header bg-warning text-dark" style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;">
+          <h5 class="modal-title fw-bold d-flex align-items-center gap-2 mb-0">
+            <i class="bi bi-exclamation-triangle-fill"></i> {{ 'RestsAdmin_TrialModalTitle' | loc }}
+          </h5>
+          <button type="button" class="btn-close" (click)="cancelTrialExpirationModal()" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4 text-dark">
+          <div class="alert alert-info" role="alert" [innerHTML]="'RestsAdmin_TrialModalNotice' | loc"></div>
+          <p [innerHTML]="'RestsAdmin_TrialModalConfirmPrompt' | loc: pendingRestaurantName()"></p>
+        </div>
+        <div class="modal-footer border-0 bg-light p-3" style="border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+          <button type="button" class="btn btn-secondary px-3" (click)="cancelTrialExpirationModal()" [disabled]="isCreatingRestaurant()">
+            {{ 'RestsAdmin_BtnCancel' | loc }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary px-4 fw-bold"
+            [disabled]="isCreatingRestaurant()"
+            (click)="confirmTrialExpirationCreate()"
+          >
+            @if (isCreatingRestaurant()) {
+              <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+            }
+            {{ 'RestsAdmin_BtnProceedCreate' | loc }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
 
 <!-- Menu QR Code Modal (matching Blazor ShowMenuQrModal) -->
 @if (menuQrModalRestaurant()) {
