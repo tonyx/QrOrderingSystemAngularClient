@@ -9,19 +9,26 @@
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
-  border: none;
+  background: linear-gradient(135deg, var(--primary, #4c6152) 0%, var(--secondary, #4a6173) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.22);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+  touch-action: manipulation;
+  transition:
+    transform var(--duration-press, 100ms) var(--ease-press, ease-out),
+    box-shadow var(--duration-fast, 180ms) ease;
   position: relative;
 }
 
 .qr-assistant-fab:hover {
-  transform: scale(1.08);
-  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4) !important;
+  transform: scale(1.06);
+  box-shadow: 0 12px 26px rgba(76, 97, 82, 0.36) !important;
+}
+
+.qr-assistant-fab:active {
+  transform: scale(0.94);
 }
 
 .qr-assistant-fab svg,
@@ -47,9 +54,16 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(4px);
+  background: var(--material-scrim, rgba(15, 23, 42, 0.45));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 1060;
+  animation: qrBackdropIn 220ms var(--ease-fluid, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.qr-assistant-backdrop.is-closing {
+  animation: qrBackdropOut 180ms var(--ease-fluid, cubic-bezier(0.22, 1, 0.36, 1)) forwards;
+  pointer-events: none;
 }
 
 .qr-assistant-panel {
@@ -58,27 +72,58 @@
   right: 2rem;
   width: 420px;
   max-width: calc(100vw - 3rem);
-  background: white;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--material-chrome-border, rgba(24, 28, 32, 0.12));
+  transform-origin: bottom right;
   z-index: 1070;
 }
 
 .animate-slide-up {
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: qrPanelIn 260ms var(--ease-fluid, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
-@keyframes slideUp {
+.qr-assistant-panel.is-closing {
+  animation: qrPanelOut 180ms var(--ease-fluid, cubic-bezier(0.22, 1, 0.36, 1)) forwards;
+  pointer-events: none;
+}
+
+@keyframes qrBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes qrBackdropOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes qrPanelIn {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translate3d(0, 12px, 0) scale(0.92);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes qrPanelOut {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.94);
   }
 }
 
 .super-small {
   font-size: 0.75rem;
+  letter-spacing: 0.01em;
 }
 
 /* Modal styling matching Blazor */
@@ -88,7 +133,9 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--material-scrim, rgba(15, 23, 42, 0.45));
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 1085;
 }
 

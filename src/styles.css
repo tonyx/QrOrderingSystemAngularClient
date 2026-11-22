@@ -29,11 +29,40 @@
   --error: #ba1a1a;
   --error-container: #ffdad6;
 
-  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --rounded-sm: 0.25rem;
+  --rounded-default: 0.5rem;
+  --rounded-md: 0.75rem;
+  --rounded-lg: 1rem;
+  --rounded-xl: 1.5rem;
+
+  /* Translucent material tokens (Apple HIG / WWDC Materials & Depth) */
+  --material-chrome-bg: rgba(247, 249, 255, 0.72);
+  --material-chrome-blur: 20px;
+  --material-chrome-saturate: 180%;
+  --material-chrome-border: rgba(24, 28, 32, 0.08);
+  --material-chrome-highlight: rgba(255, 255, 255, 0.65);
+  --material-chrome-shadow: 0 8px 24px -12px rgba(24, 28, 32, 0.12);
+  --material-sidebar-bg: rgba(241, 244, 250, 0.88);
+  --material-surface-dark: rgba(24, 28, 32, 0.82);
+  --material-scrim: rgba(15, 23, 42, 0.45);
+
+  /* Motion tokens (critically damped defaults, instant press) */
+  --ease-fluid: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-press: cubic-bezier(0.2, 0, 0, 1);
+  --duration-press: 100ms;
+  --duration-fast: 180ms;
+  --duration-medium: 280ms;
+
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
 }
 
 html, body {
   font-family: var(--font-family);
+  font-optical-sizing: auto;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  line-height: 1.5;
   background-color: var(--background);
   color: var(--on-surface);
   margin: 0;
@@ -41,7 +70,116 @@ html, body {
   min-height: 100vh;
 }
 
-/* Tooltip styles from Blazor app.css */
+/* Typography styles with size-specific tracking, leading & optical sizing */
+h1, .display-lg {
+  font-family: var(--font-family);
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-optical-sizing: auto;
+  color: var(--on-surface);
+}
+
+h2, h3, .headline-lg {
+  font-family: var(--font-family);
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  font-optical-sizing: auto;
+  color: var(--on-surface);
+}
+
+h4, .title-md {
+  font-family: var(--font-family);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.005em;
+  color: var(--on-surface);
+}
+
+p, .body-md {
+  font-family: var(--font-family);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+  color: var(--on-surface-variant);
+}
+
+small, .small, .super-small, .badge {
+  letter-spacing: 0.01em;
+}
+
+/* Links & Buttons — instant pointer-down feedback & zero tap delay */
+a, button, .btn, [role="button"] {
+  touch-action: manipulation;
+}
+
+a {
+  color: var(--secondary);
+  text-decoration: none;
+  transition: color var(--duration-fast) ease, opacity var(--duration-press) var(--ease-press);
+}
+a:hover {
+  color: var(--primary);
+}
+a:active {
+  opacity: 0.72;
+}
+
+.btn {
+  font-family: var(--font-family);
+  font-weight: 600;
+  border-radius: var(--rounded-default);
+  padding: 0.5rem 1rem;
+  transition:
+    transform var(--duration-press) var(--ease-press),
+    background-color var(--duration-fast) ease,
+    border-color var(--duration-fast) ease,
+    color var(--duration-fast) ease,
+    box-shadow var(--duration-fast) ease,
+    opacity var(--duration-fast) ease;
+}
+
+.btn:not(:disabled):not(.disabled):active,
+.btn-add:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  color: var(--on-primary) !important;
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background-color: var(--primary-container) !important;
+  border-color: var(--primary-container) !important;
+  box-shadow: 0 0 0 0.25rem rgba(76, 97, 82, 0.2) !important;
+}
+
+.btn-secondary {
+  color: var(--on-secondary) !important;
+  background-color: var(--secondary) !important;
+  border-color: var(--secondary) !important;
+}
+.btn-secondary:hover, .btn-secondary:focus {
+  background-color: var(--on-secondary-container) !important;
+  border-color: var(--on-secondary-container) !important;
+  box-shadow: 0 0 0 0.25rem rgba(74, 97, 115, 0.2) !important;
+}
+
+.card {
+  background-color: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--rounded-lg);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  transition: transform var(--duration-fast) var(--ease-fluid), box-shadow var(--duration-fast) ease, border-color var(--duration-fast) ease;
+}
+
+/* Tooltip styles with Apple design materials and edge-safe positioning */
 .custom-tooltip-wrapper {
   position: relative;
   display: inline-block;
@@ -51,24 +189,28 @@ html, body {
   position: absolute;
   bottom: calc(100% + 8px);
   left: 50%;
-  transform: translateX(-50%) translateY(4px);
-  background-color: #0f172a;
+  transform-origin: bottom center;
+  transform: translateX(-50%) translateY(4px) scale(0.96);
+  background-color: var(--material-surface-dark);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
   color: #ffffff;
-  padding: 0.6rem 0.85rem;
-  border-radius: 0.5rem;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--rounded-default, 0.5rem);
   font-size: 0.78rem;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
   white-space: normal;
   width: max-content;
-  max-width: 240px;
+  max-width: min(250px, calc(100vw - 2rem));
   text-align: left;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  transition: opacity var(--duration-fast) var(--ease-fluid), transform var(--duration-fast) var(--ease-fluid), visibility var(--duration-fast);
   z-index: 1080;
 }
 
@@ -89,11 +231,11 @@ html, body {
   transform: translateX(-50%) translateY(4px);
   border-width: 6px 6px 0 6px;
   border-style: solid;
-  border-color: #0f172a transparent transparent transparent;
+  border-color: var(--material-surface-dark) transparent transparent transparent;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  transition: opacity var(--duration-fast) var(--ease-fluid), transform var(--duration-fast) var(--ease-fluid), visibility var(--duration-fast);
   z-index: 1080;
 }
 
@@ -104,7 +246,69 @@ html, body {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+
+/* Edge-safe boundary alignment:
+   Prevents tooltips from being truncated or clipped when anchored to buttons
+   located near the left edge of cards, flex rows, or grid columns. */
+.custom-tooltip-wrapper.align-left .custom-tooltip-box,
+.custom-tooltip-wrapper:first-child .custom-tooltip-box,
+.row > [class*="col"]:first-child .custom-tooltip-wrapper .custom-tooltip-box,
+.d-flex > .custom-tooltip-wrapper:first-child .custom-tooltip-box {
+  left: 0;
+  transform-origin: bottom left;
+  transform: translateX(0) translateY(4px) scale(0.96);
+}
+
+.custom-tooltip-wrapper.align-left .custom-tooltip-arrow,
+.custom-tooltip-wrapper:first-child .custom-tooltip-arrow,
+.row > [class*="col"]:first-child .custom-tooltip-wrapper .custom-tooltip-arrow,
+.d-flex > .custom-tooltip-wrapper:first-child .custom-tooltip-arrow {
+  left: 1.25rem;
+  transform: translateX(0) translateY(4px);
+}
+
+.custom-tooltip-wrapper.align-left:hover .custom-tooltip-box,
+.custom-tooltip-wrapper:first-child:hover .custom-tooltip-box,
+.row > [class*="col"]:first-child .custom-tooltip-wrapper:hover .custom-tooltip-box,
+.d-flex > .custom-tooltip-wrapper:first-child:hover .custom-tooltip-box,
+.custom-tooltip-wrapper.align-left .custom-tooltip-box:hover,
+.custom-tooltip-wrapper:first-child .custom-tooltip-box:hover,
+.row > [class*="col"]:first-child .custom-tooltip-wrapper .custom-tooltip-box:hover,
+.d-flex > .custom-tooltip-wrapper:first-child .custom-tooltip-box:hover {
+  transform: translateX(0) translateY(0) scale(1);
+}
+
+/* Edge-safe right boundary alignment (for items near the far right) */
+.custom-tooltip-wrapper.align-right .custom-tooltip-box,
+.custom-tooltip-wrapper:last-child:not(:first-child) .custom-tooltip-box,
+.row > [class*="col"]:last-child:not(:first-child) .custom-tooltip-wrapper .custom-tooltip-box,
+.d-flex > .custom-tooltip-wrapper:last-child:not(:first-child) .custom-tooltip-box {
+  left: auto;
+  right: 0;
+  transform-origin: bottom right;
+  transform: translateX(0) translateY(4px) scale(0.96);
+}
+
+.custom-tooltip-wrapper.align-right .custom-tooltip-arrow,
+.custom-tooltip-wrapper:last-child:not(:first-child) .custom-tooltip-arrow,
+.row > [class*="col"]:last-child:not(:first-child) .custom-tooltip-wrapper .custom-tooltip-arrow,
+.d-flex > .custom-tooltip-wrapper:last-child:not(:first-child) .custom-tooltip-arrow {
+  left: auto;
+  right: 1.25rem;
+  transform: translateX(0) translateY(4px);
+}
+
+.custom-tooltip-wrapper.align-right:hover .custom-tooltip-box,
+.custom-tooltip-wrapper:last-child:not(:first-child):hover .custom-tooltip-box,
+.row > [class*="col"]:last-child:not(:first-child) .custom-tooltip-wrapper:hover .custom-tooltip-box,
+.d-flex > .custom-tooltip-wrapper:last-child:not(:first-child):hover .custom-tooltip-box,
+.custom-tooltip-wrapper.align-right .custom-tooltip-box:hover,
+.custom-tooltip-wrapper:last-child:not(:first-child) .custom-tooltip-box:hover,
+.row > [class*="col"]:last-child:not(:first-child) .custom-tooltip-wrapper .custom-tooltip-box:hover,
+.d-flex > .custom-tooltip-wrapper:last-child:not(:first-child) .custom-tooltip-box:hover {
+  transform: translateX(0) translateY(0) scale(1);
 }
 
 .tooltip-ask-btn {
@@ -112,14 +316,114 @@ html, body {
   align-items: center;
   gap: 0.35rem;
   margin-top: 0.4rem;
-  padding: 0.25rem 0.5rem;
-  background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  padding: 0.25rem 0.55rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   color: #ffffff !important;
   border: none;
   border-radius: 0.375rem;
   font-size: 0.72rem;
   font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
+  text-decoration: none;
   width: 100%;
   justify-content: center;
+  transition: transform var(--duration-press) var(--ease-press), filter var(--duration-fast) ease;
+}
+
+.tooltip-ask-btn:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.tooltip-ask-btn:active {
+  transform: scale(0.96);
+}
+
+/* ==========================================================================
+   Accessibility & Adaptive Environment (Apple HIG §14)
+   ========================================================================== */
+
+/* 1. Reduced Motion: replace slides/springs with gentle opacity fades */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .btn,
+  a,
+  .custom-tooltip-box,
+  .custom-tooltip-arrow,
+  .toast-bump-card,
+  .toast-notification,
+  .order-drawer,
+  .order-drawer-backdrop,
+  .floating-order-bar,
+  .qr-assistant-panel,
+  .qr-assistant-backdrop {
+    transition: opacity 160ms ease !important;
+  }
+
+  .btn:active,
+  .btn-add:active,
+  .tooltip-ask-btn:active,
+  .menu-item-card:hover,
+  .floating-order-bar:hover,
+  .qr-assistant-fab:hover {
+    transform: none !important;
+  }
+}
+
+/* 2. Reduced Transparency: frostier / opaque surfaces, drop backdrop blur */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --material-chrome-bg: #f7f9ff;
+    --material-sidebar-bg: #f1f4fa;
+    --material-surface-dark: #181c20;
+    --material-scrim: rgba(15, 23, 42, 0.75);
+  }
+
+  .top-bar,
+  .sidebar,
+  .custom-tooltip-box,
+  .toast-bump-card,
+  .toast-notification,
+  .floating-order-bar,
+  .order-drawer-backdrop,
+  .qr-assistant-backdrop,
+  .modal.show {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* 3. Increased Contrast: crisp borders and deeper foreground colors */
+@media (prefers-contrast: more) {
+  :root {
+    --on-surface: #000000;
+    --on-surface-variant: #1f2421;
+    --outline: #2f3530;
+    --outline-variant: #5a615c;
+    --material-chrome-bg: #ffffff;
+    --material-chrome-border: rgba(0, 0, 0, 0.35);
+  }
+
+  .card,
+  .order-panel,
+  .session-card,
+  .menu-item-card,
+  .table-orders-card,
+  .form-control,
+  .form-select {
+    border-width: 2px !important;
+    border-color: var(--outline) !important;
+  }
 }

@@ -12,8 +12,8 @@
 
   <!-- Modal / Offcanvas Assistant UI -->
   @if (isOpen()) {
-    <div class="qr-assistant-backdrop" (click)="closeModal()"></div>
-    <div class="qr-assistant-panel shadow-lg border rounded-4 animate-slide-up">
+    <div class="qr-assistant-backdrop" [class.is-closing]="isClosing()" (click)="closeModal()"></div>
+    <div class="qr-assistant-panel shadow-lg border rounded-4 animate-slide-up" [class.is-closing]="isClosing()">
       <div class="qr-assistant-header bg-dark text-white p-3 rounded-top-4 d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-2">
           <div class="avatar-circle bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 36px; height: 36px;">

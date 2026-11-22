@@ -29,6 +29,8 @@ __screenshots__/
 .env.*
 !.env.template
 *.local
+.agents
+.wrangler
 
 # Sensitive Angular environment files containing API keys or private endpoints
 src/environments/environment.ts

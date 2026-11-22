@@ -31,6 +31,7 @@ export class QrAssistantModalComponent implements OnInit, OnDestroy {
   private customEventSubQuery?: (e: Event) => void;
 
   isOpen = signal<boolean>(false);
+  isClosing = signal<boolean>(false);
   isHidden = signal<boolean>(false);
   isLoading = signal<boolean>(false);
 
@@ -192,11 +193,21 @@ export class QrAssistantModalComponent implements OnInit, OnDestroy {
   }
 
   toggleModal(): void {
-    this.isOpen.update((v) => !v);
+    if (this.isOpen()) {
+      this.closeModal();
+    } else {
+      this.isClosing.set(false);
+      this.isOpen.set(true);
+    }
   }
 
   closeModal(): void {
-    this.isOpen.set(false);
+    if (!this.isOpen() || this.isClosing()) return;
+    this.isClosing.set(true);
+    setTimeout(() => {
+      this.isOpen.set(false);
+      this.isClosing.set(false);
+    }, 180);
   }
 
   queryPrompt(promptText: string, restaurantId?: string | null): void {
