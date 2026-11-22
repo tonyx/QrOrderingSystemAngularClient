@@ -75,8 +75,9 @@ describe('AuthService', () => {
     expect(service.refreshToken()).toBe('sample_refresh_token_123');
     expect(service.hasRefreshToken()).toBe(true);
     expect(service.isAuthenticated()).toBe(true);
-    expect(localStorage.getItem('qr_auth_token')).toBe(token);
-    expect(localStorage.getItem('qr_auth_refresh_token')).toBe('sample_refresh_token_123');
+    // Tokens are kept purely in memory to protect against XSS/malicious JS readers
+    expect(localStorage.getItem('qr_auth_token')).toBeNull();
+    expect(localStorage.getItem('qr_auth_refresh_token')).toBeNull();
   });
 
   it('should correctly evaluate token expiration', () => {
@@ -118,8 +119,8 @@ describe('AuthService', () => {
     expect(receivedToken).toBe(newToken);
     expect(service.token()).toBe(newToken);
     expect(service.refreshToken()).toBe('new_rotated_refresh_tok');
-    expect(localStorage.getItem('qr_auth_token')).toBe(newToken);
-    expect(localStorage.getItem('qr_auth_refresh_token')).toBe('new_rotated_refresh_tok');
+    expect(localStorage.getItem('qr_auth_token')).toBeNull();
+    expect(localStorage.getItem('qr_auth_refresh_token')).toBeNull();
     expect(authApiSpy.postApiAuthRefreshToken).toHaveBeenCalledWith({
       refreshToken: 'old_refresh_tok',
     });

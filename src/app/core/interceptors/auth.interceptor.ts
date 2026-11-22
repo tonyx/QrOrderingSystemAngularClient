@@ -63,7 +63,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     }
   }
 
-  const clonedReq = req.clone({ headers, url });
+  // Include credentials (cookies) with all requests so HttpOnly refresh tokens are sent/received
+  const clonedReq = req.clone({ headers, url, withCredentials: true });
 
   // 4. Proactive refresh: If token is expired and refresh token is available, refresh before calling API
   const isRetry = req.context.get(RETRY_ATTEMPTED);

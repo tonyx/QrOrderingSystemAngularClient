@@ -50,14 +50,16 @@ describe('authInterceptor', () => {
 
     const req = httpMock.expectOne((r) => r.url.includes('/api/DiningOrders'));
     expect(req.request.headers.get('Authorization')).toBe('Bearer valid_jwt_token_123');
+    expect(req.request.withCredentials).toBe(true);
     req.flush({});
   });
 
-  it('should NOT attach Authorization header to anonymous auth endpoints', () => {
+  it('should NOT attach Authorization header to anonymous auth endpoints, but should include credentials', () => {
     http.post('/api/Auth/refresh-token', { refreshToken: 'rt' }).subscribe();
 
     const req = httpMock.expectOne((r) => r.url.includes('/api/Auth/refresh-token'));
     expect(req.request.headers.has('Authorization')).toBe(false);
+    expect(req.request.withCredentials).toBe(true);
     req.flush({});
   });
 

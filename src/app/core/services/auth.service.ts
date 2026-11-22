@@ -8,8 +8,8 @@ import { environment } from '../../../environments/environment';
 
 export type { ExternalAuthProvider };
 
-const TOKEN_STORAGE_KEY = 'qr_auth_token';
-const REFRESH_TOKEN_STORAGE_KEY = 'qr_auth_refresh_token';
+// In-memory token storage to protect against XSS/malicious JavaScript storage dumpers
+// Refresh token is primarily managed via HttpOnly cookies (with optional in-memory / legacy fallback)
 const USER_STORAGE_KEY = 'qr_auth_user';
 const RETURN_URL_STORAGE_KEY = 'qr_auth_return_url';
 
@@ -25,19 +25,19 @@ export class AuthService {
   // Single-flight refresh token observable to coalesce concurrent requests
   private refreshInProgress$: Observable<string> | null = null;
 
-  // Reactive state signals
-  readonly token = signal<string | null>(this.getStoredToken());
-  readonly refreshToken = signal<string | null>(this.getStoredRefreshToken());
+  // Purely in-memory reactive state signals (never stored in localStorage)
+  readonly token = signal<string | null>(null);
+  readonly refreshToken = signal<string | null>(null);
   readonly currentUser = signal<CurrentUserResponse | null>(this.getStoredUser());
   readonly isAuthenticated = computed(() => {
     const t = this.token();
-    const rt = this.refreshToken();
-    return (!!t && t.trim().length > 0) || (!!rt && rt.trim().length > 0);
+    return !!t && t.trim().length > 0;
   });
 
   hasRefreshToken(): boolean {
     const rt = this.refreshToken();
-    return !!rt && rt.trim().length > 0;
+    // Returns true if in-memory refresh token exists OR if relying on HttpOnly cookie
+    return (!!rt && rt.trim().length > 0) || this.isAuthenticated();
   }
 
   getRefreshToken(): string | null {
@@ -101,7 +101,9 @@ export class AuthService {
   }
 
   /**
-   * Refreshes the JWT access token using the stored refresh token.
+   * Refreshes the JWT access token.
+   * If an in-memory refresh token exists, it is sent in the body;
+   * otherwise the request relies on the browser's HttpOnly cookie.
    * Coalesces concurrent calls so only one refresh HTTP request is sent at a time.
    */
   refreshAccessToken(): Observable<string> {
@@ -109,10 +111,7 @@ export class AuthService {
       return this.refreshInProgress$;
     }
 
-    const currentRefreshToken = this.refreshToken();
-    if (!currentRefreshToken) {
-      return throwError(() => new Error('No refresh token available'));
-    }
+    const currentRefreshToken = this.refreshToken() || '';
 
     this.refreshInProgress$ = this.authApi
       .postApiAuthRefreshToken({ refreshToken: currentRefreshToken })
@@ -228,22 +227,18 @@ export class AuthService {
   }
 
   logout(): void {
-    const currentRefreshToken = this.refreshToken();
-    if (currentRefreshToken) {
-      // Fire-and-forget token revocation on backend
-      this.authApi.postApiAuthRevokeToken({ refreshToken: currentRefreshToken }).subscribe({
-        error: () => {
-          // Ignore network errors during logout
-        },
-      });
-    }
+    const currentRefreshToken = this.refreshToken() || '';
+    // Fire-and-forget token revocation on backend (cookie or body)
+    this.authApi.postApiAuthRevokeToken({ refreshToken: currentRefreshToken }).subscribe({
+      error: () => {
+        // Ignore network errors during logout
+      },
+    });
 
     this.token.set(null);
     this.refreshToken.set(null);
     this.currentUser.set(null);
     try {
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
       localStorage.removeItem(USER_STORAGE_KEY);
     } catch {
       // Ignore storage errors
@@ -252,21 +247,11 @@ export class AuthService {
 
   private setSession(authResult: any, extractedToken: string): void {
     this.token.set(extractedToken);
-    try {
-      localStorage.setItem(TOKEN_STORAGE_KEY, extractedToken);
-    } catch {
-      // Ignore storage errors
-    }
 
     const extractedRefreshToken =
       authResult?.refreshToken || authResult?.RefreshToken || null;
     if (extractedRefreshToken) {
       this.refreshToken.set(extractedRefreshToken);
-      try {
-        localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, extractedRefreshToken);
-      } catch {
-        // Ignore storage errors
-      }
     }
 
     // Try decoding claims from JWT payload if available
@@ -321,22 +306,6 @@ export class AuthService {
         // Keep initialUser if /api/Auth/me is optional or not available
       },
     });
-  }
-
-  private getStoredToken(): string | null {
-    try {
-      return localStorage.getItem(TOKEN_STORAGE_KEY);
-    } catch {
-      return null;
-    }
-  }
-
-  private getStoredRefreshToken(): string | null {
-    try {
-      return localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
-    } catch {
-      return null;
-    }
   }
 
   private getStoredUser(): CurrentUserResponse | null {

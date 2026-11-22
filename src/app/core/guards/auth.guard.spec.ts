@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, throwError, firstValueFrom } from 'rxjs';
 import { authGuard } from './auth.guard';
 import { AuthService } from '../services/auth.service';
 
@@ -46,7 +46,7 @@ describe('authGuard', () => {
     expect(authServiceSpy.refreshAccessToken).not.toHaveBeenCalled();
   });
 
-  it('should proactively refresh access token when token is expired but refresh token is available', (done) => {
+  it('should proactively refresh access token when token is expired but refresh token is available', async () => {
     authServiceSpy.isAuthenticated.mockReturnValue(true);
     authServiceSpy.isTokenExpired.mockReturnValue(true);
     authServiceSpy.hasRefreshToken.mockReturnValue(true);
@@ -55,13 +55,12 @@ describe('authGuard', () => {
     const result = TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
 
     expect(result).not.toBe(true);
-    (result as any).subscribe((res: boolean) => {
-      expect(res).toBe(true);
-      expect(authServiceSpy.refreshAccessToken).toHaveBeenCalledTimes(1);
-    });
+    const res = await firstValueFrom(result as any);
+    expect(res).toBe(true);
+    expect(authServiceSpy.refreshAccessToken).toHaveBeenCalledTimes(1);
   });
 
-  it('should redirect to /login if proactive token refresh fails', () => {
+  it('should redirect to /login if proactive token refresh fails', async () => {
     authServiceSpy.isAuthenticated.mockReturnValue(true);
     authServiceSpy.isTokenExpired.mockReturnValue(true);
     authServiceSpy.hasRefreshToken.mockReturnValue(true);
@@ -71,21 +70,37 @@ describe('authGuard', () => {
 
     const result = TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
 
-    (result as any).subscribe((tree: any) => {
-      expect(tree.commands).toEqual(['/login']);
-      expect(tree.extras).toEqual({ queryParams: { returnUrl: '/dashboard' } });
-      expect(routerSpy.createUrlTree).toHaveBeenCalledWith(['/login'], {
-        queryParams: { returnUrl: '/dashboard' },
-      });
+    const tree: any = await firstValueFrom(result as any);
+    expect(tree.commands).toEqual(['/login']);
+    expect(tree.extras).toEqual({ queryParams: { returnUrl: '/dashboard' } });
+    expect(routerSpy.createUrlTree).toHaveBeenCalledWith(['/login'], {
+      queryParams: { returnUrl: '/dashboard' },
     });
   });
 
-  it('should redirect to /login when user is not authenticated', () => {
+  it('should attempt silent refresh when user is not authenticated in-memory, and allow route if successful', async () => {
     authServiceSpy.isAuthenticated.mockReturnValue(false);
+    authServiceSpy.refreshAccessToken.mockReturnValue(of('fresh_bootstrapped_token'));
 
     const result = TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
 
-    expect(result).toEqual({ commands: ['/login'], extras: { queryParams: { returnUrl: '/dashboard' } } });
+    expect(result).not.toBe(true);
+    const res = await firstValueFrom(result as any);
+    expect(res).toBe(true);
+    expect(authServiceSpy.refreshAccessToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('should redirect to /login when user is not authenticated and silent refresh fails', async () => {
+    authServiceSpy.isAuthenticated.mockReturnValue(false);
+    authServiceSpy.refreshAccessToken.mockReturnValue(
+      throwError(() => new Error('No valid cookie / session'))
+    );
+
+    const result = TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
+
+    const tree: any = await firstValueFrom(result as any);
+    expect(tree.commands).toEqual(['/login']);
+    expect(tree.extras).toEqual({ queryParams: { returnUrl: '/dashboard' } });
     expect(routerSpy.createUrlTree).toHaveBeenCalledWith(['/login'], {
       queryParams: { returnUrl: '/dashboard' },
     });

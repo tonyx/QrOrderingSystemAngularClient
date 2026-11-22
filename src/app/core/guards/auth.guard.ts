@@ -8,9 +8,8 @@ export const authGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
 
   if (authService.isAuthenticated()) {
-    // If the access token is expired but a valid refresh token is available,
-    // refresh proactively before activating the target route.
-    if (authService.isTokenExpired() && authService.hasRefreshToken()) {
+    // If the access token is expired, refresh proactively before activating the target route.
+    if (authService.isTokenExpired()) {
       return authService.refreshAccessToken().pipe(
         map(() => true),
         catchError(() =>
@@ -25,9 +24,16 @@ export const authGuard: CanActivateFn = (route, state) => {
     return true;
   }
 
-  // Redirect to login page and preserve target url as query parameter
-  return router.createUrlTree(['/login'], {
-    queryParams: { returnUrl: state.url },
-  });
+  // If not currently authenticated in-memory, attempt a silent refresh via HttpOnly cookie
+  return authService.refreshAccessToken().pipe(
+    map(() => true),
+    catchError(() =>
+      of(
+        router.createUrlTree(['/login'], {
+          queryParams: { returnUrl: state.url },
+        })
+      )
+    )
+  );
 };
 
