@@ -444,15 +444,27 @@ export class RestaurantService {
 
   // --- Menu Item Operations (Catalogue) ---
   setMenuItemAvailable(restaurantId: string, menuItemName: string): Observable<void> {
-    return this.catalogueApi.postApiCatalogueIdMenuSetAvailable(restaurantId, menuItemName);
+    return this.catalogueApi.postApiCatalogueIdMenuSetAvailable(
+      restaurantId,
+      JSON.stringify(menuItemName),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
   }
 
   setMenuItemUnavailable(restaurantId: string, menuItemName: string): Observable<void> {
-    return this.catalogueApi.postApiCatalogueIdMenuSetUnavailable(restaurantId, menuItemName);
+    return this.catalogueApi.postApiCatalogueIdMenuSetUnavailable(
+      restaurantId,
+      JSON.stringify(menuItemName),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
   }
 
   removeMenuItem(restaurantId: string, menuItemName: string): Observable<void> {
-    return this.catalogueApi.postApiCatalogueIdMenuRemove(restaurantId, menuItemName);
+    return this.catalogueApi.postApiCatalogueIdMenuRemove(
+      restaurantId,
+      JSON.stringify(menuItemName),
+      { headers: { 'Content-Type': 'application/json' } }
+    );
   }
 
   updateMenuItemImageUrl(restaurantId: string, menuItemName: string, imageUrl: string): Observable<void> {
