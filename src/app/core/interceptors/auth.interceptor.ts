@@ -29,13 +29,21 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     headers = headers.set('Authorization', `Bearer ${token}`);
   }
 
-  // 2. Only attach X-API-Key if it matches a valid format (starts with qr_test_ or qr_live_)
-  // This avoids passing placeholders or invalid tokens that trigger ApiKeyAuthenticationHandler failures.
+  // 2. Only attach X-API-Key if user is NOT signed in with a Bearer token,
+  // request is not to an anonymous auth endpoint, and key matches a valid format (starts with qr_test_ or qr_live_).
+  // If the user is signed in (token is present or Authorization header is set),
+  // NEVER attach X-API-Key because it would override the authenticated user's identity on the backend.
   const isValidApiKeyFormat =
     accessKey &&
     (accessKey.startsWith('qr_test_') || accessKey.startsWith('qr_live_'));
 
-  if (isValidApiKeyFormat && !headers.has('X-Api-Key')) {
+  if (
+    !token &&
+    !headers.has('Authorization') &&
+    !isAuthEndpoint(req.url) &&
+    isValidApiKeyFormat &&
+    !headers.has('X-Api-Key')
+  ) {
     headers = headers.set('X-Api-Key', accessKey);
   }
 
@@ -71,7 +79,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   if (!isRetry && !isAuthEndpoint(req.url) && authService.hasRefreshToken() && authService.isTokenExpired(token)) {
     return authService.refreshAccessToken().pipe(
       switchMap((newToken) => {
-        const retriedHeaders = clonedReq.headers.set('Authorization', `Bearer ${newToken}`);
+        const retriedHeaders = clonedReq.headers
+          .set('Authorization', `Bearer ${newToken}`)
+          .delete('X-Api-Key');
         const retriedReq = clonedReq.clone({
           headers: retriedHeaders,
           context: clonedReq.context.set(RETRY_ATTEMPTED, true),
@@ -96,7 +106,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       ) {
         return authService.refreshAccessToken().pipe(
           switchMap((newToken) => {
-            const retriedHeaders = clonedReq.headers.set('Authorization', `Bearer ${newToken}`);
+            const retriedHeaders = clonedReq.headers
+          .set('Authorization', `Bearer ${newToken}`)
+          .delete('X-Api-Key');
             const retriedReq = clonedReq.clone({
               headers: retriedHeaders,
               context: clonedReq.context.set(RETRY_ATTEMPTED, true),

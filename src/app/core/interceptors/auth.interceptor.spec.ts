@@ -11,6 +11,7 @@ import {
 import { of } from 'rxjs';
 import { authInterceptor, RETRY_ATTEMPTED } from './auth.interceptor';
 import { AuthService } from '../services/auth.service';
+import { environment } from '../../../environments/environment';
 
 describe('authInterceptor', () => {
   let http: HttpClient;
@@ -45,12 +46,42 @@ describe('authInterceptor', () => {
     vi.restoreAllMocks();
   });
 
-  it('should attach Authorization Bearer token to normal API calls', () => {
+  it('should attach Authorization Bearer token to normal API calls and NOT attach X-Api-Key', () => {
+    (environment as any).accessKey = 'qr_test_mock_admin_key_123';
     http.get('/api/DiningOrders').subscribe();
 
     const req = httpMock.expectOne((r) => r.url.includes('/api/DiningOrders'));
     expect(req.request.headers.get('Authorization')).toBe('Bearer valid_jwt_token_123');
+    expect(req.request.headers.has('X-Api-Key')).toBe(false);
     expect(req.request.withCredentials).toBe(true);
+    req.flush({});
+    (environment as any).accessKey = '';
+  });
+
+  it('should attach X-Api-Key only when user is unauthenticated and accessKey has valid format', () => {
+    authServiceSpy.token.mockReturnValue(null);
+    authServiceSpy.hasRefreshToken.mockReturnValue(false);
+    (environment as any).accessKey = 'qr_test_dev_key_456';
+
+    http.get('/api/Restaurant/public/123').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url.includes('/api/Restaurant/public/123'));
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    expect(req.request.headers.get('X-Api-Key')).toBe('qr_test_dev_key_456');
+    req.flush({});
+    (environment as any).accessKey = '';
+  });
+
+  it('should NOT attach X-Api-Key when user is unauthenticated and accessKey is empty', () => {
+    authServiceSpy.token.mockReturnValue(null);
+    authServiceSpy.hasRefreshToken.mockReturnValue(false);
+    (environment as any).accessKey = '';
+
+    http.get('/api/Restaurant/public/123').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url.includes('/api/Restaurant/public/123'));
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    expect(req.request.headers.has('X-Api-Key')).toBe(false);
     req.flush({});
   });
 
